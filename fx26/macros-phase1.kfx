@@ -17,8 +17,24 @@
             ((char=? (car cs) #\space) (phase1-words (cdr cs) nil (if (null? w) out (cons (list->string (reverse w)) out))))
             (else (phase1-words (cdr cs) (cons (car cs) w) out))))))
 "A request's `n` forms from `i`, each its length on a line and its text:
- them, and where the rest begins."
+ them, and where the rest begins. Each text is held as Fixpt's expander
+ holds a phase-1 form (Fixpt's 6851f807, `phase1-form`): its directory's
+ length, `:`, its directory, then the form; the form alone kept
+ (`phase1-form-text`). A load a phase-1 form makes is read from the
+ engine's directory, not its file's: a gap (TODO §54's pin note)."
 (define-rec
+  (phase1-colon-at (subr kfx (string i64) i64)
+    (lambda (s i)
+      (cond ((i64>= i (string-length-i64 s)) (the i64 -1))
+            ((char=? (string-ref-i64 s i) #\:) i)
+            (else (phase1-colon-at s (i64+ i 1))))))
+  (phase1-form-text (subr kfx (string) string)
+    (lambda (f)
+      (let ((c (phase1-colon-at f 0)))
+        (if (i64< c 1)
+            f
+            (let ((from (i64+ (i64+ c 1) (string->i64 (substring f 0 (i64->int c))))))
+              (if (i64> from (string-length-i64 f)) f (substring f (i64->int from) (string-length f))))))))
   (phase1-forms-from (subr kfx (string i64 i64 strings) (tupleof strings i64))
     (lambda (s i n out)
       (if (i64<= n 0)
@@ -27,7 +43,7 @@
                  (len (string->i64 (substring s (i64->int i) (i64->int nl))))
                  (from (i64+ nl 1))
                  (to (let ((t (i64+ from len))) (if (i64> t (string-length-i64 s)) (string-length-i64 s) t))))
-            (phase1-forms-from s to (i64- n 1) (cons (substring s (i64->int from) (i64->int to)) out)))))))
+            (phase1-forms-from s to (i64- n 1) (cons (phase1-form-text (substring s (i64->int from) (i64->int to))) out)))))))
 (define phase1-type (subr kfx (string) string)
   (lambda (style)
     (if (string=? style "0")

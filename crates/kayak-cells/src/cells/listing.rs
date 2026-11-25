@@ -35,7 +35,7 @@ pub fn w_byte_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P
 
 // The string `s`'s bytes, by way of the place.
 pub fn w_str_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, s: Str) -> () {
-    let bs = the::<BytesAt<'p>>(string_to_utf8_in(p, s));
+    let bs = the::<BytesAt<'p>>(utf8_to_bytes_in(p, string_to_utf8(s)));
     let k = int_to_i64(bytevector_length(bs));
     w_room_x(p, b, n, k);
     bytevector_copy_x(get(b), i64_to_int(get(n)), bs, int_lit(0), i64_to_int(k));
@@ -472,11 +472,11 @@ pub fn word_written(name: Str, xs: Citems) -> Str {
         fn letrena__r<'r>(r: &'r Region_R<'r>, name: Str, xs: List<kayak_rt::data::DataAt<'static, Item>>) -> Str {
             let (b, n) = (the::<RefAt<'r, BytesAt<'r>>>(rnew(r, the::<BytesAt<'r>>(make_bytevector_in(r, int_lit(4096), 0u8)))), the::<RefAt<'r, i64>>(rnew(r, 0i64)));
             w_word_x(r, b, n, name, xs);
-            let tagcase_ = utf8_to_string(the::<BytesAt<'r>>(bytevector_copy_in(r, get(b), int_lit(0), i64_to_int(get(n)))));
+            let tagcase_ = bytes_to_utf8(the::<BytesAt<'r>>(bytevector_copy_in(r, get(b), int_lit(0), i64_to_int(get(n)))));
             let tag_ = kayak_rt::sum_tag(tagcase_);
             if tag_ == const { kayak_rt::tag_hash("text") } {
-                let t: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-                t
+                let t_utf8: Utf8 = kayak_rt::sum_payload::<Utf8>(tagcase_);
+                utf8_to_string(t_utf8)
             } else if tag_ == const { kayak_rt::tag_hash("bad") } {
                 let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
                 str_lit!("")

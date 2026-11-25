@@ -21,9 +21,10 @@
 ]
 },
 {
-"code": 1,
+"code": 0,
 "out": [
-"! <kayak>-snapshot/tests/fx26/programs/module-files/unlicensed.fx:3:2: unbound variable `module-parameters`",
+"; <kayak>-snapshot/tests/fx26/programs/module-files/unlicensed.fx, checked as a module file",
+"(poly ((r region)) (subr (maxeff (alloc @user) (alloc r)) () (moduleof (val count (ref int r)) (val shared (ref int @user)) (val feed (subr (maxeff (read r) (write @user) (write r)) (int) int))))) ! (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/module-files/unlicensed.fx))",
 "; both checkers agree",
 ""
 ],
@@ -31,7 +32,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

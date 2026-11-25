@@ -12,13 +12,13 @@
 ""
 ],
 "err": [
-"fixpt: read error: <kayak>-snapshot/tests/fx26/programs/macros/loop-through.fx:5:30: this use of `ping` is one it was expanded from, unchanged, through `pong`: its expansion would never end",
-"  in the expansion of `pong` at <kayak>-snapshot/tests/fx26/programs/macros/loop-through.fx:4:30",
-"  in the expansion of `ping` at <kayak>-snapshot/tests/fx26/programs/macros/loop-through.fx:6:1",
+"fixpt: read error: <programs>/macros/loop-through.fx:5:30: this use of `ping` is one it was expanded from, unchanged, through `pong`: its expansion would never end",
+"  in the expansion of `pong` at <programs>/macros/loop-through.fx:4:30",
+"  in the expansion of `ping` at <programs>/macros/loop-through.fx:6:1",
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

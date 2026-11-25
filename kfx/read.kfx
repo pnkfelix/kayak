@@ -315,6 +315,17 @@
                        (i64->char k))))
                 (else (read-error file line (string-append "no character is named " s))))))))
 
+(define chars-begin? (subr kfx (chars chars) bool)
+  (lambda (cs want)
+    "Whether `cs` begins with `want`."
+    (cond ((null? want) #t)
+          ((null? cs) #f)
+          ((char=? (car cs) (car want)) (chars-begin? (cdr cs) (cdr want)))
+          (else #f))))
+
+(define utf8-opening? (subr kfx (chars) bool)
+  (lambda (cs) "Whether `cs` begins `#utf8\"`." (chars-begin? cs (string-chars "#utf8\""))))
+
 (define-rec
   (read-datum (subr kfx (here string string) got)
     (lambda (h text file)
@@ -345,6 +356,13 @@
                     is, which only a quote takes."
                    (tagcase (read-items (here (cdr (cdr cs)) line (i64+ pos 2)) text file)
                      (gots (xs after) (got (lst (cons (sym "#vector" file pos) xs) file line pos) after))))
+                  ((and (utf8-opening? cs) (not (string=? file "")))
+                   "`#utf8\"…\"`, UTF-8 text (Fixpt 06a3666): `(#utf8 \"…\")`, a
+                    head no KFX name is, as `#(…)`'s; a string's escapes. Its
+                    three nodes at three offsets, the `#`, the `u`, the `\"`."
+                   (let ((body (cdr (cdr (cdr (cdr (cdr (cdr cs))))))))
+                     (tagcase (string-body body text nil (i64+ pos 6) file line (i64+ pos 5) line (i64+ pos 6))
+                       (got (x after) (got (lst (list (sym "#utf8" file (i64+ pos 1)) x) file line pos) after)))))
                   ((char=? c #\") (string-body (cdr cs) text nil (i64+ pos 1) file line pos line (i64+ pos 1)))
                   ((and (char=? c #\#) (not (null? (cdr cs))) (char=? (car (cdr cs)) #\\))
                    (let ((name (cdr (cdr cs))))
@@ -514,6 +532,18 @@
     (tagcase e
       (lst (xs src-file src-line src-pos) (and (not (null? xs)) (sym-is? (car xs) s)))
       (else other #f))))
+
+(define utf8-literal? (subr kfx (sexp) bool)
+  (lambda (e)
+    "Whether `e` is `#utf8\"…\"` as read, `(#utf8 \"…\")`."
+    (and (head-is? e "#utf8")
+         (i64= (size (items e)) 2)
+         (tagcase (car (cdr (items e))) (str (x f p) #t) (else other #f)))))
+
+(define utf8-literal-text (subr kfx (sexp) string)
+  (lambda (e)
+    "`#utf8\"…\"`'s text, as a string."
+    (tagcase (car (cdr (items e))) (str (x f p) x) (else other ""))))
 
 (define without-conv (subr kfx (sexp) sexp)
   (lambda (t)

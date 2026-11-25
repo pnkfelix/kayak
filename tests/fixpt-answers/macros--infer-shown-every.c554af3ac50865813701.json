@@ -16,13 +16,13 @@
 ""
 ],
 "err": [
-"fixpt: read error: <programs>/macros/infer-shown-every.fx:6:82: `m` is refused: no signature is written, and the one inferred from its clauses does not fit them: `body` is placed in the scope of other bindings than its signature says it is",
+"fixpt: read error: <programs>/macros/infer-shown-every.fx:6:82: `m` is refused: no signature is written, and the one inferred from its clauses does not fit them: `body` is placed in no scope of the pattern's binders, but its signature says it is in the scope of `(f ...)`",
 "  inferred: (macro (_ p1 @ ((f @ bvar lambda) ...) body @ (many expr)) expr (bind (f ...) in p1) (bind (f ...) in body))",
 "  write one: (define-syntax m SIGNATURE (syntax-rules …))",
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

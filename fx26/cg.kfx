@@ -22,8 +22,8 @@
  fixpt-source: crates/fixpt-fx26/src/compile-state.fx@120b70e
  fixpt-source: crates/fixpt-fx26/src/compile-lift.fx@0d933ff
  fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@0d933ff
- fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@6f7bd73
- fixpt-source: crates/fixpt-fx26/src/parser.fx@0585488"
+ fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@06a3666
+ fixpt-source: crates/fixpt-fx26/src/parser.fx@c5b5991"
 
 "The generator's data lives at `@g`."
 (define-effect gen (maxeff (read @globals) spin (read @g) (write @g) (alloc @g)))
@@ -860,6 +860,9 @@
             ;; Its own node, as Fixpt's `e-proj`: a standard name under it is
             ;; not called as the standard operation, but as its value.
             ((string=? h "proj") (x-proj (parse-x (second xs)) a))
+            ;; `#utf8"…"` (Fixpt 06a3666), read `(#utf8 "…")`: a quote's
+            ;; constant, made once and interned by its bytes.
+            ((string=? h "#utf8") (utf8-quoted e a))
             ((string=? h "quote") (parse-quoted (second xs) a))
             ((string=? h "product") (x-product (parse-fields (cdr xs)) a))
             ((string=? h "extract")
@@ -1332,6 +1335,11 @@
             ((null? (cdr xs)) (parse-x (car xs)))
             (else (let* ((x (parse-x (car xs))) (rest (parse-or (cdr xs) a))) (x-if x (x-bool #t a) rest a))))))
 
+  (utf8-quoted (subr gen (sexp i64) cx)
+    (lambda (d a)
+      "`#utf8\"…\"`: its text made `utf8`, then interned, as a quote's datum."
+      (x-app (std-var "%quote" a) (list (x-app (std-var "string->utf8" a) (list (x-str (utf8-literal-text d) a)) a)) a)))
+
   (parse-quoted (subr gen (sexp i64) cx)
     (lambda (d a)
       "A quoted datum, as Fixpt's quote rewrite writes it: a symbol, an atom
@@ -1340,8 +1348,9 @@
       (tagcase d
         (sym (n f p) (cond ((string=? n "#t") (x-bool #t a)) ((string=? n "#f") (x-bool #f a)) ((keyword-name? n) (keyword-x n a)) (else (x-sym n a))))
         (lst (ys f l p)
-          (if (null? ys) (std-var "nil" a)
-              (x-app (std-var "%quote" a) (list (quoted-item d a)) a)))
+          (cond ((null? ys) (std-var "nil" a))
+                ((utf8-literal? d) (utf8-quoted d a))
+                (else (x-app (std-var "%quote" a) (list (quoted-item d a)) a))))
         (else other (parse-x d)))))
 
   (quoted-list (subr gen (sexps i64) cx)

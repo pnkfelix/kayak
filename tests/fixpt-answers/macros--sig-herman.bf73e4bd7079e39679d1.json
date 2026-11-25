@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: read error: <kayak>-snapshot/tests/fx26/programs/macros/sig-herman.fx:5:3: a signature in shapes and facts is `(macro (_ part …) made fact …)`; Herman's, `(macro/addressed σ made)`",
+"fixpt: read error: <programs>/macros/sig-herman.fx:5:3: a signature in shapes and facts is `(macro (_ part …) made fact …)`; Herman's, `(macro/addressed σ made)`",
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

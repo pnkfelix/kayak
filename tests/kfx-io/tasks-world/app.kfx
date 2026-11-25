@@ -44,15 +44,14 @@
     (let* ((log (the (ref (log @w) @w) (new nil)))
            (n (run-both ((proj recording world @w) ((proj live @w)) log))))
       (begin
-        (write-file "run.log" (the (bytevectorof @w) (string->utf8 ((proj log-text @w) (reverse-log (get log) nil)))))
+        (write-file "run.log" (the (bytevectorof @w) (utf8->bytes (string->utf8 ((proj log-text @w) (reverse-log (get log) nil))))))
         (tagcase (the (sumof (data (bytevectorof @w)) (failed io-error)) (read-file "run.log"))
           (data b
-            (tagcase (utf8->string b)
-              (text s
-                (let* ((replayed (the (ref (log @w) @w) (new ((proj log-of-text @w) s))))
+            (tagcase (bytes->utf8 b)
+              (text s-utf8 (let ((s (utf8->string s-utf8)))                 (let* ((replayed (the (ref (log @w) @w) (new ((proj log-of-text @w) s))))
                        (m (run-both ((proj replaying world @w) replayed))))
                   (begin
                     (write-out (string-append "replayed " (string-append (i64->string m) (string-append " of " (string-append (i64->string n) " lines\n")))))
-                    (i64->int m))))
+                    (i64->int m)))))
               (bad k 101)))
           (failed e 102))))))

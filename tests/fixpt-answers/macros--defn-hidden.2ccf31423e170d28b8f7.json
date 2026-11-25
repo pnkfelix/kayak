@@ -14,18 +14,18 @@
 "code": 0,
 "out": [
 "count : int ! pure",
-"%count:1903821381.1 : (ref int @r.1) ! (alloc @r.1)",
-"tick : (subr (maxeff (read @r.1) (write @r.1) (read (globals %count:1903821381.1))) () int) ! pure",
-"1 : int ! (maxeff (read @r.1) (write @r.1) (read (globals %count:1903821381.1 tick)))",
-"2 : int ! (maxeff (read @r.1) (write @r.1) (read (globals %count:1903821381.1 tick)))",
-"103 : int ! (maxeff (read @r.1) (write @r.1) (read (globals %count:1903821381.1 count tick)))",
+"%count:1903821381.1 : (ref int @r.%count:1903821381.1.1) ! (alloc @r.%count:1903821381.1.1)",
+"tick : (subr (maxeff (read @r.%count:1903821381.1.1) (write @r.%count:1903821381.1.1) (read (globals %count:1903821381.1))) () int) ! pure",
+"1 : int ! (maxeff (read @r.%count:1903821381.1.1) (write @r.%count:1903821381.1.1) (read (globals %count:1903821381.1 tick)))",
+"2 : int ! (maxeff (read @r.%count:1903821381.1.1) (write @r.%count:1903821381.1.1) (read (globals %count:1903821381.1 tick)))",
+"103 : int ! (maxeff (read @r.%count:1903821381.1.1) (write @r.%count:1903821381.1.1) (read (globals %count:1903821381.1 count tick)))",
 ""
 ],
 "err": [
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

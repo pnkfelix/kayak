@@ -283,7 +283,7 @@ pub mod made__load__0__fx26_convention {
     pub type CvRead = kayak_rt::Sum;
 }
 
-pub mod made__input__4590__convention_types {
+pub mod made__input__4670__convention_types {
     use super::*;
 
     pub use super::made__load__0__fx26_convention::{cx_name, cx_int, cx_list, CvSx, CvSxs, CvAt, CvSxsAt, CvNames, CvInts, CvStrs, CvRegs, CvRegisters, CvBits, CvValues, CvClosures, CvCode, CvFrames, CvState, CvRoutine, CvOverflow, CvTrap, CvRoutines, CvFuel, CvBarrier, Convention, CvNm, CvRead};
@@ -292,7 +292,7 @@ pub mod made__input__4590__convention_types {
 pub mod cv {
     use super::*;
 
-    use super::made__input__4590__convention_types::{cx_name, cx_int, cx_list, CvSx, CvSxs, CvAt, CvSxsAt, CvNames, CvInts, CvStrs, CvRegs, CvRegisters, CvBits, CvValues, CvClosures, CvCode, CvFrames, CvState, CvRoutine, CvOverflow, CvTrap, CvRoutines, CvFuel, CvBarrier, Convention, CvNm, CvRead};
+    use super::made__input__4670__convention_types::{cx_name, cx_int, cx_list, CvSx, CvSxs, CvAt, CvSxsAt, CvNames, CvInts, CvStrs, CvRegs, CvRegisters, CvBits, CvValues, CvClosures, CvCode, CvFrames, CvState, CvRoutine, CvOverflow, CvTrap, CvRoutines, CvFuel, CvBarrier, Convention, CvNm, CvRead};
 
     #[inline]
     pub fn cv_ch(t: Str, i: Int) -> char {
@@ -1026,7 +1026,7 @@ pub mod made__load__1__fx26_x86_64 {
     }
 }
 
-pub mod made__input__4740__x86_64_types {
+pub mod made__input__4820__x86_64_types {
     use super::*;
 
     pub use super::made__load__1__fx26_x86_64::{X86Bytes, X86Op0, X86Op1, X86Op2, X86Op3, X86Op4, X86Op5, X86Op6, X8664Sig};
@@ -1035,7 +1035,7 @@ pub mod made__input__4740__x86_64_types {
 pub mod x86 {
     use super::*;
 
-    use super::made__input__4740__x86_64_types::{X86Bytes, X86Op0, X86Op1, X86Op2, X86Op3, X86Op4, X86Op5, X86Op6, X8664Sig};
+    use super::made__input__4820__x86_64_types::{X86Bytes, X86Op0, X86Op1, X86Op2, X86Op3, X86Op4, X86Op5, X86Op6, X8664Sig};
 
     #[inline]
     pub fn x86_b1(a: Int) -> X86Bytes {

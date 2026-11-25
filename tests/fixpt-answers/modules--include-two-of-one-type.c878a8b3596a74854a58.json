@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"include-two-of-one-type.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define make : (subr pure (int) sig) ! pure",
+"define make2 : (subr (read (globals make)) () (moduleof (val p sig) (val q sig))) ! pure",
+"define m : (moduleof (val p sig) (val q sig) (val x int) (val y int)) ! (read (globals make make2))",
+"int ! (read (globals m))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

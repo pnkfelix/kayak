@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"dm-frame-env.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"; <kayak>-snapshot/tests/fx26/programs/module-files/dm-frame-env.fx, checked as a module file",
+"(subr pure ((moduleof (val base (moduleof (abs t type) (val zero t) (val next (subr pure (t) t)) (val value (subr pure (t) int)))) (val user (moduleof (val two (subr pure () (select base t))))))) (moduleof (val three (subr pure () int)))) ! (read (globals %shared:input:<kayak>-snapshot/tests/fx26/programs/module-files/dm-frame-env.fx))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

@@ -14,11 +14,11 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/regions/result-write-at-acyclic.fx:12:32: this writes frozen data, whose region is `const`",
+"fixpt: <programs>/regions/result-write-at-acyclic.fx:12:32: this writes frozen data, whose region is `const`",
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

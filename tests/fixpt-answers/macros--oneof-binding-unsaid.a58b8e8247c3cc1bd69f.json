@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"oneof-binding-unsaid.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/macros/oneof-binding-unsaid.fx:9:37: `body` is placed in the scope of `x`, but its signature says it is in no scope of the pattern's binders",
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

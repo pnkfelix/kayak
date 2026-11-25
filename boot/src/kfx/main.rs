@@ -75,11 +75,11 @@ pub fn read_text_now(path: Str) -> Str {
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("data") } {
         let b: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
-        let tagcase_ = utf8_to_string(b);
+        let tagcase_ = bytes_to_utf8(b);
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("text") } {
-            let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-            s
+            let s_utf8: Utf8 = kayak_rt::sum_payload::<Utf8>(tagcase_);
+            utf8_to_string(s_utf8)
         } else if tag_ == const { kayak_rt::tag_hash("bad") } {
             let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
             match fail_with(string_append(str_lit!("cannot read "), string_append(path, str_lit!(": it is not UTF-8"))), int_lit(1)) {}
@@ -91,7 +91,7 @@ pub fn read_text_now(path: Str) -> Str {
 }
 
 pub fn write_text_now(path: Str, text: Str) -> () {
-    let tagcase_ = write_file(path, the::<Bytes>(string_to_utf8(text)));
+    let tagcase_ = write_file(path, the::<Bytes>(utf8_to_bytes(string_to_utf8(text))));
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("done") } {
         let u: () = kayak_rt::sum_payload::<()>(tagcase_);

@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"prompt-delimits.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define u : (prompt-tag int int (read (globals u v)) @p) ! (alloc @p)",
+"define v : (prompt-tag int int (read (globals u v)) @p) ! (alloc @p)",
+"define own : (subr (read (globals u)) (int) int) ! pure",
+"define other : (subr (maxeff (goto @p) (read (globals u v))) (int) int) ! pure",
+"int ! (maxeff (goto @p) (read (globals other own u v)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

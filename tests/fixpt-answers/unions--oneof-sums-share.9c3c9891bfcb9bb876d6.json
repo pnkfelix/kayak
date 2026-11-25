@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/unions/oneof-sums-share.fx:5:23: a `oneof`'s sums must have no tag in common: a a and a b both have `x`",
+"fixpt: <programs>/unions/oneof-sums-share.fx:5:23: a `oneof`'s sums must have no tag in common: a a and a b both have `x`",
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

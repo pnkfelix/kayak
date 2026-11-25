@@ -80,7 +80,11 @@ pub fn op_need(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 108i64) {
         i64_plus(i64_star(4i64, string_length_w(a)), 2i64)
     } else if i64_eq(op, 109i64) {
+        i64_plus(utf8_byte_count(a), 8i64)
+    } else if i64_eq(op, 278i64) {
         i64_plus(raw_length(a), 8i64)
+    } else if i64_eq(op, 279i64) {
+        i64_plus(utf8_byte_count(a), 8i64)
     } else if i64_eq(op, 130i64) {
         args_room()
     } else if i64_eq(op, 131i64) {
@@ -988,9 +992,9 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 107i64) {
         bool_word(raw_equal_p(a, b, 0i64))
     } else if i64_eq(op, 108i64) {
-        kfx_bytes_word_x(string_to_utf8(word_string(a)))
+        utf8_made_x(the::<Bytes>(utf8_to_bytes(string_to_utf8(word_string(a)))))
     } else if i64_eq(op, 109i64) {
-        utf8_word_x(a)
+        string_word_x(utf8_kfx_text(a))
     } else if i64_eq(op, 110i64) {
         failed_with_x(word_string(a));
         0i64
@@ -1339,6 +1343,10 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         let off = fixnum_value(pair_car(pair_cdr(r2)));
         bytes_written_x(blobref_bytes(a), blob_at(a), fixnum_value(b), int_of(c));
         blobref_x(sref_owner(a), i64_plus(blob_at(a), off), 0i64)
+    } else if i64_eq(op, 278i64) {
+        utf8_word_x(a)
+    } else if i64_eq(op, 279i64) {
+        kfx_bytes_word_x(utf8_kfx_bytes(a))
     } else if i64_eq(op, 250i64) {
         string_made_x(fixnum_value(a), b)
     } else if i64_eq(op, 255i64) {

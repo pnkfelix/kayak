@@ -662,12 +662,38 @@ pub fn sum_word_x(tag: Str, w: i64) -> i64 {
     sum_made_x(symbol_word(intern_x(tag)), w)
 }
 
-pub fn utf8_word_x(p: i64) -> i64 {
-    let tagcase_ = utf8_to_string(word_kfx_bytes(p));
+// UTF-8 text (C525): its making, `utf8-made!`, in words.kfx, which
+// table.kfx's quoted `#utf8"…"` needs first; its count and text here.
+#[inline]
+pub fn utf8_byte_count(u: i64) -> i64 {
+    header_bytes(mem_at(header_at(u)))
+}
+
+pub fn utf8_kfx_bytes(u: i64) -> Bytes {
+    let bv = the::<Bytes>(make_bytevector(i64_to_int(utf8_byte_count(u)), int_to_u8(int_lit(0))));
+    utf8_kfx_set_x(bv, u, 0i64, utf8_byte_count(u));
+    bv
+}
+
+#[inline]
+pub fn utf8_kfx_text(u: i64) -> Str {
+    let tagcase_ = bytes_to_utf8(utf8_kfx_bytes(u));
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("text") } {
-        let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-        sum_word_x(str_lit!("text"), string_word_x(s))
+        let t: Utf8 = kayak_rt::sum_payload::<Utf8>(tagcase_);
+        utf8_to_string(t)
+    } else if tag_ == const { kayak_rt::tag_hash("bad") } {
+        let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+        str_lit!("")
+    } else { unreachable!() }
+}
+
+pub fn utf8_word_x(p: i64) -> i64 {
+    let tagcase_ = bytes_to_utf8(word_kfx_bytes(p));
+    let tag_ = kayak_rt::sum_tag(tagcase_);
+    if tag_ == const { kayak_rt::tag_hash("text") } {
+        let t: Utf8 = kayak_rt::sum_payload::<Utf8>(tagcase_);
+        sum_word_x(str_lit!("text"), utf8_made_x(the::<Bytes>(utf8_to_bytes(t))))
     } else if tag_ == const { kayak_rt::tag_hash("bad") } {
         let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
         sum_word_x(str_lit!("bad"), int_value_x(k))

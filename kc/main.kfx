@@ -84,7 +84,7 @@
       (define read-text (subr qe (string) string)
         (lambda (path)
           (tagcase (the (sumof (data (bytevectorof @io)) (failed io-error)) (read-file path))
-            (data b (tagcase (utf8->string b) (text s s) (bad k (fail-with (string-append path ": not UTF-8") 1))))
+            (data b (tagcase (bytes->utf8 b) (text s-utf8 (utf8->string s-utf8)) (bad k (fail-with (string-append path ": not UTF-8") 1))))
             (failed e (fail-with (string-append "cannot read " (string-append path (string-append ": " (extract e detail)))) 1)))))
 
       (define-rec
@@ -108,18 +108,18 @@
       (define read-text-or-none (subr qe (string) string)
         (lambda (path)
           (tagcase (the (sumof (data (bytevectorof @io)) (failed io-error)) (read-file path))
-            (data b (tagcase (utf8->string b) (text s s) (bad k "")))
+            (data b (tagcase (bytes->utf8 b) (text s-utf8 (utf8->string s-utf8)) (bad k "")))
             (failed e ""))))
 
       (define write-text-unflushed (subr qe (string string) unit)
         (lambda (path text)
-          (tagcase (write-file-unflushed path (the (bytevectorof @io) (string->utf8 text)))
+          (tagcase (write-file-unflushed path (the (bytevectorof @io) (utf8->bytes (string->utf8 text))))
             (done u #u)
             (failed e (fail-with (string-append "cannot write " (string-append path (string-append ": " (extract e detail)))) 1)))))
 
       (define write-text (subr qe (string string) unit)
         (lambda (path text)
-          (tagcase (write-file path (the (bytevectorof @io) (string->utf8 text)))
+          (tagcase (write-file path (the (bytevectorof @io) (utf8->bytes (string->utf8 text))))
             (done u #u)
             (failed e (fail-with (string-append "cannot write " (string-append path (string-append ": " (extract e detail)))) 1)))))
 

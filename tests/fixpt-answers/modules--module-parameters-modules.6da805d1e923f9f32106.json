@@ -384,17 +384,17 @@
 "     5: slot 0",
 "     7: prim %make-frozen 2",
 "    10: slot! 0",
-"    12: global! %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/mp-base.fx",
-"    14: global %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/mp-base.fx",
+"    12: global! %shared:<programs>/modules/../module-files/mp-base.fx",
+"    14: global %shared:<programs>/modules/../module-files/mp-base.fx",
 "    16: global! m-base",
 "    18: closure word input@1002:147 over 0",
 "    21: lit 37",
 "    23: slot 0",
 "    25: prim %make-frozen 2",
 "    28: slot! 0",
-"    30: global! %shared:input:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/mp-buffer.fx",
+"    30: global! %shared:input:<programs>/modules/../module-files/mp-buffer.fx",
 "    32: global m-base",
-"    34: global %shared:input:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/mp-buffer.fx",
+"    34: global %shared:input:<programs>/modules/../module-files/mp-buffer.fx",
 "    36: field 2",
 "    38: slot 1",
 "    40: slot! 1",
@@ -405,9 +405,9 @@
 "    51: slot 0",
 "    53: prim %make-frozen 2",
 "    56: slot! 0",
-"    58: global! %shared:input:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/mp-mixed.fx",
+"    58: global! %shared:input:<programs>/modules/../module-files/mp-mixed.fx",
 "    60: global m-base",
-"    62: global %shared:input:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/mp-mixed.fx",
+"    62: global %shared:input:<programs>/modules/../module-files/mp-mixed.fx",
 "    64: field 2",
 "    66: slot 1",
 "    68: slot! 1",
@@ -738,7 +738,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

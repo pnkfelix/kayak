@@ -32,8 +32,12 @@
 ;; and a module's (or a function's that makes one), and its descriptions'
 ;; (types, effects, functions of descriptions), each with its own where it
 ;; is a module type's; or a function's, its parameters' shapes and its
-;; result's. A shape where it may not be known is a list of none or one.
-(define-datatype mx-parser-types-shape (sh-module (listof (tupleof symbol (listof mx-parser-types-shape acyclic)) acyclic) (listof (tupleof symbol (listof mx-parser-types-shape acyclic)) acyclic)) (sh-fun (listof (listof mx-parser-types-shape acyclic) acyclic) (listof mx-parser-types-shape acyclic)))
+;; result's; or a cell's, `(ref T r)`, what it holds (never none), or a
+;; product's, `(productof (f T) …)`, its fields' of known shapes (TODO §304,
+;; Heist's should-work note, entry 17). A shape where it may not be known
+;; is a list of none or one.
+(define-datatype mx-parser-types-shape (sh-module (listof (tupleof symbol (listof mx-parser-types-shape acyclic)) acyclic) (listof (tupleof symbol (listof mx-parser-types-shape acyclic)) acyclic)) (sh-fun (listof (listof mx-parser-types-shape acyclic) acyclic) (listof mx-parser-types-shape acyclic))
+  (sh-cell (listof mx-parser-types-shape acyclic)) (sh-product (listof (tupleof symbol (listof mx-parser-types-shape acyclic)) acyclic)))
 (define-type mx-parser-types-shapes (listof mx-parser-types-shape acyclic))
 (define-type mx-parser-types-members (listof (tupleof symbol mx-parser-types-shapes) acyclic))
 ;;; ------------------------------------------------------------------ trees
@@ -225,8 +229,8 @@
 ;; Or, in a program's walk, what the module at a node gives (`bind-shape`),
 ;; whose names the walk does not know: a name looked for past it may be one
 ;; of them (`macros.rs`'s `Level::Shape`).
-(define-datatype level (lv-rib atms) (lv-cage symbol) (lv-earlier atms) (lv-shape int))
-(define-type levels (listof level acyclic))
+(define-datatype mx-env-types-level (lv-rib atms) (lv-cage symbol) (lv-earlier atms) (lv-shape int))
+(define-type mx-env-types-levels (listof mx-env-types-level acyclic))
 ;; What a name is found as, looked for from a place in an environment
 ;; (`env-lookup`): `(0 b next)`, binder `b`, of a rib or of what earlier
 ;; repetitions bound; `(1 m next)`, the module at node `m`, met first, whose
@@ -246,7 +250,7 @@
 ;; takes the type and the operations, never `env-of` (a datatype, since a
 ;; type `define-generative` makes, of a module a file makes, cannot be named
 ;; in that file's own type: `TODO.md` §235).
-(define-datatype mx-env-indexed-env (env-of (tupleof levels mx-env-indexed-groups)))
+(define-datatype mx-env-indexed-env (env-of (tupleof mx-env-types-levels mx-env-indexed-groups)))
 
 ;;; ============================================================ macros-nodes.fx (whole)
 
@@ -262,6 +266,9 @@
 ;; another of the file's macros, by the name the importer has it by.
 (define-datatype action
   (act-rename addr int) (act-alias) (act-module-type symbol) (act-instance-type symbol)
+  ;; A description a file's frame holds: `(select (with lib frame) %ft:T)`,
+  ;; `lib` an alias if an instance's (`macros.rs`'s `FrameType`).
+  (act-frame-type symbol symbol bool)
   (act-standard-type)
   (act-macro-head symbol)
   ;; A trailmark of a file's a template writes: the name the importer has it by.
@@ -273,10 +280,15 @@
 ;; values its module shows (its other names the standard environment's); or
 ;; a module file's items, as its own macros see them (2); or a file as an
 ;; importer of an instance of it has it (3), the instance's name in place of
-;; `%shared:key`, which a binder at a use is kept from capturing. A type of its
-;; structure, the same in each instance of the expander's files
-;; (`macros.fx`'s `def-envs`).
-(define-type def-env (tupleof int symbol mx-parser-types-names))
+;; `%shared:key`, which a binder at a use is kept from capturing. Then each
+;; of the file's macros' names and the name the importer has it by; and its
+;; frame (`TODO.md` §300), its name and the values it holds, which a name it
+;; does not show reaches before the standard environment's (`'-` and none,
+;; if it has none). A type of its structure, the same in each instance of
+;; the expander's files (`macros.fx`'s `def-envs`).
+(define-type def-env
+  (tupleof int symbol mx-parser-types-names (listof (tupleof symbol symbol) acyclic) symbol mx-parser-types-names
+           mx-parser-types-names))
 (define-type mx-nodes-def-envs (listof (tupleof string def-env) acyclic))
 ;; A clause: its pattern (of the operands), its template, and its actions,
 ;; by their paths in the template, the last made first; its pattern's
@@ -296,7 +308,7 @@
 ;; A pattern variable: its type, its environment as the signature declares
 ;; it, whether it may be placed any number of times, its typed hole, if
 ;; the signature types it, and how many ellipses its pattern has it under.
-(define-type pinfo (tupleof sty levels bool holes int))
+(define-type pinfo (tupleof sty mx-env-types-levels bool holes int))
 (define-type pvars (listof (tupleof symbol pinfo) acyclic))
 ;; The last, its template's checked uses, by where each starts
 ;; (`checked-uses`).
@@ -310,9 +322,10 @@
 ;; What a file's macros are defined in (`macros.rs`'s `FileScope`): the
 ;; hidden global every load of the file is; the values and the types its
 ;; module shows; each of its macros' names, and the name the importer has
-;; it by; and the standard names. None for a program's own.
+;; it by; the standard names; and its frame, its name and the values it
+;; holds (`TODO.md` §300). None for a program's own.
 (define-type mx-nodes-scope
-  (tupleof symbol mx-parser-types-names mx-parser-types-names (listof (tupleof symbol symbol) acyclic) mx-parser-types-names))
+  (tupleof symbol mx-parser-types-names mx-parser-types-names (listof (tupleof symbol symbol) acyclic) mx-parser-types-names symbol mx-parser-types-names mx-parser-types-names))
 (define-type scopes (listof mx-nodes-scope acyclic))
 ;; Strings, `xs` sorted onto `out`; and joined, `, ` between.
 (define-type mx-nodes-strings (listof string acyclic))
@@ -536,7 +549,7 @@
 
 ;; A pattern variable placed by a template: which, as what, in what scope,
 ;; whether in a `many` part, under how many ellipses.
-(define-type placement (tupleof symbol sty levels bool int))
+(define-type placement (tupleof symbol sty mx-env-types-levels bool int))
 (define-type placements (listof placement acyclic))
 ;; Clause `cid`'s template's placements, and, if it makes definitions,
 ;; what of what a use gives it defines (in a list of one); none if its
@@ -560,6 +573,9 @@
 ;; used; the last `pN`.
 (define-type nstate (tupleof (listof zone acyclic) mx-shown-imports spots givens spots
                              (listof string acyclic) int))
+;; A part's imports, innermost first, one fact, its levels outermost first
+;; (`macros-facts.fx`'s `bind`); a repetition's, a fact each.
+(define-type mx-shown-binds (listof (tupleof int addr (listof mx-shown-labels acyclic)) acyclic))
 
 ;;; ============================================================ macros-solve.fx (whole)
 

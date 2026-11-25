@@ -1,0 +1,23 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"desc-place-undeclared.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: read error: <kayak>-snapshot/tests/fx26/programs/macros/desc-place-undeclared.fx:7:28: `body` is placed in the scope of `p` and `p`, a description, but its signature says it is in the scope of `p`, a description",
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

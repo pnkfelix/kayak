@@ -1,0 +1,75 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"bytevector-frozen.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (57 cells, cellular):",
+"     0: closure word n over 0",
+"     3: global! n",
+"     5: closure word first over 0",
+"     8: global! first",
+"    10: lit 4",
+"    12: lit 7",
+"    14: prim %fx26-int->u8 1",
+"    17: prim make-bytevector 2",
+"    20: global! made",
+"    22: global made",
+"    24: drop",
+"    25: global made",
+"    27: global n",
+"    29: tcall 1",
+"    31: drop",
+"    32: global made",
+"    34: global first",
+"    36: tcall 1",
+"    38: drop",
+"    39: global made",
+"    41: drop",
+"    42: global made",
+"    44: global made",
+"    46: lit 0",
+"    48: lit 4",
+"    50: prim %fx26-bytevector-copy 3",
+"    53: prim %fx26-bytevector=? 2",
+"    56: exit",
+"",
+"word first (8 cells, cellular):",
+"     0: slot 0",
+"     2: lit 0",
+"     4: prim bytevector-u8-ref 2",
+"     7: return",
+"  its register code (8 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: prim2imm bytevector-u8-ref 0",
+"       7: return",
+"",
+"word n (6 cells, cellular):",
+"     0: slot 0",
+"     2: prim bytevector-length 1",
+"     5: return",
+"  its register code (7 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: prim1 bytevector-length",
+"       6: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

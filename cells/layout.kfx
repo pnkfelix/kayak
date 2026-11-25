@@ -3,7 +3,7 @@
  its immediates and its routines' names, which `layout.fx` does not
  hold, written here after Fixpt's sources:
  fixpt-source: crates/fixpt-heap/src/value.rs@6f7bd73
- fixpt-source: crates/fixpt-heap/src/layout.rs@6f7bd73"
+ fixpt-source: crates/fixpt-heap/src/layout.rs@c5b5991"
 
 (define lay (load-module "fx26:layout.fx"))
 
@@ -48,6 +48,11 @@
 (define k-continuation i64 (int->i64 (with lay kind-cellular-continuation)))
 (define k-product i64 (int->i64 (with lay kind-product)))
 (define k-bytevector i64 (int->i64 (with lay kind-bytevector)))
+"UTF-8 text (Fixpt's 279c16cf, 466e57a7; C525): frozen, no fields, its
+ suffix the text, its exact length in bytes the header's; text all ASCII
+ of a kind of its own."
+(define k-utf8 i64 (int->i64 (with lay kind-utf8)))
+(define k-utf8-ascii i64 (int->i64 (with lay kind-utf8-ascii)))
 (define k-flonum i64 (int->i64 (with lay kind-flonum)))
 (define k-bignum i64 (int->i64 (with lay kind-bignum)))
 (define k-ratnum i64 (int->i64 (with lay kind-ratnum)))

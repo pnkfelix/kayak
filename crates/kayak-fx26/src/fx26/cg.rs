@@ -27,8 +27,8 @@ use super::*;
 // fixpt-source: crates/fixpt-fx26/src/compile-state.fx@120b70e
 // fixpt-source: crates/fixpt-fx26/src/compile-lift.fx@0d933ff
 // fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@0d933ff
-// fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@6f7bd73
-// fixpt-source: crates/fixpt-fx26/src/parser.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@06a3666
+// fixpt-source: crates/fixpt-fx26/src/parser.fx@c5b5991
 
 // The generator's data lives at `@g`.
 
@@ -336,6 +336,15 @@ pub mod made__load__1__cg {
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("clock")) => {
                         str_lit!("%fx26-clock")
                     }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("utf8?")) => {
+                        str_lit!("%fx26-utf8?")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("str=?")) => {
+                        str_lit!("%fx26-str=?")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("str<?")) => {
+                        str_lit!("%fx26-str<?")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("i8-or")) => {
                         str_lit!("%fx26-i8-or")
                     }
@@ -390,6 +399,9 @@ pub mod made__load__1__cg {
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("%stage")) => {
                         str_lit!("%fx26-stage")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("utf8=?")) => {
+                        str_lit!("%fx26-utf8=?")
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("i8-and")) => {
                         str_lit!("%fx26-i8-and")
@@ -514,6 +526,12 @@ pub mod made__load__1__cg {
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("type-at")) => {
                         str_lit!("%fx26-type-at")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("bytes=?")) => {
+                        str_lit!("%fx26-bytes=?")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("str-ref")) => {
+                        str_lit!("%fx26-str-ref")
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("int->i8")) => {
                         str_lit!("%fx26-int->i8")
@@ -681,6 +699,9 @@ pub mod made__load__1__cg {
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("list-dir")) => {
                         str_lit!("%fx26-list-dir")
                     }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("utf8-ref")) => {
+                        str_lit!("%fx26-utf8-ref")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("int->i32")) => {
                         str_lit!("%fx26-int->i32")
                     }
@@ -781,6 +802,12 @@ pub mod made__load__1__cg {
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("file-info")) => {
                         str_lit!("%fx26-file-info")
                     }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("utf8-next")) => {
+                        str_lit!("%fx26-utf8-next")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("str-slice")) => {
+                        str_lit!("%fx26-str-slice")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("remainder")) => {
                         str_lit!("%fx26-remainder")
                     }
@@ -862,6 +889,12 @@ pub mod made__load__1__cg {
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("write-file")) => {
                         str_lit!("%fx26-write-file")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("utf8-slice")) => {
+                        str_lit!("%fx26-utf8-slice")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("str-length")) => {
+                        str_lit!("%fx26-str-length")
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("datum-list")) => {
                         str_lit!("%fx26-list-copy")
@@ -959,6 +992,21 @@ pub mod made__load__1__cg {
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("string-copy")) => {
                         str_lit!("%fx26-string-copy")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("utf8-length")) => {
+                        str_lit!("%fx26-utf8-length")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("bytes-slice")) => {
+                        str_lit!("%fx26-bytes-slice")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("str->string")) => {
+                        str_lit!("%fx26-str->string")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("bytes->utf8")) => {
+                        str_lit!("%fx26-bytes->utf8")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("utf8->bytes")) => {
+                        str_lit!("%fx26-utf8->bytes")
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("i8-quotient")) => {
                         str_lit!("%fx26-i8-quotient")
@@ -1074,6 +1122,12 @@ pub mod made__load__1__cg {
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("utf8->string")) => {
                         str_lit!("%fx26-utf8->string")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("bytes-length")) => {
+                        str_lit!("%fx26-bytes-length")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("bytes-u8-ref")) => {
+                        str_lit!("%fx26-bytes-u8-ref")
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("i8-remainder")) => {
                         str_lit!("%fx26-i8-remainder")
@@ -1196,6 +1250,9 @@ pub mod made__load__1__cg {
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("process-write")) => {
                         str_lit!("%fx26-process-write")
                     }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("bytes-as-utf8")) => {
+                        str_lit!("%fx26-bytes-as-utf8")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("i32-remainder")) => {
                         str_lit!("%fx26-i32-remainder")
                     }
@@ -1256,6 +1313,9 @@ pub mod made__load__1__cg {
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("process-signal")) => {
                         str_lit!("%fx26-process-signal")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("utf8-substring")) => {
+                        str_lit!("%fx26-utf8-substring")
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("string-compare")) => {
                         str_lit!("%fx26-string-compare")
@@ -1343,6 +1403,9 @@ pub mod made__load__1__cg {
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("bytevector-copy!")) => {
                         str_lit!("%fx26-bytevector-copy!")
                     }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("utf8-byte-length")) => {
+                        str_lit!("%fx26-utf8-byte-length")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("arithmetic-shift")) => {
                         str_lit!("%fx26-arithmetic-shift")
                     }
@@ -1373,6 +1436,9 @@ pub mod made__load__1__cg {
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("bytevector-u8-ref")) => {
                         str_lit!("bytevector-u8-ref")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("bytes->bytevector")) => {
+                        str_lit!("%fx26-bytes->bytevector")
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("datum-denominator")) => {
                         str_lit!("%denominator")
@@ -4809,6 +4875,8 @@ pub fn parse_form(mut h: Str, mut xs: Sexps, mut e: kayak_rt::data::DataAt<'stat
             return parse_x(confirmed(e, str_lit!("%confirm-value"), str_lit!("length-is?"), str_lit!("certify-length"), true));
         } else if string_eq_p(h, str_lit!("proj")) {
             return x_proj(parse_x(second(xs)), a);
+        } else if string_eq_p(h, str_lit!("#utf8")) {
+            return utf8_quoted(e, a);
         } else if string_eq_p(h, str_lit!("quote")) {
             return parse_quoted(second(xs), a);
         } else if string_eq_p(h, str_lit!("product")) {
@@ -5703,6 +5771,12 @@ pub fn parse_or(xs: Sexps, a: i64) -> kayak_rt::data::DataAt<'static, Cx> {
     }
 }
 
+/// `#utf8"…"`: its text made `utf8`, then interned, as a quote's datum.
+#[inline]
+pub fn utf8_quoted(d: kayak_rt::data::DataAt<'static, Sexp>, a: i64) -> kayak_rt::data::DataAt<'static, Cx> {
+    x_app(std_var(str_lit!("%quote"), a), kayak_rt::heap_cons(x_app(std_var(str_lit!("string->utf8"), a), kayak_rt::heap_cons(x_str(utf8_literal_text(d), a), kayak_rt::nil()), a), kayak_rt::nil()), a)
+}
+
 /// A quoted datum, as Fixpt's quote rewrite writes it: a symbol, an atom
 /// as itself; a list of `cons` and `nil`, a dotted one's tail its last,
 /// a vector `list->vector` of its items' list, interned whole.
@@ -5723,6 +5797,8 @@ pub fn parse_quoted(d: kayak_rt::data::DataAt<'static, Sexp>, a: i64) -> kayak_r
         let (ys, f, l, p,) = Sexp::__Lst(tagcase_);
         if null_p(ys) {
             std_var(str_lit!("nil"), a)
+        } else if utf8_literal_p(d) {
+            utf8_quoted(d, a)
         } else {
             x_app(std_var(str_lit!("%quote"), a), kayak_rt::heap_cons(quoted_item(d, a), kayak_rt::nil()), a)
         }

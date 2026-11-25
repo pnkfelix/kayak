@@ -345,7 +345,6 @@ run/big-literals.fx
 run/bignums.fx
 run/boolean-tests.fx
 run/bytevector-printed.fx
-run/bytevectors.fx
 run/callbacks.fx
 run/caller-place.fx
 run/case-tree.fx

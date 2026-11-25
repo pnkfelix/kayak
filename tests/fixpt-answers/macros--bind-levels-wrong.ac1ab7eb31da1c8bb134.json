@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"bind-levels-wrong.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: the FX-26 front end: <kayak>-snapshot/tests/fx26/programs/macros/bind-levels-wrong.fx:8:56: `body` is placed in the scope of `go`, and inside that of `(x ...)`, but its signature says it is in the scope of `(x ...)`, and inside that of `go`",
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

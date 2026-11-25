@@ -10,11 +10,11 @@
 "code": 0,
 "out": [
 "define count : int ! pure",
-"define %count:1903821381.1 : (ref int @r.1) ! (alloc @r.1)",
-"define tick : (subr (maxeff (read (globals %count:1903821381.1)) (read @r.1) (write @r.1)) () int) ! pure",
-"int ! (maxeff (read (globals %count:1903821381.1 tick)) (read @r.1) (write @r.1))",
-"int ! (maxeff (read (globals %count:1903821381.1 tick)) (read @r.1) (write @r.1))",
-"int ! (maxeff (read (globals %count:1903821381.1 count tick)) (read @r.1) (write @r.1))",
+"define %count:1903821381.1 : (ref int @r.%count:1903821381.1.1) ! (alloc @r.%count:1903821381.1.1)",
+"define tick : (subr (maxeff (read (globals %count:1903821381.1)) (read @r.%count:1903821381.1.1) (write @r.%count:1903821381.1.1)) () int) ! pure",
+"int ! (maxeff (read (globals %count:1903821381.1 tick)) (read @r.%count:1903821381.1.1) (write @r.%count:1903821381.1.1))",
+"int ! (maxeff (read (globals %count:1903821381.1 tick)) (read @r.%count:1903821381.1.1) (write @r.%count:1903821381.1.1))",
+"int ! (maxeff (read (globals %count:1903821381.1 count tick)) (read @r.%count:1903821381.1.1) (write @r.%count:1903821381.1.1))",
 "; both checkers agree",
 ""
 ],
@@ -22,7 +22,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

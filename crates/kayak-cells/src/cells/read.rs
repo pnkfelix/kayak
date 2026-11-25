@@ -968,6 +968,28 @@ pub fn char_named(s: Str, file: Str, line: i64) -> char {
     }
 }
 
+/// Whether `cs` begins with `want`.
+pub fn chars_begin_p(mut cs: Chars, mut want: Chars) -> bool {
+    loop {
+        if null_p(want) {
+            return true;
+        } else if null_p(cs) {
+            return false;
+        } else if char_eq_p(car(cs), car(want)) {
+            (cs, want) = (cdr(cs), cdr(want));
+            continue;
+        } else {
+            return false;
+        }
+    }
+}
+
+/// Whether `cs` begins `#utf8"`.
+#[inline]
+pub fn utf8_opening_p(cs: Chars) -> bool {
+    chars_begin_p(cs, string_chars(str_lit!("#utf8\"")))
+}
+
 /// A datum at the start of `h`'s text, the rest of `text`, which `file`
 /// holds.
 pub fn read_datum(h: kayak_rt::data::DataAt<'static, Here>, text: Str, file: Str) -> kayak_rt::data::DataAt<'static, Got> {
@@ -1023,6 +1045,16 @@ pub fn read_datum(h: kayak_rt::data::DataAt<'static, Here>, text: Str, file: Str
             if Gots::__is_Gots(tagcase_) {
                 let (xs, after,) = Gots::__Gots(tagcase_);
                 got(lst(kayak_rt::heap_cons(sym(str_lit!("#vector"), file, pos), xs), file, line, pos), after)
+            } else { kayak_rt::data::no_variant() }
+        } else if (utf8_opening_p(cs) && not(string_eq_p(file, str_lit!("")))) {
+            // `#utf8"…"`, UTF-8 text (Fixpt 06a3666): `(#utf8 "…")`, a
+            // head no KFX name is, as `#(…)`'s; a string's escapes. Its
+            // three nodes at three offsets, the `#`, the `u`, the `"`.
+            let body = cdr(cdr(cdr(cdr(cdr(cdr(cs))))));
+            let tagcase_ = string_body(body, text, nil::<Str>(), i64_plus(pos, 6i64), file, line, i64_plus(pos, 5i64), line, i64_plus(pos, 6i64));
+            if Got::__is_Got(tagcase_) {
+                let (x, after,) = Got::__Got(tagcase_);
+                got(lst(kayak_rt::heap_cons(sym(str_lit!("#utf8"), file, i64_plus(pos, 1i64)), kayak_rt::heap_cons(x, kayak_rt::nil())), file, line, pos), after)
             } else { kayak_rt::data::no_variant() }
         } else if char_eq_p(c, '"') {
             string_body(cdr(cs), text, nil::<Str>(), i64_plus(pos, 1i64), file, line, pos, line, i64_plus(pos, 1i64))
@@ -1525,6 +1557,33 @@ pub fn head_is_p(e: kayak_rt::data::DataAt<'static, Sexp>, s: Str) -> bool {
     } else {
         let other = tagcase_;
         false
+    }
+}
+
+/// Whether `e` is `#utf8"…"` as read, `(#utf8 "…")`.
+pub fn utf8_literal_p(e: kayak_rt::data::DataAt<'static, Sexp>) -> bool {
+    (head_is_p(e, str_lit!("#utf8")) && i64_eq(size(items(e)), 2i64) && {
+        let tagcase_ = car(cdr(items(e)));
+        if Sexp::__is_Str(tagcase_) {
+            let (x, f, p,) = Sexp::__Str(tagcase_);
+            true
+        } else {
+            let other = tagcase_;
+            false
+        }
+    })
+}
+
+/// `#utf8"…"`'s text, as a string.
+#[inline]
+pub fn utf8_literal_text(e: kayak_rt::data::DataAt<'static, Sexp>) -> Str {
+    let tagcase_ = car(cdr(items(e)));
+    if Sexp::__is_Str(tagcase_) {
+        let (x, f, p,) = Sexp::__Str(tagcase_);
+        x
+    } else {
+        let other = tagcase_;
+        str_lit!("")
     }
 }
 

@@ -15,13 +15,13 @@
 ""
 ],
 "err": [
-"fixpt: <programs>/macros/infer-shown-defn.fx:5:73: `define-twice` is refused: no signature is written, and the one inferred from its clauses does not fit them: `body` is placed in the scope of other bindings than its signature says it is",
+"fixpt: <programs>/macros/infer-shown-defn.fx:5:73: `define-twice` is refused: no signature is written, and the one inferred from its clauses does not fit them: `body` is placed in the scope of `a`, and inside that of `a`, but its signature says it is in the scope of `a`",
 "  inferred: (macro (_ a @ bvar expr body @ (many expr)) (defn a) (bind a in body))",
 "  write one: (define-syntax define-twice SIGNATURE (syntax-rules …))",
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

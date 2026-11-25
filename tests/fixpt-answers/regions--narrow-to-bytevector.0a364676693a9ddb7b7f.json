@@ -1,0 +1,23 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"narrow-to-bytevector.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/regions/narrow-to-bytevector.fx:5:41: a bytevector is expected here, and this is a (bytevectorof r)",
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

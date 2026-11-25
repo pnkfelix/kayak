@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"dm-penv.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"; <kayak>-snapshot/tests/fx26/programs/module-files/dm-penv.fx, checked as a module file",
+"(subr (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/module-files/dm-base.fx)) () (moduleof (val m-base (moduleof (abs t type) (val zero t) (val next (subr pure (t) t)) (val value (subr pure (t) int)))))) ! (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/module-files/dm-penv.fx))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

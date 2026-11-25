@@ -101,8 +101,8 @@
 "     5: slot 0",
 "     7: prim %make-frozen 2",
 "    10: slot! 0",
-"    12: global! %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/bump.fx",
-"    14: global %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/bump.fx",
+"    12: global! %shared:<programs>/modules/../module-files/bump.fx",
+"    14: global %shared:<programs>/modules/../module-files/bump.fx",
 "    16: slot 0",
 "    18: field 2",
 "    20: slot 1",
@@ -117,8 +117,8 @@
 "    40: slot! 0",
 "    42: drop",
 "    43: drop",
-"    44: global! %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/reexports.fx",
-"    46: global %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/reexports.fx",
+"    44: global! %shared:<programs>/modules/../module-files/reexports.fx",
+"    46: global %shared:<programs>/modules/../module-files/reexports.fx",
 "    48: global! r",
 "    50: global r",
 "    52: field 4",
@@ -172,7 +172,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

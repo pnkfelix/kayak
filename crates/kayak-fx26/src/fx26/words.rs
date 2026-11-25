@@ -406,3 +406,58 @@ pub fn list_array_x(kind: i64, xs: i64) -> i64 {
     p
 }
 
+// UTF-8 text (Fixpt's `utf8`, its 279c16cf; C525): made of a KFX
+// bytevector's bytes, UTF-8 already (room made sure of); its bytes as one;
+// its text; and `bytes->utf8` of a heap bytevector's, validated.
+pub fn utf8_bytes_set_x(mut u: i64, mut bv: Bytes, mut i: i64, mut n: i64) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            suffix_byte_set_x(u, i, int_to_i64(u8_to_int(bytevector_u8_ref(bv, i64_to_int(i)))));
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+pub fn bytes_ascii_p(mut bv: Bytes, mut i: i64, mut n: i64) -> bool {
+    loop {
+        if i64_gt_eq(i, n) {
+            return true;
+        } else if _gt_eq(u8_to_int(bytevector_u8_ref(bv, i64_to_int(i))), int_lit(128)) {
+            return false;
+        } else {
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+pub fn utf8_kfx_set_x(mut bv: Bytes, mut u: i64, mut i: i64, mut n: i64) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            bytevector_u8_set_x(bv, i64_to_int(i), int_to_u8(i64_to_int(suffix_byte(u, i))));
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+pub fn utf8_made_x(bv: Bytes) -> i64 {
+    let n = int_to_i64(bytevector_length(bv));
+    let w = i64_quotient(i64_plus(n, 7i64), 8i64);
+    let at = bump_x(i64_plus(w, 1i64));
+    mem_set_x(at, header(if bytes_ascii_p(bv, 0i64, n) {
+        ob_utf8_ascii()
+    } else {
+        ob_utf8()
+    }, 0i64, n));
+    words_zeroed_x(i64_plus(at, 1i64), w);
+    let u = bloblet_at(i64_plus(at, 1i64));
+    utf8_bytes_set_x(u, bv, 0i64, n);
+    u
+}
+

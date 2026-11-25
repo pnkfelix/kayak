@@ -326,9 +326,11 @@ pub mod made__load__0__expander_kc {
     pub enum MxParserTypesShape {
         ShModule(List<Product_11_12<Symbol, List<kayak_rt::data::DataAt<'static, MxParserTypesShape>>>>, List<Product_11_12<Symbol, List<kayak_rt::data::DataAt<'static, MxParserTypesShape>>>>),
         ShFun(List<List<kayak_rt::data::DataAt<'static, MxParserTypesShape>>>, List<kayak_rt::data::DataAt<'static, MxParserTypesShape>>),
+        ShCell(List<kayak_rt::data::DataAt<'static, MxParserTypesShape>>),
+        ShProduct(List<Product_11_12<Symbol, List<kayak_rt::data::DataAt<'static, MxParserTypesShape>>>>),
     }
 
-    impl kayak_rt::data::Variant<1> for MxParserTypesShape {
+    impl kayak_rt::data::Variant<3> for MxParserTypesShape {
         type Fields = (List<Product_11_12<Symbol, List<kayak_rt::data::DataAt<'static, MxParserTypesShape>>>>, List<Product_11_12<Symbol, List<kayak_rt::data::DataAt<'static, MxParserTypesShape>>>>,);
         #[inline(always)]
         fn tag() -> &'static kayak_rt::SymObj {
@@ -340,15 +342,15 @@ pub mod made__load__0__expander_kc {
     impl MxParserTypesShape {
         #[inline(always)]
         pub fn __is_ShModule(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
-            w.is::<1>()
+            w.is::<3>()
         }
         #[inline(always)]
-        pub fn __ShModule(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
-            w.fields::<1>()
+        pub fn __ShModule(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<3>>::Fields {
+            w.fields::<3>()
         }
     }
 
-    impl kayak_rt::data::Variant<0> for MxParserTypesShape {
+    impl kayak_rt::data::Variant<2> for MxParserTypesShape {
         type Fields = (List<List<kayak_rt::data::DataAt<'static, MxParserTypesShape>>>, List<kayak_rt::data::DataAt<'static, MxParserTypesShape>>,);
         #[inline(always)]
         fn tag() -> &'static kayak_rt::SymObj {
@@ -360,10 +362,50 @@ pub mod made__load__0__expander_kc {
     impl MxParserTypesShape {
         #[inline(always)]
         pub fn __is_ShFun(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<2>()
+        }
+        #[inline(always)]
+        pub fn __ShFun(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<2>>::Fields {
+            w.fields::<2>()
+        }
+    }
+
+    impl kayak_rt::data::Variant<1> for MxParserTypesShape {
+        type Fields = (List<kayak_rt::data::DataAt<'static, MxParserTypesShape>>,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("sh-cell")
+        }
+    }
+
+    #[allow(non_snake_case)]
+    impl MxParserTypesShape {
+        #[inline(always)]
+        pub fn __is_ShCell(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<1>()
+        }
+        #[inline(always)]
+        pub fn __ShCell(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+            w.fields::<1>()
+        }
+    }
+
+    impl kayak_rt::data::Variant<0> for MxParserTypesShape {
+        type Fields = (List<Product_11_12<Symbol, List<kayak_rt::data::DataAt<'static, MxParserTypesShape>>>>,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("sh-product")
+        }
+    }
+
+    #[allow(non_snake_case)]
+    impl MxParserTypesShape {
+        #[inline(always)]
+        pub fn __is_ShProduct(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
             w.is::<0>()
         }
         #[inline(always)]
-        pub fn __ShFun(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        pub fn __ShProduct(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
             w.fields::<0>()
         }
     }
@@ -371,21 +413,31 @@ pub mod made__load__0__expander_kc {
     impl kayak_rt::data::Datatype for MxParserTypesShape {
         #[inline]
         fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
-            if w.is::<1>() {
-                let (f0, f1,) = w.fields::<1>();
+            if w.is::<3>() {
+                let (f0, f1,) = w.fields::<3>();
                 Self::ShModule(f0, f1)
-            } else if w.is::<0>() {
-                let (f0, f1,) = w.fields::<0>();
+            } else if w.is::<2>() {
+                let (f0, f1,) = w.fields::<2>();
                 Self::ShFun(f0, f1)
+            } else if w.is::<1>() {
+                let (f0,) = w.fields::<1>();
+                Self::ShCell(f0)
+            } else if w.is::<0>() {
+                let (f0,) = w.fields::<0>();
+                Self::ShProduct(f0)
             } else {
                 kayak_rt::data::no_variant()
             }
         }
         fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+            if w.is::<3>() { return t.reach(w.obj::<3>()); }
+            if w.is::<2>() { return t.reach(w.obj::<2>()); }
             if w.is::<1>() { return t.reach(w.obj::<1>()); }
             if w.is::<0>() { return t.reach(w.obj::<0>()); }
         }
         fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            if w.is::<3>() { return true; }
+            if w.is::<2>() { return true; }
             if w.is::<1>() { return true; }
             if w.is::<0>() { return true; }
             let _ = w;
@@ -394,11 +446,19 @@ pub mod made__load__0__expander_kc {
     }
 
     pub fn sh_module(f0: List<Product_11_12<Symbol, List<kayak_rt::data::DataAt<'static, MxParserTypesShape>>>>, f1: List<Product_11_12<Symbol, List<kayak_rt::data::DataAt<'static, MxParserTypesShape>>>>) -> kayak_rt::data::DataAt<'static, MxParserTypesShape> {
-        kayak_rt::data::data_heap::<MxParserTypesShape, 1>((f0, f1,))
+        kayak_rt::data::data_heap::<MxParserTypesShape, 3>((f0, f1,))
     }
 
     pub fn sh_fun(f0: List<List<kayak_rt::data::DataAt<'static, MxParserTypesShape>>>, f1: List<kayak_rt::data::DataAt<'static, MxParserTypesShape>>) -> kayak_rt::data::DataAt<'static, MxParserTypesShape> {
-        kayak_rt::data::data_heap::<MxParserTypesShape, 0>((f0, f1,))
+        kayak_rt::data::data_heap::<MxParserTypesShape, 2>((f0, f1,))
+    }
+
+    pub fn sh_cell(f0: List<kayak_rt::data::DataAt<'static, MxParserTypesShape>>) -> kayak_rt::data::DataAt<'static, MxParserTypesShape> {
+        kayak_rt::data::data_heap::<MxParserTypesShape, 1>((f0,))
+    }
+
+    pub fn sh_product(f0: List<Product_11_12<Symbol, List<kayak_rt::data::DataAt<'static, MxParserTypesShape>>>>) -> kayak_rt::data::DataAt<'static, MxParserTypesShape> {
+        kayak_rt::data::data_heap::<MxParserTypesShape, 0>((f0,))
     }
 
     pub type MxParserTypesShapes = List<kayak_rt::data::DataAt<'static, MxParserTypesShape>>;
@@ -2924,14 +2984,14 @@ pub mod made__load__0__expander_kc {
     pub type Assumed = List<Product_11_12<kayak_rt::data::DataAt<'static, Sty>, kayak_rt::data::DataAt<'static, Sty>>>;
 
     #[derive(Clone, Copy)]
-    pub enum Level {
+    pub enum MxEnvTypesLevel {
         LvRib(Atms),
         LvCage(Symbol),
         LvEarlier(Atms),
         LvShape(Int),
     }
 
-    impl kayak_rt::data::Variant<3> for Level {
+    impl kayak_rt::data::Variant<3> for MxEnvTypesLevel {
         type Fields = (Atms,);
         #[inline(always)]
         fn tag() -> &'static kayak_rt::SymObj {
@@ -2940,7 +3000,7 @@ pub mod made__load__0__expander_kc {
     }
 
     #[allow(non_snake_case)]
-    impl Level {
+    impl MxEnvTypesLevel {
         #[inline(always)]
         pub fn __is_LvRib(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
             w.is::<3>()
@@ -2951,7 +3011,7 @@ pub mod made__load__0__expander_kc {
         }
     }
 
-    impl kayak_rt::data::Variant<2> for Level {
+    impl kayak_rt::data::Variant<2> for MxEnvTypesLevel {
         type Fields = (Symbol,);
         #[inline(always)]
         fn tag() -> &'static kayak_rt::SymObj {
@@ -2960,7 +3020,7 @@ pub mod made__load__0__expander_kc {
     }
 
     #[allow(non_snake_case)]
-    impl Level {
+    impl MxEnvTypesLevel {
         #[inline(always)]
         pub fn __is_LvCage(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
             w.is::<2>()
@@ -2971,7 +3031,7 @@ pub mod made__load__0__expander_kc {
         }
     }
 
-    impl kayak_rt::data::Variant<1> for Level {
+    impl kayak_rt::data::Variant<1> for MxEnvTypesLevel {
         type Fields = (Atms,);
         #[inline(always)]
         fn tag() -> &'static kayak_rt::SymObj {
@@ -2980,7 +3040,7 @@ pub mod made__load__0__expander_kc {
     }
 
     #[allow(non_snake_case)]
-    impl Level {
+    impl MxEnvTypesLevel {
         #[inline(always)]
         pub fn __is_LvEarlier(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
             w.is::<1>()
@@ -2991,7 +3051,7 @@ pub mod made__load__0__expander_kc {
         }
     }
 
-    impl kayak_rt::data::Variant<0> for Level {
+    impl kayak_rt::data::Variant<0> for MxEnvTypesLevel {
         type Fields = (Int,);
         #[inline(always)]
         fn tag() -> &'static kayak_rt::SymObj {
@@ -3000,7 +3060,7 @@ pub mod made__load__0__expander_kc {
     }
 
     #[allow(non_snake_case)]
-    impl Level {
+    impl MxEnvTypesLevel {
         #[inline(always)]
         pub fn __is_LvShape(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
             w.is::<0>()
@@ -3011,7 +3071,7 @@ pub mod made__load__0__expander_kc {
         }
     }
 
-    impl kayak_rt::data::Datatype for Level {
+    impl kayak_rt::data::Datatype for MxEnvTypesLevel {
         #[inline]
         fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
             if w.is::<3>() {
@@ -3046,23 +3106,23 @@ pub mod made__load__0__expander_kc {
         }
     }
 
-    pub fn lv_rib(f0: Atms) -> kayak_rt::data::DataAt<'static, Level> {
-        kayak_rt::data::data_heap::<Level, 3>((f0,))
+    pub fn lv_rib(f0: Atms) -> kayak_rt::data::DataAt<'static, MxEnvTypesLevel> {
+        kayak_rt::data::data_heap::<MxEnvTypesLevel, 3>((f0,))
     }
 
-    pub fn lv_cage(f0: Symbol) -> kayak_rt::data::DataAt<'static, Level> {
-        kayak_rt::data::data_heap::<Level, 2>((f0,))
+    pub fn lv_cage(f0: Symbol) -> kayak_rt::data::DataAt<'static, MxEnvTypesLevel> {
+        kayak_rt::data::data_heap::<MxEnvTypesLevel, 2>((f0,))
     }
 
-    pub fn lv_earlier(f0: Atms) -> kayak_rt::data::DataAt<'static, Level> {
-        kayak_rt::data::data_heap::<Level, 1>((f0,))
+    pub fn lv_earlier(f0: Atms) -> kayak_rt::data::DataAt<'static, MxEnvTypesLevel> {
+        kayak_rt::data::data_heap::<MxEnvTypesLevel, 1>((f0,))
     }
 
-    pub fn lv_shape(f0: Int) -> kayak_rt::data::DataAt<'static, Level> {
-        kayak_rt::data::data_heap::<Level, 0>((f0,))
+    pub fn lv_shape(f0: Int) -> kayak_rt::data::DataAt<'static, MxEnvTypesLevel> {
+        kayak_rt::data::data_heap::<MxEnvTypesLevel, 0>((f0,))
     }
 
-    pub type Levels = List<kayak_rt::data::DataAt<'static, Level>>;
+    pub type MxEnvTypesLevels = List<kayak_rt::data::DataAt<'static, MxEnvTypesLevel>>;
 
     pub type Looked = Product_11_12_13<Int, Int, Int>;
 
@@ -3228,11 +3288,11 @@ pub mod made__load__0__expander_kc {
 
     #[derive(Clone, Copy)]
     pub enum MxEnvIndexedEnv {
-        EnvOf(Product_11_12<Levels, MxEnvIndexedGroups>),
+        EnvOf(Product_11_12<MxEnvTypesLevels, MxEnvIndexedGroups>),
     }
 
     impl kayak_rt::data::Variant<0> for MxEnvIndexedEnv {
-        type Fields = (Product_11_12<Levels, MxEnvIndexedGroups>,);
+        type Fields = (Product_11_12<MxEnvTypesLevels, MxEnvIndexedGroups>,);
         #[inline(always)]
         fn tag() -> &'static kayak_rt::SymObj {
             kayak_rt::tag_lit!("env-of")
@@ -3271,7 +3331,7 @@ pub mod made__load__0__expander_kc {
         }
     }
 
-    pub fn env_of(f0: Product_11_12<Levels, MxEnvIndexedGroups>) -> kayak_rt::data::DataAt<'static, MxEnvIndexedEnv> {
+    pub fn env_of(f0: Product_11_12<MxEnvTypesLevels, MxEnvIndexedGroups>) -> kayak_rt::data::DataAt<'static, MxEnvIndexedEnv> {
         kayak_rt::data::data_heap::<MxEnvIndexedEnv, 0>((f0,))
     }
 
@@ -3281,12 +3341,13 @@ pub mod made__load__0__expander_kc {
         ActAlias(),
         ActModuleType(Symbol),
         ActInstanceType(Symbol),
+        ActFrameType(Symbol, Symbol, bool),
         ActStandardType(),
         ActMacroHead(Symbol),
         ActMark(Symbol),
     }
 
-    impl kayak_rt::data::Variant<6> for Action {
+    impl kayak_rt::data::Variant<7> for Action {
         type Fields = (Addr, Int,);
         #[inline(always)]
         fn tag() -> &'static kayak_rt::SymObj {
@@ -3298,15 +3359,15 @@ pub mod made__load__0__expander_kc {
     impl Action {
         #[inline(always)]
         pub fn __is_ActRename(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
-            w.is::<6>()
+            w.is::<7>()
         }
         #[inline(always)]
-        pub fn __ActRename(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<6>>::Fields {
-            w.fields::<6>()
+        pub fn __ActRename(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<7>>::Fields {
+            w.fields::<7>()
         }
     }
 
-    impl kayak_rt::data::Variant<5> for Action {
+    impl kayak_rt::data::Variant<6> for Action {
         type Fields = ();
         #[inline(always)]
         fn tag() -> &'static kayak_rt::SymObj {
@@ -3318,15 +3379,15 @@ pub mod made__load__0__expander_kc {
     impl Action {
         #[inline(always)]
         pub fn __is_ActAlias(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
-            w.is::<5>()
+            w.is::<6>()
         }
         #[inline(always)]
-        pub fn __ActAlias(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<5>>::Fields {
-            w.fields::<5>()
+        pub fn __ActAlias(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<6>>::Fields {
+            w.fields::<6>()
         }
     }
 
-    impl kayak_rt::data::Variant<4> for Action {
+    impl kayak_rt::data::Variant<5> for Action {
         type Fields = (Symbol,);
         #[inline(always)]
         fn tag() -> &'static kayak_rt::SymObj {
@@ -3338,15 +3399,15 @@ pub mod made__load__0__expander_kc {
     impl Action {
         #[inline(always)]
         pub fn __is_ActModuleType(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
-            w.is::<4>()
+            w.is::<5>()
         }
         #[inline(always)]
-        pub fn __ActModuleType(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<4>>::Fields {
-            w.fields::<4>()
+        pub fn __ActModuleType(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<5>>::Fields {
+            w.fields::<5>()
         }
     }
 
-    impl kayak_rt::data::Variant<3> for Action {
+    impl kayak_rt::data::Variant<4> for Action {
         type Fields = (Symbol,);
         #[inline(always)]
         fn tag() -> &'static kayak_rt::SymObj {
@@ -3358,10 +3419,30 @@ pub mod made__load__0__expander_kc {
     impl Action {
         #[inline(always)]
         pub fn __is_ActInstanceType(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<4>()
+        }
+        #[inline(always)]
+        pub fn __ActInstanceType(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<4>>::Fields {
+            w.fields::<4>()
+        }
+    }
+
+    impl kayak_rt::data::Variant<3> for Action {
+        type Fields = (Symbol, Symbol, bool,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("act-frame-type")
+        }
+    }
+
+    #[allow(non_snake_case)]
+    impl Action {
+        #[inline(always)]
+        pub fn __is_ActFrameType(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
             w.is::<3>()
         }
         #[inline(always)]
-        pub fn __ActInstanceType(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<3>>::Fields {
+        pub fn __ActFrameType(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<3>>::Fields {
             w.fields::<3>()
         }
     }
@@ -3429,18 +3510,21 @@ pub mod made__load__0__expander_kc {
     impl kayak_rt::data::Datatype for Action {
         #[inline]
         fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
-            if w.is::<6>() {
-                let (f0, f1,) = w.fields::<6>();
+            if w.is::<7>() {
+                let (f0, f1,) = w.fields::<7>();
                 Self::ActRename(f0, f1)
-            } else if w.is::<5>() {
-                let () = w.fields::<5>();
+            } else if w.is::<6>() {
+                let () = w.fields::<6>();
                 Self::ActAlias()
+            } else if w.is::<5>() {
+                let (f0,) = w.fields::<5>();
+                Self::ActModuleType(f0)
             } else if w.is::<4>() {
                 let (f0,) = w.fields::<4>();
-                Self::ActModuleType(f0)
-            } else if w.is::<3>() {
-                let (f0,) = w.fields::<3>();
                 Self::ActInstanceType(f0)
+            } else if w.is::<3>() {
+                let (f0, f1, f2,) = w.fields::<3>();
+                Self::ActFrameType(f0, f1, f2)
             } else if w.is::<2>() {
                 let () = w.fields::<2>();
                 Self::ActStandardType()
@@ -3455,6 +3539,7 @@ pub mod made__load__0__expander_kc {
             }
         }
         fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+            if w.is::<7>() { return t.reach(w.obj::<7>()); }
             if w.is::<6>() { return t.reach(w.obj::<6>()); }
             if w.is::<5>() { return t.reach(w.obj::<5>()); }
             if w.is::<4>() { return t.reach(w.obj::<4>()); }
@@ -3464,6 +3549,7 @@ pub mod made__load__0__expander_kc {
             if w.is::<0>() { return t.reach(w.obj::<0>()); }
         }
         fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            if w.is::<7>() { return true; }
             if w.is::<6>() { return true; }
             if w.is::<5>() { return true; }
             if w.is::<4>() { return true; }
@@ -3477,19 +3563,23 @@ pub mod made__load__0__expander_kc {
     }
 
     pub fn act_rename(f0: Addr, f1: Int) -> kayak_rt::data::DataAt<'static, Action> {
-        kayak_rt::data::data_heap::<Action, 6>((f0, f1,))
+        kayak_rt::data::data_heap::<Action, 7>((f0, f1,))
     }
 
     pub fn act_alias() -> kayak_rt::data::DataAt<'static, Action> {
-        kayak_rt::data::data_heap::<Action, 5>(())
+        kayak_rt::data::data_heap::<Action, 6>(())
     }
 
     pub fn act_module_type(f0: Symbol) -> kayak_rt::data::DataAt<'static, Action> {
-        kayak_rt::data::data_heap::<Action, 4>((f0,))
+        kayak_rt::data::data_heap::<Action, 5>((f0,))
     }
 
     pub fn act_instance_type(f0: Symbol) -> kayak_rt::data::DataAt<'static, Action> {
-        kayak_rt::data::data_heap::<Action, 3>((f0,))
+        kayak_rt::data::data_heap::<Action, 4>((f0,))
+    }
+
+    pub fn act_frame_type(f0: Symbol, f1: Symbol, f2: bool) -> kayak_rt::data::DataAt<'static, Action> {
+        kayak_rt::data::data_heap::<Action, 3>((f0, f1, f2,))
     }
 
     pub fn act_standard_type() -> kayak_rt::data::DataAt<'static, Action> {
@@ -3506,7 +3596,7 @@ pub mod made__load__0__expander_kc {
 
     pub type Actions = List<Product_11_12<Addr, kayak_rt::data::DataAt<'static, Action>>>;
 
-    pub type DefEnv = Product_11_12_13<Int, Symbol, MxParserTypesNames>;
+    pub type DefEnv = Product_11_12_13_14_15_16_17<Int, Symbol, MxParserTypesNames, List<Product_11_12<Symbol, Symbol>>, Symbol, MxParserTypesNames, MxParserTypesNames>;
 
     pub type MxNodesDefEnvs = List<Product_11_12<Str, DefEnv>>;
 
@@ -3514,7 +3604,7 @@ pub mod made__load__0__expander_kc {
 
     pub type Holes = List<Hole>;
 
-    pub type Pinfo = Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, Sty>, Levels, bool, Holes, Int>;
+    pub type Pinfo = Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, Sty>, MxEnvTypesLevels, bool, Holes, Int>;
 
     pub type Pvars = List<Product_11_12<Symbol, Pinfo>>;
 
@@ -3526,7 +3616,7 @@ pub mod made__load__0__expander_kc {
 
     pub type MacroEnv = List<Product_11_12<Symbol, Macro>>;
 
-    pub type MxNodesScope = Product_11_12_13_14_15<Symbol, MxParserTypesNames, MxParserTypesNames, List<Product_11_12<Symbol, Symbol>>, MxParserTypesNames>;
+    pub type MxNodesScope = Product_11_12_13_14_15_16_17_18<Symbol, MxParserTypesNames, MxParserTypesNames, List<Product_11_12<Symbol, Symbol>>, MxParserTypesNames, Symbol, MxParserTypesNames, MxParserTypesNames>;
 
     pub type Scopes = List<MxNodesScope>;
 
@@ -4481,7 +4571,7 @@ pub mod made__load__0__expander_kc {
 
     pub type Sol = Product_11_12_13_14_15_16_17<Kinds, Pkinds, MxInferInts, BindsAt, BindsAt, BindsAt, Spans>;
 
-    pub type Placement = Product_11_12_13_14_15<Symbol, kayak_rt::data::DataAt<'static, Sty>, Levels, bool, Int>;
+    pub type Placement = Product_11_12_13_14_15<Symbol, kayak_rt::data::DataAt<'static, Sty>, MxEnvTypesLevels, bool, Int>;
 
     pub type Placements = List<Placement>;
 
@@ -4502,6 +4592,8 @@ pub mod made__load__0__expander_kc {
     pub type Givens = List<Product_11_12_13<Int, Addr, Symbol>>;
 
     pub type Nstate = Product_11_12_13_14_15_16_17<List<Zone>, MxShownImports, Spots, Givens, Spots, List<Str>, Int>;
+
+    pub type MxShownBinds = List<Product_11_12_13<Int, Addr, List<MxShownLabels>>>;
 
     pub type Pents = List<Product_11_12<Int, Int>>;
 
@@ -4949,7 +5041,7 @@ impl<'mxp, Place_Mxp: kayak_rt::Visit> kayak_rt::Trace for MadeLoad1ExpandFace<'
 pub mod made__load__1__expand {
     use super::*;
 
-    pub use super::made__load__0__expander_kc::{atom, mx_eager_reader_types_lst, dotted, vec, rl_none, rl_unknown, rl_names, sh_module, sh_fun, datum_field, datum_blobref_field, datum_layout, datum_array, datum_fits, e_var, e_int, e_bool, e_str, e_char, e_float, e_sym, e_quote, e_unit, e_lambda, e_app, e_plambda, e_proj, e_if, e_letrec, e_let, e_begin, e_prompt, e_letregion, e_rlambda, e_the, e_convention, e_bloblet, e_product, e_extract, e_sum, e_tagcase, e_module, e_with, mx_parser_types_t_define, mx_parser_types_t_define_rec, t_define_type, t_define_effect, t_define_convention, t_define_syscall, t_define_generative, mx_parser_types_t_exp, p_ok, p_err, ring_rib, ring_at, ring_shape, atm_var, atm_rib_of, atm_lit, bind_rib, bind_cage, bind_direct, bind_earlier, bind_shape, s_expr, s_bvar, s_id, s_data, s_type, s_label, s_nil, s_literal, s_pair, s_import, s_export, s_mark, s_mu, s_var, s_many, s_union, s_typed, s_lambda, s_defn, s_dvar, s_kind, s_item, s_rules, lv_rib, lv_cage, lv_earlier, lv_shape, ix_leaf, ix_node, gr_names, gr_shape, env_of, act_rename, act_alias, act_module_type, act_instance_type, act_standard_type, act_macro_head, act_mark, k_pair, k_nil, k_pvar, k_binder, k_ref, k_form, k_desc, mx_nodes_k_seq, k_other, pt_use, pt_path, sh_nil, sh_pair, sh_seq, sh_lit, sh_leaf, sh_union, cl_seq, cl_wild, cl_lit, cl_var, cl_nil, cl_pair, kd_ty, kd_ref, iv_rib, iv_cage, rd_at, rd_rib, dm_rib, dm_cage, nm_leaf, nm_node, Syn, SynsA, MxParserTypesNames, Relied, MxParserTypesShape, MxParserTypesShapes, MxParserTypesMembers, KDatum, KDatums, Exp, MxParserTypesTop, Presult, LoadedFile, LoadedFiles, Addr, Entries, Ring, Rings, Atm, Atms, MxTypesBind, Hole, Sty, Stys, Marked, MxTypesNamed, MuScope, Assumed, Level, Levels, Looked, Index, Group, MxEnvIndexedGroups, MxEnvIndexedEnv, Action, Actions, DefEnv, MxNodesDefEnvs, MxNodesContracts, Holes, Pinfo, Pvars, Clause, Clauses, Macro, MacroEnv, MxNodesScope, Scopes, MxNodesStrings, MxNodesKids, Rooted, MxNodesNode, MxNodesFound, Dparts, HeadReading, HeadReadings, SyntaxBinder, MxScopesHeadsRead, Ixs, MxScopesPart, MxScopesUses, MxMatchBinds, MxExportsExported, Nested, MxExportsPlaces, MxExportsUses, Depths, MxFactsSteps, MxFactsLabel, MxFactsLabels, Adds, Eaches, LoadDefs, MxFilesPlaces, Files, Mades, MxFilesFilter, FileMacro, MxFilesWritten, Writtens, Signed, SignedOpt, MxInferShape, MxInferInts, MxInferPart, MxInferItem, MxInferItems, Class, Classes, Vars, LitsOf, Spans, Kd, Pkinds, MxInferCx, MxInferGroups, Took, Kds, Kinds, Unsigned, Unsigneds, Rule, Rules, MakesKnown, BindsAt, Sol, Placement, Placements, MxInferPlaced, Zone, Spot, Spots, MxShownLabel, MxShownLabels, MxShownImports, Givens, Nstate, Pents, Gents, Lv, Lvs, Rd, Rds, Demand, Site, Sites, Thru, SiteRings, ByClause, NamedKds, SiteList, GotDemands, MxSolveStrings, Tags, SeenKeys, FreshSaved, MxContractsRenames, MxContractsPlaces, MxContractsNumbered, Renamings, PartVar, PlacedRenames, Anode, Anodes, NamedNs, Procedural, MxProceduralReadOne, Phase1State, ScopeSaved, Link, MxTopSaid, ByStates, ExpansionsMade, Freshes, MxTopCounts, Params, ScopeVars, Raw, MxImportsGiven, FileLoads, FileState, Pairs, MxWalkRenames, MxTreeInts, NameTree, FileShape, Asked, Source, Writing, MxShapesNamed, ShapesState, MxShapesInts, MxShapesParts, MxShapesWrittenOf, Captors};
+    pub use super::made__load__0__expander_kc::{atom, mx_eager_reader_types_lst, dotted, vec, rl_none, rl_unknown, rl_names, sh_module, sh_fun, sh_cell, sh_product, datum_field, datum_blobref_field, datum_layout, datum_array, datum_fits, e_var, e_int, e_bool, e_str, e_char, e_float, e_sym, e_quote, e_unit, e_lambda, e_app, e_plambda, e_proj, e_if, e_letrec, e_let, e_begin, e_prompt, e_letregion, e_rlambda, e_the, e_convention, e_bloblet, e_product, e_extract, e_sum, e_tagcase, e_module, e_with, mx_parser_types_t_define, mx_parser_types_t_define_rec, t_define_type, t_define_effect, t_define_convention, t_define_syscall, t_define_generative, mx_parser_types_t_exp, p_ok, p_err, ring_rib, ring_at, ring_shape, atm_var, atm_rib_of, atm_lit, bind_rib, bind_cage, bind_direct, bind_earlier, bind_shape, s_expr, s_bvar, s_id, s_data, s_type, s_label, s_nil, s_literal, s_pair, s_import, s_export, s_mark, s_mu, s_var, s_many, s_union, s_typed, s_lambda, s_defn, s_dvar, s_kind, s_item, s_rules, lv_rib, lv_cage, lv_earlier, lv_shape, ix_leaf, ix_node, gr_names, gr_shape, env_of, act_rename, act_alias, act_module_type, act_instance_type, act_frame_type, act_standard_type, act_macro_head, act_mark, k_pair, k_nil, k_pvar, k_binder, k_ref, k_form, k_desc, mx_nodes_k_seq, k_other, pt_use, pt_path, sh_nil, sh_pair, sh_seq, sh_lit, sh_leaf, sh_union, cl_seq, cl_wild, cl_lit, cl_var, cl_nil, cl_pair, kd_ty, kd_ref, iv_rib, iv_cage, rd_at, rd_rib, dm_rib, dm_cage, nm_leaf, nm_node, Syn, SynsA, MxParserTypesNames, Relied, MxParserTypesShape, MxParserTypesShapes, MxParserTypesMembers, KDatum, KDatums, Exp, MxParserTypesTop, Presult, LoadedFile, LoadedFiles, Addr, Entries, Ring, Rings, Atm, Atms, MxTypesBind, Hole, Sty, Stys, Marked, MxTypesNamed, MuScope, Assumed, MxEnvTypesLevel, MxEnvTypesLevels, Looked, Index, Group, MxEnvIndexedGroups, MxEnvIndexedEnv, Action, Actions, DefEnv, MxNodesDefEnvs, MxNodesContracts, Holes, Pinfo, Pvars, Clause, Clauses, Macro, MacroEnv, MxNodesScope, Scopes, MxNodesStrings, MxNodesKids, Rooted, MxNodesNode, MxNodesFound, Dparts, HeadReading, HeadReadings, SyntaxBinder, MxScopesHeadsRead, Ixs, MxScopesPart, MxScopesUses, MxMatchBinds, MxExportsExported, Nested, MxExportsPlaces, MxExportsUses, Depths, MxFactsSteps, MxFactsLabel, MxFactsLabels, Adds, Eaches, LoadDefs, MxFilesPlaces, Files, Mades, MxFilesFilter, FileMacro, MxFilesWritten, Writtens, Signed, SignedOpt, MxInferShape, MxInferInts, MxInferPart, MxInferItem, MxInferItems, Class, Classes, Vars, LitsOf, Spans, Kd, Pkinds, MxInferCx, MxInferGroups, Took, Kds, Kinds, Unsigned, Unsigneds, Rule, Rules, MakesKnown, BindsAt, Sol, Placement, Placements, MxInferPlaced, Zone, Spot, Spots, MxShownLabel, MxShownLabels, MxShownImports, Givens, Nstate, MxShownBinds, Pents, Gents, Lv, Lvs, Rd, Rds, Demand, Site, Sites, Thru, SiteRings, ByClause, NamedKds, SiteList, GotDemands, MxSolveStrings, Tags, SeenKeys, FreshSaved, MxContractsRenames, MxContractsPlaces, MxContractsNumbered, Renamings, PartVar, PlacedRenames, Anode, Anodes, NamedNs, Procedural, MxProceduralReadOne, Phase1State, ScopeSaved, Link, MxTopSaid, ByStates, ExpansionsMade, Freshes, MxTopCounts, Params, ScopeVars, Raw, MxImportsGiven, FileLoads, FileState, Pairs, MxWalkRenames, MxTreeInts, NameTree, FileShape, Asked, Source, Writing, MxShapesNamed, ShapesState, MxShapesInts, MxShapesParts, MxShapesWrittenOf, Captors};
 
     /// What made--load--1--expand makes (C274): its module's items, the place given, and its
     /// values, made as it is made (C433).
@@ -4962,9 +5054,13 @@ pub mod made__load__1__expand {
         pub kernel_forms: std::cell::Cell<Option<kayak_rt::value::Value>>,
         pub scope_forms: std::cell::Cell<Option<kayak_rt::value::Value>>,
         pub reserved_words: std::cell::Cell<Option<kayak_rt::value::Value>>,
-        pub description_heads: std::cell::Cell<Option<kayak_rt::value::Value>>,
-        pub type_forms: std::cell::Cell<Option<kayak_rt::value::Value>>,
-        pub description_words: std::cell::Cell<Option<kayak_rt::value::Value>>,
+        pub mx_kernel_description_heads: std::cell::Cell<Option<kayak_rt::value::Value>>,
+        pub mx_kernel_type_forms: std::cell::Cell<Option<kayak_rt::value::Value>>,
+        pub mx_kernel_description_words: std::cell::Cell<Option<kayak_rt::value::Value>>,
+        pub reserved_table: std::cell::Cell<Option<Array<List<Symbol>>>>,
+        pub mx_syntax_description_words: std::cell::Cell<Option<Array<List<Symbol>>>>,
+        pub mx_syntax_description_heads: std::cell::Cell<Option<Array<List<Symbol>>>>,
+        pub mx_syntax_type_forms: std::cell::Cell<Option<Array<List<Symbol>>>>,
         pub marks: std::cell::Cell<Option<RefAt<'mxp, Marked>>>,
         pub mark_count: std::cell::Cell<Option<RefAt<'mxp, Int>>>,
         pub oneof_apart: std::cell::Cell<Option<Str>>,
@@ -4972,6 +5068,8 @@ pub mod made__load__1__expand {
         pub syntax_sigs: std::cell::Cell<Option<RefAt<'mxp, SynsA>>>,
         pub path_usage: std::cell::Cell<Option<Str>>,
         pub kernel_read: std::cell::Cell<Option<RefAt<'mxp, Product_11_12_13<MxTypesNamed, MxTypesNamed, MxTypesNamed>>>>,
+        pub kernel_literals: std::cell::Cell<Option<RefAt<'mxp, MxParserTypesNames>>>,
+        pub kernel_literals_found: std::cell::Cell<Option<RefAt<'mxp, bool>>>,
         pub scope_read: std::cell::Cell<Option<RefAt<'mxp, Product_11_12_13<MxTypesNamed, MxTypesNamed, MxTypesNamed>>>>,
         pub env_empty: std::cell::Cell<Option<kayak_rt::data::DataAt<'static, MxEnvIndexedEnv>>>,
         pub defined: std::cell::Cell<Option<RefAt<'mxp, MacroEnv>>>,
@@ -5156,13 +5254,25 @@ pub mod made__load__1__expand {
             if let Some(v) = self.reserved_words.get() {
                 kayak_rt::Trace::trace(v, t);
             }
-            if let Some(v) = self.description_heads.get() {
+            if let Some(v) = self.mx_kernel_description_heads.get() {
                 kayak_rt::Trace::trace(v, t);
             }
-            if let Some(v) = self.type_forms.get() {
+            if let Some(v) = self.mx_kernel_type_forms.get() {
                 kayak_rt::Trace::trace(v, t);
             }
-            if let Some(v) = self.description_words.get() {
+            if let Some(v) = self.mx_kernel_description_words.get() {
+                kayak_rt::Trace::trace(v, t);
+            }
+            if let Some(v) = self.reserved_table.get() {
+                kayak_rt::Trace::trace(v, t);
+            }
+            if let Some(v) = self.mx_syntax_description_words.get() {
+                kayak_rt::Trace::trace(v, t);
+            }
+            if let Some(v) = self.mx_syntax_description_heads.get() {
+                kayak_rt::Trace::trace(v, t);
+            }
+            if let Some(v) = self.mx_syntax_type_forms.get() {
                 kayak_rt::Trace::trace(v, t);
             }
             if let Some(v) = self.marks.get() {
@@ -5184,6 +5294,12 @@ pub mod made__load__1__expand {
                 kayak_rt::Trace::trace(v, t);
             }
             if let Some(v) = self.kernel_read.get() {
+                kayak_rt::Trace::trace(v, t);
+            }
+            if let Some(v) = self.kernel_literals.get() {
+                kayak_rt::Trace::trace(v, t);
+            }
+            if let Some(v) = self.kernel_literals_found.get() {
                 kayak_rt::Trace::trace(v, t);
             }
             if let Some(v) = self.scope_read.get() {
@@ -5681,6 +5797,71 @@ pub mod made__load__1__expand {
     #[inline]
     pub fn mx_datum_int_p(d: kayak_rt::value::Value) -> bool {
         int_p(d)
+    }
+
+    #[inline]
+    pub fn mx_utf8_p(d: kayak_rt::value::Value) -> bool {
+        false
+    }
+
+    #[inline]
+    pub fn mx_utf8_to_string(d: kayak_rt::value::Value) -> Str {
+        str_lit!("")
+    }
+
+    #[inline]
+    pub fn mx_symbol_hash(s: Symbol) -> Int {
+        symbol_name_hash(s)
+    }
+
+    #[inline]
+    pub fn mx_symbol_eq_p(a: Symbol, b: Symbol) -> bool {
+        symbol_eq_p(a, b)
+    }
+
+    #[inline]
+    pub fn mx_make_table<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, hash: kayak_rt::Proc1s<'mxp, Symbol, Int>, same: kayak_rt::Proc2s<'mxp, Symbol, Symbol, bool>) -> Array<List<Symbol>> {
+        the::<Array<List<Symbol>>>(make_array(int_lit(64), nil::<Symbol>()))
+    }
+
+    #[inline]
+    pub fn mx_table_bucket(k: Symbol) -> Int {
+        modulo(symbol_name_hash(k), int_lit(64))
+    }
+
+    pub fn mx_table_has_p(mut b: List<Symbol>, mut k: Symbol) -> bool {
+        loop {
+            if null_p(b) {
+                return false;
+            } else if symbol_eq_p(car(b), k) {
+                return true;
+            } else {
+                b = cdr(b);
+                continue;
+            }
+        }
+    }
+
+    #[inline]
+    pub fn mx_table_ref<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, t: Array<List<Symbol>>, k: Symbol, d: bool) -> bool {
+        if mx_table_has_p(array_ref(t, mx_table_bucket(k)), k) {
+            true
+        } else {
+            d
+        }
+    }
+
+    pub fn mx_table_set_x<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, t: Array<List<Symbol>>, k: Symbol, v: bool) -> () {
+        let i = mx_table_bucket(k);
+        if v {
+            if mx_table_has_p(array_ref(t, i), k) {
+                ()
+            } else {
+                array_set_x(t, i, cons(k, array_ref(t, i)))
+            }
+        } else {
+            error(str_lit!("the expander's table of symbols holds `#t` alone"))
+        }
     }
 
     #[inline]
@@ -6440,6 +6621,8 @@ pub mod made__load__1__expand {
             string_append(str_lit!("#:"), symbol_to_string(mx_keyword_to_symbol(d)))
         } else if string_p(d) {
             string_append(str_lit!("\""), string_append(kayak_rt::value::unbox::<Str>(d), str_lit!("\"")))
+        } else if mx_utf8_p(d) {
+            string_append(str_lit!("#utf8\""), string_append(mx_utf8_to_string(d), str_lit!("\"")))
         } else if char_p(d) {
             string_append(str_lit!("#\\"), char_to_string(kayak_rt::value::unbox::<char>(d)))
         } else if int_p(d) {
@@ -6488,23 +6671,30 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn words_have_p(mut n: Symbol, mut ws: kayak_rt::value::Value) -> bool {
+    pub fn words_into<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut t: Array<List<Symbol>>, mut ws: kayak_rt::value::Value) -> Array<List<Symbol>> {
         loop {
             if kayak_rt::value::pair_p(ws) {
-                if (symbol_p(kayak_rt::value::car(ws)) && symbol_eq_p(n, kayak_rt::value::unbox::<Symbol>(kayak_rt::value::car(ws)))) {
-                    return true;
+                if symbol_p(kayak_rt::value::car(ws)) {
+                    mx_table_set_x(mxp, maker_st, t, kayak_rt::value::unbox::<Symbol>(kayak_rt::value::car(ws)), true)
                 } else {
-                    ws = kayak_rt::value::cdr(ws);
-                    continue;
-                }
+                    ()
+                };
+                ws = kayak_rt::value::cdr(ws);
+                continue;
             } else {
-                return false;
+                return t;
             }
         }
     }
 
+    #[inline]
+    pub fn words_table<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, ws: kayak_rt::value::Value) -> Array<List<Symbol>> {
+        words_into(mxp, maker_st, the::<Array<List<Symbol>>>(mx_make_table(mxp, maker_st, kayak_rt::as_proc(mx_symbol_hash), kayak_rt::as_proc(mx_symbol_eq_p))), ws)
+    }
+
+    #[inline]
     pub fn reserved_sym_p<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, n: Symbol) -> bool {
-        (symbol_eq_p(n, string_to_symbol(str_lit!("#%fx"))) || symbol_eq_p(n, string_to_symbol(str_lit!("#%toplevel"))) || symbol_eq_p(n, kayak_rt::sym_lit!("define-syntax")) || symbol_eq_p(n, kayak_rt::sym_lit!("define-syntax-rec")) || words_have_p(n, maker_st.reserved_words.get().unwrap()))
+        mx_table_ref(mxp, maker_st, maker_st.reserved_table.get().unwrap(), n, false)
     }
 
     #[inline]
@@ -6512,18 +6702,16 @@ pub mod made__load__1__expand {
         reserved_sym_p(mxp, maker_st, string_to_symbol(name))
     }
 
-    #[inline]
-    pub fn word_in_p(name: Str, ws: kayak_rt::value::Value) -> bool {
-        words_have_p(string_to_symbol(name), ws)
-    }
-
     pub fn desc_word_p<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, name: Str, head: bool) -> bool {
-        ((_gt(string_length(name), int_lit(0)) && char_eq_p(string_ref(name, int_lit(0)), '@')) || (_gt(string_length(name), int_lit(1)) && string_eq_p(substring(name, int_lit(0), int_lit(2)), str_lit!("#%"))) || word_in_p(name, maker_st.description_words.get().unwrap()) || (head && word_in_p(name, maker_st.description_heads.get().unwrap())))
+        ((_gt(string_length(name), int_lit(0)) && char_eq_p(string_ref(name, int_lit(0)), '@')) || (_gt(string_length(name), int_lit(1)) && string_eq_p(substring(name, int_lit(0), int_lit(2)), str_lit!("#%"))) || {
+            let n = string_to_symbol(name);
+            (mx_table_ref(mxp, maker_st, maker_st.mx_syntax_description_words.get().unwrap(), n, false) || (head && mx_table_ref(mxp, maker_st, maker_st.mx_syntax_description_heads.get().unwrap(), n, false)))
+        })
     }
 
     #[inline]
     pub fn type_form_p<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, name: Str) -> bool {
-        word_in_p(name, maker_st.type_forms.get().unwrap())
+        mx_table_ref(mxp, maker_st, maker_st.mx_syntax_type_forms.get().unwrap(), string_to_symbol(name), false)
     }
 
     #[inline]
@@ -8259,6 +8447,48 @@ pub mod made__load__1__expand {
         Ok(kernel_tables(mxp, maker_st, mx_fail)?.1)
     }
 
+    pub fn literals_in<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut s: kayak_rt::data::DataAt<'static, Syn>, mut out: MxParserTypesNames) -> Result<MxParserTypesNames, Unwind> {
+        loop {
+            let tagcase_ = s;
+            if made__load__0__expander_kc::Syn::__is_MxEagerReaderTypesLst(tagcase_) {
+                let (items, d, a, b, x,) = made__load__0__expander_kc::Syn::__MxEagerReaderTypesLst(tagcase_);
+                if (_eq(len(items), int_lit(2)) && syn_symbol_p(car(items)) && symbol_eq_p(syn_symbol(mxp, maker_st, car(items))?, kayak_rt::sym_lit!("literal")) && syn_symbol_p(nth(items, int_lit(1)))) {
+                    return Ok(cons(syn_symbol(mxp, maker_st, nth(items, int_lit(1)))?, out));
+                } else {
+                    return Ok(literals_each(mxp, maker_st, items, out)?);
+                }
+            } else if made__load__0__expander_kc::Syn::__is_Dotted(tagcase_) {
+                let (items, t, d, a, b, x,) = made__load__0__expander_kc::Syn::__Dotted(tagcase_);
+                (s, out) = (t, literals_each(mxp, maker_st, items, out)?);
+                continue;
+            } else {
+                let y = tagcase_;
+                return Ok(out);
+            }
+        }
+    }
+
+    pub fn literals_each<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut xs: SynsA, mut out: MxParserTypesNames) -> Result<MxParserTypesNames, Unwind> {
+        loop {
+            if null_p(xs) {
+                return Ok(out);
+            } else {
+                (xs, out) = (cdr(xs), literals_in(mxp, maker_st, car(xs), out)?);
+                continue;
+            }
+        }
+    }
+
+    pub fn literal_word_syn_p<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, s: kayak_rt::data::DataAt<'static, Syn>) -> Result<bool, Unwind> {
+        if get(maker_st.kernel_literals_found.get().unwrap()) {
+            ()
+        } else {
+            set(maker_st.kernel_literals.get().unwrap(), literals_in(mxp, maker_st, datum_to_syn(maker_st.kernel_forms.get().unwrap()), literals_in(mxp, maker_st, datum_to_syn(maker_st.scope_forms.get().unwrap()), nil::<Symbol>())?)?);
+            set(maker_st.kernel_literals_found.get().unwrap(), true)
+        };
+        Ok((syn_symbol_p(s) && mx_syntax_name_in_p(syn_symbol(mxp, maker_st, s)?, get(maker_st.kernel_literals.get().unwrap()))))
+    }
+
     pub fn scope_tables<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>) -> Result<Product_11_12_13<MxTypesNamed, MxTypesNamed, MxTypesNamed>, Unwind> {
         if null_p(get(maker_st.scope_read.get().unwrap()).0) {
             set(maker_st.scope_read.get().unwrap(), read_kernel(mxp, maker_st, mx_fail, proper_items(datum_to_syn(maker_st.scope_forms.get().unwrap())), kernel_tables(mxp, maker_st, mx_fail)?.2, nil::<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>>>(), nil::<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>>>())?)
@@ -8570,7 +8800,7 @@ pub mod made__load__1__expand {
     }
 
     #[inline]
-    pub fn down_env(e: kayak_rt::data::DataAt<'static, MxEnvIndexedEnv>) -> Product_11_12<Levels, MxEnvIndexedGroups> {
+    pub fn down_env(e: kayak_rt::data::DataAt<'static, MxEnvIndexedEnv>) -> Product_11_12<MxEnvTypesLevels, MxEnvIndexedGroups> {
         let tagcase_ = e;
         if made__load__0__expander_kc::MxEnvIndexedEnv::__is_EnvOf(tagcase_) {
             let (x,) = made__load__0__expander_kc::MxEnvIndexedEnv::__EnvOf(tagcase_);
@@ -8620,7 +8850,7 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn mx_env_indexed_grouped<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut ls: Levels, mut ix: kayak_rt::data::DataAt<'static, Index>, mut open: bool, mut name: kayak_rt::Proc1<'mxp, Int, List<Symbol>>) -> MxEnvIndexedGroups {
+    pub fn mx_env_indexed_grouped<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut ls: MxEnvTypesLevels, mut ix: kayak_rt::data::DataAt<'static, Index>, mut open: bool, mut name: kayak_rt::Proc1<'mxp, Int, List<Symbol>>) -> MxEnvIndexedGroups {
         loop {
             if null_p(ls) {
                 if open {
@@ -8630,20 +8860,20 @@ pub mod made__load__1__expand {
                 }
             } else {
                 let tagcase_ = car(ls);
-                if made__load__0__expander_kc::Level::__is_LvRib(tagcase_) {
-                    let (r#as,) = made__load__0__expander_kc::Level::__LvRib(tagcase_);
+                if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvRib(tagcase_) {
+                    let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvRib(tagcase_);
                     (ls, ix, open) = (cdr(ls), indexed(mxp, maker_st, r#as, ix, name), true);
                     continue;
-                } else if made__load__0__expander_kc::Level::__is_LvEarlier(tagcase_) {
-                    let (r#as,) = made__load__0__expander_kc::Level::__LvEarlier(tagcase_);
+                } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvEarlier(tagcase_) {
+                    let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvEarlier(tagcase_);
                     (ls, ix, open) = (cdr(ls), indexed(mxp, maker_st, r#as, ix, name), true);
                     continue;
-                } else if made__load__0__expander_kc::Level::__is_LvCage(tagcase_) {
-                    let (c,) = made__load__0__expander_kc::Level::__LvCage(tagcase_);
+                } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvCage(tagcase_) {
+                    let (c,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvCage(tagcase_);
                     ls = cdr(ls);
                     continue;
-                } else if made__load__0__expander_kc::Level::__is_LvShape(tagcase_) {
-                    let (m,) = made__load__0__expander_kc::Level::__LvShape(tagcase_);
+                } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvShape(tagcase_) {
+                    let (m,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvShape(tagcase_);
                     let rest = cons(gr_shape(m), mx_env_indexed_grouped(mxp, maker_st, cdr(ls), ix_leaf(), false, name));
                     if open {
                         return cons(gr_names(ix), rest);
@@ -8655,13 +8885,13 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn env_within<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, e: kayak_rt::data::DataAt<'static, MxEnvIndexedEnv>, ls: Levels, name: kayak_rt::Proc1<'mxp, Int, List<Symbol>>) -> kayak_rt::data::DataAt<'static, MxEnvIndexedEnv> {
+    pub fn env_within<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, e: kayak_rt::data::DataAt<'static, MxEnvIndexedEnv>, ls: MxEnvTypesLevels, name: kayak_rt::Proc1<'mxp, Int, List<Symbol>>) -> kayak_rt::data::DataAt<'static, MxEnvIndexedEnv> {
         let x = down_env(e);
         env_of(Product_11_12(append(ls, x.0), append(mx_env_indexed_grouped(mxp, maker_st, ls, ix_leaf(), false, name), x.1)))
     }
 
     #[inline]
-    pub fn env_levels(e: kayak_rt::data::DataAt<'static, MxEnvIndexedEnv>) -> Levels {
+    pub fn env_levels(e: kayak_rt::data::DataAt<'static, MxEnvIndexedEnv>) -> MxEnvTypesLevels {
         down_env(e).0
     }
 
@@ -8755,15 +8985,14 @@ pub mod made__load__1__expand {
         looked_in(mx_env_indexed_dropped(down_env(e).1, from), n, symbol_name_hash(n), d, from)
     }
 
-    #[inline]
     pub fn def_env_top() -> DefEnv {
-        Product_11_12_13(int_lit(0), kayak_rt::sym_lit!("top"), the::<MxParserTypesNames>(nil::<Symbol>()))
+        Product_11_12_13_14_15_16_17(int_lit(0), kayak_rt::sym_lit!("top"), the::<MxParserTypesNames>(nil::<Symbol>()), the::<List<Product_11_12<Symbol, Symbol>>>(nil::<Product_11_12<Symbol, Symbol>>()), kayak_rt::sym_lit!("-"), the::<MxParserTypesNames>(nil::<Symbol>()), the::<MxParserTypesNames>(nil::<Symbol>()))
     }
 
     pub fn macro_of(mut n: Symbol, mut mx_env_indexed_env: MacroEnv) -> List<Macro> {
         loop {
             if null_p(mx_env_indexed_env) {
-                return nil::<Product_11_12_13_14<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Int>>();
+                return nil::<Product_11_12_13_14<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Int>>();
             } else if symbol_eq_p(n, car(mx_env_indexed_env).0) {
                 return kayak_rt::heap_cons(car(mx_env_indexed_env).1, kayak_rt::nil());
             } else {
@@ -9111,7 +9340,7 @@ pub mod made__load__1__expand {
     pub fn pvar_of(mut n: Symbol, mut ps: Pvars) -> List<Pinfo> {
         loop {
             if null_p(ps) {
-                return nil::<Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>();
+                return nil::<Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>();
             } else if symbol_eq_p(n, car(ps).0) {
                 return kayak_rt::heap_cons(car(ps).1, kayak_rt::nil());
             } else {
@@ -9130,6 +9359,8 @@ pub mod made__load__1__expand {
         let p = pvar_of(n, ps);
         if null_p(p) {
             int_lit(0)
+        } else if _eq(mx_types_kind_of(car(p).0), int_lit(5)) {
+            int_lit(3)
         } else if name_kind_p(mx_types_kind_of(car(p).0)) {
             int_lit(1)
         } else {
@@ -9197,7 +9428,7 @@ pub mod made__load__1__expand {
                         return Ok(false);
                     }
                 } else {
-                    if (syn_symbol_p(s) && ((_eq(mode, int_lit(0)) && not(_eq(mx_types_kind_of(u), int_lit(7))) && not(_eq(mx_types_kind_of(u), int_lit(15))) && not(string_eq_p(syn_name(s), str_lit!("_"))) && not(string_eq_p(syn_name(s), str_lit!("...")))) || (_eq(mode, int_lit(1)) && _gt(pvar_p.call(syn_symbol(mxp, maker_st, s)?), int_lit(0)) && not((_eq(pvar_p.call(syn_symbol(mxp, maker_st, s)?), int_lit(1)) && (_eq(mx_types_kind_of(u), int_lit(8)) || _eq(mx_types_kind_of(u), int_lit(6)) || _eq(mx_types_kind_of(u), int_lit(10)))))))) {
+                    if (syn_symbol_p(s) && ((_eq(mode, int_lit(0)) && not(_eq(mx_types_kind_of(u), int_lit(7))) && not(_eq(mx_types_kind_of(u), int_lit(15))) && not(string_eq_p(syn_name(s), str_lit!("_"))) && not(string_eq_p(syn_name(s), str_lit!("...")))) || (_eq(mode, int_lit(1)) && _gt(pvar_p.call(syn_symbol(mxp, maker_st, s)?), int_lit(0)) && not((not(_eq(pvar_p.call(syn_symbol(mxp, maker_st, s)?), int_lit(2))) && (_eq(mx_types_kind_of(u), int_lit(8)) || _eq(mx_types_kind_of(u), int_lit(6)) || _eq(mx_types_kind_of(u), int_lit(10))))) && not((_eq(pvar_p.call(syn_symbol(mxp, maker_st, s)?), int_lit(3)) && _eq(mx_types_kind_of(u), int_lit(7)) && reserved_sym_p(mxp, maker_st, literal_of(u))))))) {
                         return Ok(true);
                     } else {
                         let tagcase_ = u;
@@ -9236,7 +9467,7 @@ pub mod made__load__1__expand {
                         } else if made__load__0__expander_kc::Sty::__is_SId(tagcase_) {
                             return Ok(syn_symbol_p(s));
                         } else if made__load__0__expander_kc::Sty::__is_SLabel(tagcase_) {
-                            return Ok((syn_keyword_p(s) || (_gt_eq(mode, int_lit(2)) && syn_symbol_p(s)) || (program_p && syn_number_p(s))));
+                            return Ok((syn_keyword_p(s) || (_gt_eq(mode, int_lit(2)) && syn_symbol_p(s) && (program_p || not(literal_word_syn_p(mxp, maker_st, s)?))) || (program_p && syn_number_p(s))));
                         } else if made__load__0__expander_kc::Sty::__is_SExpr(tagcase_) {
                             return Ok(((program_p || not(reserved_syn_p(mxp, maker_st, s)?)) && not(syn_nil_p(s))));
                         } else if made__load__0__expander_kc::Sty::__is_SLambda(tagcase_) {
@@ -10325,10 +10556,12 @@ pub mod made__load__1__expand {
         } else if made__load__0__expander_kc::Sty::__is_SLabel(tagcase_) {
             if syn_keyword_p(s) {
                 Ok(())
-            } else if (syn_symbol_p(s) && _gt_eq(mode, int_lit(2))) {
+            } else if (syn_symbol_p(s) && _gt_eq(mode, int_lit(2)) && (_eq(mode, int_lit(3)) || not(literal_word_syn_p(mxp, maker_st, s)?))) {
                 Ok(())
             } else if (_eq(mode, int_lit(3)) && syn_number_p(s)) {
                 Ok(())
+            } else if (syn_symbol_p(s) && _eq(mode, int_lit(2))) {
+                Ok(match said.call(string_append(str_lit!("`"), string_append(syn_name(s), str_lit!("` is a reserved word, not a tag or label"))))? {})
             } else if syn_symbol_p(s) {
                 Ok(match said.call(string_append(str_lit!("a tag or label in a template is a keyword: `#:"), string_append(syn_name(s), string_append(str_lit!("`, not `"), string_append(syn_name(s), str_lit!("`"))))))? {})
             } else {
@@ -11048,40 +11281,40 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn earlier_atoms(ls: Levels) -> Atms {
+    pub fn earlier_atoms(ls: MxEnvTypesLevels) -> Atms {
         if null_p(ls) {
             nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Atm>>()
         } else {
             append({
                 let tagcase_ = car(ls);
-                if made__load__0__expander_kc::Level::__is_LvRib(tagcase_) {
-                    let (r#as,) = made__load__0__expander_kc::Level::__LvRib(tagcase_);
+                if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvRib(tagcase_) {
+                    let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvRib(tagcase_);
                     r#as
-                } else if made__load__0__expander_kc::Level::__is_LvEarlier(tagcase_) {
-                    let (r#as,) = made__load__0__expander_kc::Level::__LvEarlier(tagcase_);
+                } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvEarlier(tagcase_) {
+                    let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvEarlier(tagcase_);
                     r#as
-                } else if made__load__0__expander_kc::Level::__is_LvCage(tagcase_) {
-                    let (n,) = made__load__0__expander_kc::Level::__LvCage(tagcase_);
+                } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvCage(tagcase_) {
+                    let (n,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvCage(tagcase_);
                     nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Atm>>()
-                } else if made__load__0__expander_kc::Level::__is_LvShape(tagcase_) {
-                    let (m,) = made__load__0__expander_kc::Level::__LvShape(tagcase_);
+                } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvShape(tagcase_) {
+                    let (m,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvShape(tagcase_);
                     nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Atm>>()
                 } else { kayak_rt::data::no_variant() }
             }, earlier_atoms(cdr(ls)))
         }
     }
 
-    pub fn earlier_cages(mut ls: Levels) -> Levels {
+    pub fn earlier_cages(mut ls: MxEnvTypesLevels) -> MxEnvTypesLevels {
         loop {
             if null_p(ls) {
-                return nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>();
+                return nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>();
             } else if {
                 let tagcase_ = car(ls);
-                if made__load__0__expander_kc::Level::__is_LvCage(tagcase_) {
-                    let (n,) = made__load__0__expander_kc::Level::__LvCage(tagcase_);
+                if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvCage(tagcase_) {
+                    let (n,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvCage(tagcase_);
                     true
-                } else if made__load__0__expander_kc::Level::__is_LvShape(tagcase_) {
-                    let (m,) = made__load__0__expander_kc::Level::__LvShape(tagcase_);
+                } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvShape(tagcase_) {
+                    let (m,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvShape(tagcase_);
                     true
                 } else {
                     let y = tagcase_;
@@ -11307,17 +11540,17 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn gathered_levels<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, t: Int, ls: Levels) -> Levels {
+    pub fn gathered_levels<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, t: Int, ls: MxEnvTypesLevels) -> MxEnvTypesLevels {
         if null_p(ls) {
-            nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>()
+            nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>()
         } else {
             cons({
                 let tagcase_ = car(ls);
-                if made__load__0__expander_kc::Level::__is_LvRib(tagcase_) {
-                    let (r#as,) = made__load__0__expander_kc::Level::__LvRib(tagcase_);
+                if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvRib(tagcase_) {
+                    let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvRib(tagcase_);
                     lv_rib(gathered(mxp, maker_st, t, r#as))
-                } else if made__load__0__expander_kc::Level::__is_LvEarlier(tagcase_) {
-                    let (r#as,) = made__load__0__expander_kc::Level::__LvEarlier(tagcase_);
+                } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvEarlier(tagcase_) {
+                    let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvEarlier(tagcase_);
                     lv_earlier(gathered(mxp, maker_st, t, r#as))
                 } else {
                     let y = tagcase_;
@@ -11327,7 +11560,7 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn evaluate<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, b: kayak_rt::data::DataAt<'static, MxTypesBind>, root: Int, s: kayak_rt::data::DataAt<'static, Syn>) -> Result<Levels, Unwind> {
+    pub fn evaluate<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, b: kayak_rt::data::DataAt<'static, MxTypesBind>, root: Int, s: kayak_rt::data::DataAt<'static, Syn>) -> Result<MxEnvTypesLevels, Unwind> {
         let tagcase_ = b;
         if made__load__0__expander_kc::MxTypesBind::__is_BindRib(tagcase_) {
             let (es,) = made__load__0__expander_kc::MxTypesBind::__BindRib(tagcase_);
@@ -11347,27 +11580,27 @@ pub mod made__load__1__expand {
         } else { kayak_rt::data::no_variant() }
     }
 
-    pub fn cage<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, rings: Rings, root: Int, s: kayak_rt::data::DataAt<'static, Syn>) -> Result<Levels, Unwind> {
+    pub fn cage<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, rings: Rings, root: Int, s: kayak_rt::data::DataAt<'static, Syn>) -> Result<MxEnvTypesLevels, Unwind> {
         if null_p(rings) {
-            Ok(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>())
+            Ok(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>())
         } else {
             Ok(append({
                 let tagcase_ = car(rings);
                 if made__load__0__expander_kc::Ring::__is_RingRib(tagcase_) {
                     let (es,) = made__load__0__expander_kc::Ring::__RingRib(tagcase_);
-                    the::<Levels>(kayak_rt::cons(lv_rib(rib(mxp, maker_st, mx_fail, es, root, s)?), kayak_rt::nil()))
+                    the::<MxEnvTypesLevels>(kayak_rt::cons(lv_rib(rib(mxp, maker_st, mx_fail, es, root, s)?), kayak_rt::nil()))
                 } else if made__load__0__expander_kc::Ring::__is_RingAt(tagcase_) {
                     let (a,) = made__load__0__expander_kc::Ring::__RingAt(tagcase_);
                     levels_of(mxp, maker_st, mx_fail, nav(mxp, maker_st, mx_fail, root, a, s)?, s)?
                 } else if made__load__0__expander_kc::Ring::__is_RingShape(tagcase_) {
                     let (a,) = made__load__0__expander_kc::Ring::__RingShape(tagcase_);
-                    the::<Levels>(kayak_rt::cons(lv_shape(nav(mxp, maker_st, mx_fail, root, a, s)?), kayak_rt::nil()))
+                    the::<MxEnvTypesLevels>(kayak_rt::cons(lv_shape(nav(mxp, maker_st, mx_fail, root, a, s)?), kayak_rt::nil()))
                 } else { kayak_rt::data::no_variant() }
             }, cage(mxp, maker_st, mx_fail, cdr(rings), root, s)?))
         }
     }
 
-    pub fn levels_of<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, t: Int, s: kayak_rt::data::DataAt<'static, Syn>) -> Result<Levels, Unwind> {
+    pub fn levels_of<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, t: Int, s: kayak_rt::data::DataAt<'static, Syn>) -> Result<MxEnvTypesLevels, Unwind> {
         let tagcase_ = node_kids(mxp, maker_st, t);
         if made__load__0__expander_kc::MxNodesKids::__is_KPvar(tagcase_) {
             let (n,) = made__load__0__expander_kc::MxNodesKids::__KPvar(tagcase_);
@@ -11385,15 +11618,15 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn exported_levels<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, t: Int, s: kayak_rt::data::DataAt<'static, Syn>) -> Result<Levels, Unwind> {
+    pub fn exported_levels<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, t: Int, s: kayak_rt::data::DataAt<'static, Syn>) -> Result<MxEnvTypesLevels, Unwind> {
         let e = node_export(mxp, maker_st, exporter(mxp, maker_st, t));
         if not(null_p(e)) {
             Ok(evaluate(mxp, maker_st, mx_fail, car(e).0, car(e).1, s)?)
         } else if mx_scopes_form_node_p(mxp, maker_st, t) {
-            Ok(the::<Levels>(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>()))
+            Ok(the::<MxEnvTypesLevels>(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>()))
         } else {
             match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("the signature says what is here exports a "), str_lit!("ribcage, and it exports none")), node_syn(mxp, maker_st, t))? {};
-            Ok(the::<Levels>(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>()))
+            Ok(the::<MxEnvTypesLevels>(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>()))
         }
     }
 
@@ -11402,14 +11635,14 @@ pub mod made__load__1__expand {
         Ok(env_within(mxp, maker_st, mx_env_indexed_env, cons(lv_earlier(earlier_atoms(ls)), earlier_cages(ls)), kayak_rt::closure1((mxp, maker_st,), |(mxp, maker_st,), a0| mx_nodes_binder_name(mxp, maker_st, a0))))
     }
 
-    pub fn levels_shaped<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut shaped: bool, mut ls: Levels) -> Levels {
+    pub fn levels_shaped<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut shaped: bool, mut ls: MxEnvTypesLevels) -> MxEnvTypesLevels {
         loop {
             if null_p(ls) {
-                return nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>();
+                return nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>();
             } else if mx_eq_p(shaped, {
                 let tagcase_ = car(ls);
-                if made__load__0__expander_kc::Level::__is_LvShape(tagcase_) {
-                    let (m,) = made__load__0__expander_kc::Level::__LvShape(tagcase_);
+                if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvShape(tagcase_) {
+                    let (m,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvShape(tagcase_);
                     true
                 } else {
                     let y = tagcase_;
@@ -11425,7 +11658,7 @@ pub mod made__load__1__expand {
     }
 
     #[inline]
-    pub fn own_first<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, ls: Levels) -> Levels {
+    pub fn own_first<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, ls: MxEnvTypesLevels) -> MxEnvTypesLevels {
         if get(maker_st.program_walk.get().unwrap()) {
             append(levels_shaped(mxp, maker_st, false, ls), levels_shaped(mxp, maker_st, true, ls))
         } else {
@@ -11505,6 +11738,154 @@ pub mod made__load__1__expand {
         }
     }
 
+    #[inline]
+    pub fn mx_scopes_inside_said(ls: List<Str>) -> Str {
+        if null_p(ls) {
+            str_lit!("")
+        } else {
+            string_append(str_lit!(", and inside that of "), string_append(car(ls), mx_scopes_inside_said(cdr(ls))))
+        }
+    }
+
+    pub fn with_lists(mut s: Str, mut k: Int) -> Str {
+        loop {
+            if _lt_eq(k, int_lit(0)) {
+                return s;
+            } else {
+                (s, k) = (string_append(str_lit!("("), string_append(s, str_lit!(" ...)"))), _minus(k, int_lit(1)));
+                continue;
+            }
+        }
+    }
+
+    pub fn atm_names(r#as: Atms) -> List<Str> {
+        if null_p(r#as) {
+            nil::<Str>()
+        } else {
+            let rest = atm_names(cdr(r#as));
+            let tagcase_ = car(r#as);
+            if made__load__0__expander_kc::Atm::__is_AtmVar(tagcase_) {
+                let (n, d, k,) = made__load__0__expander_kc::Atm::__AtmVar(tagcase_);
+                let s = string_append(str_lit!("`"), string_append(with_lists(symbol_to_string(n), k), str_lit!("`")));
+                kayak_rt::heap_cons(if d {
+                    string_append(s, str_lit!(", a description"))
+                } else {
+                    s
+                }, rest)
+            } else if made__load__0__expander_kc::Atm::__is_AtmRibOf(tagcase_) {
+                let (n,) = made__load__0__expander_kc::Atm::__AtmRibOf(tagcase_);
+                kayak_rt::heap_cons(string_append(str_lit!("`("), string_append(symbol_to_string(n), str_lit!(" ...)`"))), rest)
+            } else if made__load__0__expander_kc::Atm::__is_AtmLit(tagcase_) {
+                let (t, d,) = made__load__0__expander_kc::Atm::__AtmLit(tagcase_);
+                rest
+            } else { kayak_rt::data::no_variant() }
+        }
+    }
+
+    pub fn and_joined(ss: List<Str>) -> Str {
+        if null_p(ss) {
+            str_lit!("")
+        } else if null_p(cdr(ss)) {
+            car(ss)
+        } else {
+            string_append(car(ss), string_append(str_lit!(" and "), and_joined(cdr(ss))))
+        }
+    }
+
+    #[inline]
+    pub fn atms_said(r#as: Atms) -> Str {
+        and_joined(mx_nodes_sorted_strings(atm_names(r#as), nil::<Str>()))
+    }
+
+    pub fn mx_scopes_levels_said(ls: MxEnvTypesLevels) -> List<Str> {
+        if null_p(ls) {
+            nil::<Str>()
+        } else {
+            let rest = mx_scopes_levels_said(cdr(ls));
+            let tagcase_ = car(ls);
+            if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvRib(tagcase_) {
+                let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvRib(tagcase_);
+                kayak_rt::heap_cons(atms_said(r#as), rest)
+            } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvEarlier(tagcase_) {
+                let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvEarlier(tagcase_);
+                kayak_rt::heap_cons(string_append(str_lit!("the earlier repetitions' "), atms_said(r#as)), rest)
+            } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvCage(tagcase_) {
+                let (n,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvCage(tagcase_);
+                kayak_rt::heap_cons(string_append(str_lit!("what `"), string_append(symbol_to_string(n), str_lit!("` gives"))), rest)
+            } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvShape(tagcase_) {
+                let (m,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvShape(tagcase_);
+                rest
+            } else { kayak_rt::data::no_variant() }
+        }
+    }
+
+    pub fn pattern_atoms(mut r#as: Atms) -> Atms {
+        loop {
+            if null_p(r#as) {
+                return nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Atm>>();
+            } else if {
+                let tagcase_ = car(r#as);
+                if made__load__0__expander_kc::Atm::__is_AtmLit(tagcase_) {
+                    let (t, d,) = made__load__0__expander_kc::Atm::__AtmLit(tagcase_);
+                    true
+                } else {
+                    let y = tagcase_;
+                    false
+                }
+            } {
+                r#as = cdr(r#as);
+                continue;
+            } else {
+                return kayak_rt::heap_cons(car(r#as), pattern_atoms(cdr(r#as)));
+            }
+        }
+    }
+
+    pub fn normal(mut mx_env_indexed_env: MxEnvTypesLevels) -> MxEnvTypesLevels {
+        loop {
+            if null_p(mx_env_indexed_env) {
+                return nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>();
+            } else {
+                let tagcase_ = car(mx_env_indexed_env);
+                if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvRib(tagcase_) {
+                    let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvRib(tagcase_);
+                    let kept = pattern_atoms(r#as);
+                    if null_p(kept) {
+                        mx_env_indexed_env = cdr(mx_env_indexed_env);
+                        continue;
+                    } else {
+                        return kayak_rt::heap_cons(lv_rib(kept), normal(cdr(mx_env_indexed_env)));
+                    }
+                } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvEarlier(tagcase_) {
+                    let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvEarlier(tagcase_);
+                    let kept = pattern_atoms(r#as);
+                    if null_p(kept) {
+                        mx_env_indexed_env = cdr(mx_env_indexed_env);
+                        continue;
+                    } else {
+                        return kayak_rt::heap_cons(lv_earlier(kept), normal(cdr(mx_env_indexed_env)));
+                    }
+                } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvCage(tagcase_) {
+                    let (n,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvCage(tagcase_);
+                    return kayak_rt::heap_cons(car(mx_env_indexed_env), normal(cdr(mx_env_indexed_env)));
+                } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvShape(tagcase_) {
+                    let (m,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvShape(tagcase_);
+                    mx_env_indexed_env = cdr(mx_env_indexed_env);
+                    continue;
+                } else { kayak_rt::data::no_variant() }
+            }
+        }
+    }
+
+    pub fn scope_said(mx_env_indexed_env: MxEnvTypesLevels) -> Str {
+        let ls = mx_scopes_levels_said(reverse(normal(mx_env_indexed_env)));
+        if null_p(ls) {
+            str_lit!("no scope of the pattern's binders")
+        } else {
+            string_append(str_lit!("the scope of "), string_append(car(ls), mx_scopes_inside_said(cdr(ls))))
+        }
+    }
+
     pub fn mx_scopes_named_in_p(mut n: Symbol, mut d: bool, mut r#as: Atms) -> bool {
         loop {
             if not(null_p(r#as)) {
@@ -11529,17 +11910,17 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn rib_binding(mut n: Symbol, mut d: bool, mut mx_env_indexed_env: Levels, mut i: Int) -> Int {
+    pub fn rib_binding(mut n: Symbol, mut d: bool, mut mx_env_indexed_env: MxEnvTypesLevels, mut i: Int) -> Int {
         loop {
             if null_p(mx_env_indexed_env) {
                 return int_lit(-1);
             } else if {
                 let tagcase_ = car(mx_env_indexed_env);
-                if made__load__0__expander_kc::Level::__is_LvRib(tagcase_) {
-                    let (r#as,) = made__load__0__expander_kc::Level::__LvRib(tagcase_);
+                if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvRib(tagcase_) {
+                    let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvRib(tagcase_);
                     mx_scopes_named_in_p(n, d, r#as)
-                } else if made__load__0__expander_kc::Level::__is_LvEarlier(tagcase_) {
-                    let (r#as,) = made__load__0__expander_kc::Level::__LvEarlier(tagcase_);
+                } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvEarlier(tagcase_) {
+                    let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvEarlier(tagcase_);
                     mx_scopes_named_in_p(n, d, r#as)
                 } else {
                     let y = tagcase_;
@@ -11554,7 +11935,7 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn nth_level(mut mx_env_indexed_env: Levels, mut i: Int) -> kayak_rt::data::DataAt<'static, Level> {
+    pub fn nth_level(mut mx_env_indexed_env: MxEnvTypesLevels, mut i: Int) -> kayak_rt::data::DataAt<'static, MxEnvTypesLevel> {
         loop {
             if _eq(i, int_lit(0)) {
                 return car(mx_env_indexed_env);
@@ -11592,22 +11973,22 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn shadowing_p(mut mx_env_indexed_env: Levels, mut i: Int, mut ps: Pvars, mut d: bool) -> bool {
+    pub fn shadowing_p(mut mx_env_indexed_env: MxEnvTypesLevels, mut i: Int, mut ps: Pvars, mut d: bool) -> bool {
         loop {
             if _gt(i, int_lit(0)) {
                 if {
                     let tagcase_ = car(mx_env_indexed_env);
-                    if made__load__0__expander_kc::Level::__is_LvCage(tagcase_) {
-                        let (n,) = made__load__0__expander_kc::Level::__LvCage(tagcase_);
+                    if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvCage(tagcase_) {
+                        let (n,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvCage(tagcase_);
                         true
-                    } else if made__load__0__expander_kc::Level::__is_LvRib(tagcase_) {
-                        let (r#as,) = made__load__0__expander_kc::Level::__LvRib(tagcase_);
+                    } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvRib(tagcase_) {
+                        let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvRib(tagcase_);
                         any_pattern_atom_p(r#as, ps, d)
-                    } else if made__load__0__expander_kc::Level::__is_LvEarlier(tagcase_) {
-                        let (r#as,) = made__load__0__expander_kc::Level::__LvEarlier(tagcase_);
+                    } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvEarlier(tagcase_) {
+                        let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvEarlier(tagcase_);
                         any_pattern_atom_p(r#as, ps, d)
-                    } else if made__load__0__expander_kc::Level::__is_LvShape(tagcase_) {
-                        let (m,) = made__load__0__expander_kc::Level::__LvShape(tagcase_);
+                    } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvShape(tagcase_) {
+                        let (m,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvShape(tagcase_);
                         false
                     } else { kayak_rt::data::no_variant() }
                 } {
@@ -11618,64 +11999,6 @@ pub mod made__load__1__expand {
                 }
             } else {
                 return false;
-            }
-        }
-    }
-
-    pub fn pattern_atoms(mut r#as: Atms) -> Atms {
-        loop {
-            if null_p(r#as) {
-                return nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Atm>>();
-            } else if {
-                let tagcase_ = car(r#as);
-                if made__load__0__expander_kc::Atm::__is_AtmLit(tagcase_) {
-                    let (t, d,) = made__load__0__expander_kc::Atm::__AtmLit(tagcase_);
-                    true
-                } else {
-                    let y = tagcase_;
-                    false
-                }
-            } {
-                r#as = cdr(r#as);
-                continue;
-            } else {
-                return kayak_rt::heap_cons(car(r#as), pattern_atoms(cdr(r#as)));
-            }
-        }
-    }
-
-    pub fn normal(mut mx_env_indexed_env: Levels) -> Levels {
-        loop {
-            if null_p(mx_env_indexed_env) {
-                return nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>();
-            } else {
-                let tagcase_ = car(mx_env_indexed_env);
-                if made__load__0__expander_kc::Level::__is_LvRib(tagcase_) {
-                    let (r#as,) = made__load__0__expander_kc::Level::__LvRib(tagcase_);
-                    let kept = pattern_atoms(r#as);
-                    if null_p(kept) {
-                        mx_env_indexed_env = cdr(mx_env_indexed_env);
-                        continue;
-                    } else {
-                        return kayak_rt::heap_cons(lv_rib(kept), normal(cdr(mx_env_indexed_env)));
-                    }
-                } else if made__load__0__expander_kc::Level::__is_LvEarlier(tagcase_) {
-                    let (r#as,) = made__load__0__expander_kc::Level::__LvEarlier(tagcase_);
-                    let kept = pattern_atoms(r#as);
-                    if null_p(kept) {
-                        mx_env_indexed_env = cdr(mx_env_indexed_env);
-                        continue;
-                    } else {
-                        return kayak_rt::heap_cons(lv_earlier(kept), normal(cdr(mx_env_indexed_env)));
-                    }
-                } else if made__load__0__expander_kc::Level::__is_LvCage(tagcase_) {
-                    let (n,) = made__load__0__expander_kc::Level::__LvCage(tagcase_);
-                    return kayak_rt::heap_cons(car(mx_env_indexed_env), normal(cdr(mx_env_indexed_env)));
-                } else if made__load__0__expander_kc::Level::__is_LvShape(tagcase_) {
-                    let (m,) = made__load__0__expander_kc::Level::__LvShape(tagcase_);
-                    mx_env_indexed_env = cdr(mx_env_indexed_env);
-                    continue;
-                } else { kayak_rt::data::no_variant() }
             }
         }
     }
@@ -11750,7 +12073,7 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn levels_eq_p(mut xs: Levels, mut ys: Levels) -> bool {
+    pub fn levels_eq_p(mut xs: MxEnvTypesLevels, mut ys: MxEnvTypesLevels) -> bool {
         loop {
             if null_p(xs) {
                 return null_p(ys);
@@ -11758,41 +12081,41 @@ pub mod made__load__1__expand {
                 if not(null_p(ys)) {
                     if {
                         let tagcase_ = car(xs);
-                        if made__load__0__expander_kc::Level::__is_LvRib(tagcase_) {
-                            let (r#as,) = made__load__0__expander_kc::Level::__LvRib(tagcase_);
+                        if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvRib(tagcase_) {
+                            let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvRib(tagcase_);
                             let tagcase_ = car(ys);
-                            if made__load__0__expander_kc::Level::__is_LvRib(tagcase_) {
-                                let (bs,) = made__load__0__expander_kc::Level::__LvRib(tagcase_);
+                            if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvRib(tagcase_) {
+                                let (bs,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvRib(tagcase_);
                                 same_atoms_p(r#as, bs)
                             } else {
                                 let y = tagcase_;
                                 false
                             }
-                        } else if made__load__0__expander_kc::Level::__is_LvEarlier(tagcase_) {
-                            let (r#as,) = made__load__0__expander_kc::Level::__LvEarlier(tagcase_);
+                        } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvEarlier(tagcase_) {
+                            let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvEarlier(tagcase_);
                             let tagcase_ = car(ys);
-                            if made__load__0__expander_kc::Level::__is_LvEarlier(tagcase_) {
-                                let (bs,) = made__load__0__expander_kc::Level::__LvEarlier(tagcase_);
+                            if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvEarlier(tagcase_) {
+                                let (bs,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvEarlier(tagcase_);
                                 same_atoms_p(r#as, bs)
                             } else {
                                 let y = tagcase_;
                                 false
                             }
-                        } else if made__load__0__expander_kc::Level::__is_LvCage(tagcase_) {
-                            let (n,) = made__load__0__expander_kc::Level::__LvCage(tagcase_);
+                        } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvCage(tagcase_) {
+                            let (n,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvCage(tagcase_);
                             let tagcase_ = car(ys);
-                            if made__load__0__expander_kc::Level::__is_LvCage(tagcase_) {
-                                let (m,) = made__load__0__expander_kc::Level::__LvCage(tagcase_);
+                            if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvCage(tagcase_) {
+                                let (m,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvCage(tagcase_);
                                 symbol_eq_p(n, m)
                             } else {
                                 let y = tagcase_;
                                 false
                             }
-                        } else if made__load__0__expander_kc::Level::__is_LvShape(tagcase_) {
-                            let (n,) = made__load__0__expander_kc::Level::__LvShape(tagcase_);
+                        } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvShape(tagcase_) {
+                            let (n,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvShape(tagcase_);
                             let tagcase_ = car(ys);
-                            if made__load__0__expander_kc::Level::__is_LvShape(tagcase_) {
-                                let (m,) = made__load__0__expander_kc::Level::__LvShape(tagcase_);
+                            if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvShape(tagcase_) {
+                                let (m,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvShape(tagcase_);
                                 _eq(n, m)
                             } else {
                                 let y = tagcase_;
@@ -11812,7 +12135,7 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn mx_scopes_placed<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, n: Symbol, info: Pinfo, want: kayak_rt::data::DataAt<'static, Sty>, mx_env_indexed_env: Levels, s: kayak_rt::data::DataAt<'static, Syn>, ps: Pvars) -> Result<(), Unwind> {
+    pub fn mx_scopes_placed<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, n: Symbol, info: Pinfo, want: kayak_rt::data::DataAt<'static, Sty>, mx_env_indexed_env: MxEnvTypesLevels, s: kayak_rt::data::DataAt<'static, Syn>, ps: Pvars) -> Result<(), Unwind> {
         let name = symbol_to_string(n);
         let have = info.0;
         let kh = mx_types_kind_of(have);
@@ -11832,8 +12155,8 @@ pub mod made__load__1__expand {
                 Ok(match said.call(str_lit!("is referred to where the template does not bind it"))? {})
             } else if {
                 let tagcase_ = nth_level(mx_env_indexed_env, i);
-                if made__load__0__expander_kc::Level::__is_LvEarlier(tagcase_) {
-                    let (r#as,) = made__load__0__expander_kc::Level::__LvEarlier(tagcase_);
+                if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvEarlier(tagcase_) {
+                    let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvEarlier(tagcase_);
                     true
                 } else {
                     let y = tagcase_;
@@ -11869,7 +12192,7 @@ pub mod made__load__1__expand {
             if not(fits) {
                 Ok(match said.call(str_lit!("is placed where its syntax type is not one the form takes there"))? {})
             } else if not(levels_eq_p(normal(mx_env_indexed_env), normal(info.1))) {
-                Ok(match said.call(str_lit!("is placed in the scope of other bindings than its signature says it is"))? {})
+                Ok(match said.call(string_append(str_lit!("is placed in "), string_append(scope_said(mx_env_indexed_env), string_append(str_lit!(", but its signature says it is in "), scope_said(info.1)))))? {})
             } else {
                 Ok(())
             }
@@ -11903,14 +12226,14 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn mx_scopes_binder_of<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut n: Symbol, mut d: bool, mut mx_env_indexed_env: Levels, mut s: kayak_rt::data::DataAt<'static, Syn>) -> Result<List<Int>, Unwind> {
+    pub fn mx_scopes_binder_of<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut n: Symbol, mut d: bool, mut mx_env_indexed_env: MxEnvTypesLevels, mut s: kayak_rt::data::DataAt<'static, Syn>) -> Result<List<Int>, Unwind> {
         loop {
             if null_p(mx_env_indexed_env) {
                 return Ok(nil::<Int>());
             } else {
                 let tagcase_ = car(mx_env_indexed_env);
-                if made__load__0__expander_kc::Level::__is_LvRib(tagcase_) {
-                    let (r#as,) = made__load__0__expander_kc::Level::__LvRib(tagcase_);
+                if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvRib(tagcase_) {
+                    let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvRib(tagcase_);
                     let here = lit_binding(mxp, maker_st, n, d, r#as);
                     if null_p(here) {
                         mx_env_indexed_env = cdr(mx_env_indexed_env);
@@ -11918,8 +12241,8 @@ pub mod made__load__1__expand {
                     } else {
                         return Ok(here);
                     }
-                } else if made__load__0__expander_kc::Level::__is_LvEarlier(tagcase_) {
-                    let (r#as,) = made__load__0__expander_kc::Level::__LvEarlier(tagcase_);
+                } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvEarlier(tagcase_) {
+                    let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvEarlier(tagcase_);
                     if null_p(lit_binding(mxp, maker_st, n, d, r#as)) {
                         mx_env_indexed_env = cdr(mx_env_indexed_env);
                         continue;
@@ -12110,18 +12433,18 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn head_binder<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut h: Symbol, mut ls: Levels, mut sx: List<SyntaxBinder>) -> Product_11_12<List<Int>, List<Int>> {
+    pub fn head_binder<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut h: Symbol, mut ls: MxEnvTypesLevels, mut sx: List<SyntaxBinder>) -> Product_11_12<List<Int>, List<Int>> {
         loop {
             if null_p(ls) {
                 return Product_11_12(the::<List<Int>>(nil::<Int>()), the::<List<Int>>(nil::<Int>()));
             } else {
                 let r#as = {
                     let tagcase_ = car(ls);
-                    if made__load__0__expander_kc::Level::__is_LvRib(tagcase_) {
-                        let (r#as,) = made__load__0__expander_kc::Level::__LvRib(tagcase_);
+                    if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvRib(tagcase_) {
+                        let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvRib(tagcase_);
                         r#as
-                    } else if made__load__0__expander_kc::Level::__is_LvEarlier(tagcase_) {
-                        let (r#as,) = made__load__0__expander_kc::Level::__LvEarlier(tagcase_);
+                    } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvEarlier(tagcase_) {
+                        let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvEarlier(tagcase_);
                         r#as
                     } else {
                         let y = tagcase_;
@@ -12308,7 +12631,7 @@ pub mod made__load__1__expand {
                 set(maker_st.unplaced.get().unwrap(), nil::<Symbol>());
                 set(maker_st.program_walk.get().unwrap(), true);
                 set(maker_st.scoped_on.get().unwrap(), true);
-                align(mxp, maker_st, mx_fail, int_lit(3), the::<Pvars>(nil::<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>()), core, s, int_lit(-1), nil::<bool>())?
+                align(mxp, maker_st, mx_fail, int_lit(3), the::<Pvars>(nil::<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>()), core, s, int_lit(-1), nil::<bool>())?
             };
             let mx_nodes_found = mx_scopes_walk(mxp, maker_st, mx_fail, root, maker_st.env_empty.get().unwrap(), false, int_lit(0))?;
             let read = {
@@ -12969,30 +13292,30 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn exports_onto(mut ls: Levels, mut r#as: Atms, mut ns: MxParserTypesNames) -> MxExportsExported {
+    pub fn exports_onto(mut ls: MxEnvTypesLevels, mut r#as: Atms, mut ns: MxParserTypesNames) -> MxExportsExported {
         loop {
             if null_p(ls) {
                 return Product_11_12(r#as, ns);
             } else {
                 let tagcase_ = car(ls);
-                if made__load__0__expander_kc::Level::__is_LvRib(tagcase_) {
-                    let (xs,) = made__load__0__expander_kc::Level::__LvRib(tagcase_);
+                if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvRib(tagcase_) {
+                    let (xs,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvRib(tagcase_);
                     (ls, r#as) = (cdr(ls), atms_onto(xs, r#as));
                     continue;
-                } else if made__load__0__expander_kc::Level::__is_LvEarlier(tagcase_) {
-                    let (xs,) = made__load__0__expander_kc::Level::__LvEarlier(tagcase_);
+                } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvEarlier(tagcase_) {
+                    let (xs,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvEarlier(tagcase_);
                     (ls, r#as) = (cdr(ls), atms_onto(xs, r#as));
                     continue;
-                } else if made__load__0__expander_kc::Level::__is_LvCage(tagcase_) {
-                    let (n,) = made__load__0__expander_kc::Level::__LvCage(tagcase_);
+                } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvCage(tagcase_) {
+                    let (n,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvCage(tagcase_);
                     (ls, ns) = (cdr(ls), if mx_syntax_name_in_p(n, ns) {
                         ns
                     } else {
                         kayak_rt::heap_cons(n, ns)
                     });
                     continue;
-                } else if made__load__0__expander_kc::Level::__is_LvShape(tagcase_) {
-                    let (m,) = made__load__0__expander_kc::Level::__LvShape(tagcase_);
+                } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvShape(tagcase_) {
+                    let (m,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvShape(tagcase_);
                     ls = cdr(ls);
                     continue;
                 } else { kayak_rt::data::no_variant() }
@@ -13001,7 +13324,7 @@ pub mod made__load__1__expand {
     }
 
     #[inline]
-    pub fn mx_exports_exports_of(env: Levels) -> MxExportsExported {
+    pub fn mx_exports_exports_of(env: MxEnvTypesLevels) -> MxExportsExported {
         exports_onto(normal(env), nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Atm>>(), nil::<Symbol>())
     }
 
@@ -13867,6 +14190,21 @@ pub mod made__load__1__expand {
         }
     }
 
+    pub fn any_ring_p(mut es: SynsA) -> bool {
+        loop {
+            if not(null_p(es)) {
+                if mx_facts_head_is_p(car(es), str_lit!("at")) {
+                    return true;
+                } else {
+                    es = cdr(es);
+                    continue;
+                }
+            } else {
+                return false;
+            }
+        }
+    }
+
     pub fn mx_facts_bound<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, l: kayak_rt::data::DataAt<'static, Syn>, ls: MxFactsLabels) -> Result<Product_11_12<kayak_rt::data::DataAt<'static, Syn>, Adds>, Unwind> {
         let e = mx_facts_entry(mxp, maker_st, mx_fail, l, ls, false)?;
         let a = syn_start(l);
@@ -13879,6 +14217,68 @@ pub mod made__load__1__expand {
         }, a, b), kayak_rt::cons(e.0, kayak_rt::nil())), a, b), e.1))
     }
 
+    pub fn mx_facts_level<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, l: kayak_rt::data::DataAt<'static, Syn>, ls: MxFactsLabels) -> Result<Product_11_12<kayak_rt::data::DataAt<'static, Syn>, Adds>, Unwind> {
+        let items = proper_items(l);
+        let a = syn_start(l);
+        let b = syn_end(l);
+        let rep = (_eq(len(items), int_lit(2)) && mx_facts_sym_is_p(nth(items, int_lit(1)), str_lit!("...")));
+        if mx_facts_sym_is_p(l, str_lit!("...")) {
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a level is a label, `(x ...)` (every "), string_append(str_lit!("repetition's, together), or a list of them: for "), string_append(str_lit!("each repetition inside the one before, a "), string_append(str_lit!("`letrec-shape` whose node says `export*`, as "), str_lit!("`my-let*`'s does"))))), l)? {};
+            Ok(Product_11_12(mk_list(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>(), a, b), the::<Adds>(nil::<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>())))
+        } else if (syn_symbol_p(l) || rep) {
+            Ok(mx_facts_bound(mxp, maker_st, mx_fail, l, ls)?)
+        } else if null_p(items) {
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a level of a `bind`: a label, `(label ...)`, "), str_lit!("or a list of them, one rib")), l)? {};
+            Ok(Product_11_12(mk_list(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>(), a, b), the::<Adds>(nil::<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>())))
+        } else {
+            let r = mx_facts_entries_of(mxp, maker_st, mx_fail, items, ls, false, nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>(), nil::<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>())?;
+            let es = reverse(r.0);
+            if any_ring_p(es) {
+                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a part that gives a ribcage is a level of its "), str_lit!("own, not one of a rib's")), l)? {}
+            } else {
+                ()
+            };
+            Ok(Product_11_12(mk_list(cons(mk_symbol(str_lit!("rho"), a, b), es), a, b), r.1))
+        }
+    }
+
+    pub fn levels_bound<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut xs: SynsA, mut ls: MxFactsLabels, mut out: SynsA, mut elems: Adds) -> Result<Product_11_12<SynsA, Adds>, Unwind> {
+        loop {
+            if null_p(xs) {
+                return Ok(Product_11_12(reverse(out), elems));
+            } else {
+                let e = mx_facts_level(mxp, maker_st, mx_fail, car(xs), ls)?;
+                (xs, out, elems) = (cdr(xs), cons(e.0, out), append(e.1, elems));
+                continue;
+            }
+        }
+    }
+
+    pub fn rings_of_levels(bs: SynsA) -> SynsA {
+        if null_p(bs) {
+            nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>()
+        } else {
+            kayak_rt::heap_cons(if mx_facts_head_is_p(car(bs), str_lit!("cage")) {
+                nth(proper_items(car(bs)), int_lit(1))
+            } else {
+                car(bs)
+            }, rings_of_levels(cdr(bs)))
+        }
+    }
+
+    #[inline]
+    pub fn cage_of(bs: SynsA, f: kayak_rt::data::DataAt<'static, Syn>) -> kayak_rt::data::DataAt<'static, Syn> {
+        mk_list(kayak_rt::heap_cons(mk_symbol(str_lit!("cage"), syn_start(f), syn_end(f)), rings_of_levels(bs)), syn_start(f), syn_end(f))
+    }
+
+    pub fn mx_facts_first_n(xs: SynsA, n: Int) -> SynsA {
+        if (_eq(n, int_lit(0)) || null_p(xs)) {
+            nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>()
+        } else {
+            kayak_rt::heap_cons(car(xs), mx_facts_first_n(cdr(xs), _minus(n, int_lit(1))))
+        }
+    }
+
     pub fn facts_each<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut fs: SynsA, mut ls: MxFactsLabels, mut top: bool, mut imports: Adds, mut rib: SynsA, mut rings: SynsA, mut star: SynsA, mut elems: Adds) -> Result<Product_11_12_13_14_15<Adds, SynsA, SynsA, SynsA, Adds>, Unwind> {
         loop {
             if null_p(fs) {
@@ -13886,22 +14286,26 @@ pub mod made__load__1__expand {
             } else {
                 let f = car(fs);
                 let items = proper_items(f);
-                if (mx_facts_head_is_p(f, str_lit!("bind")) && _eq(len(items), int_lit(4)) && mx_facts_sym_is_p(nth(items, int_lit(2)), str_lit!("in"))) {
-                    let m = nth(items, int_lit(3));
+                if (mx_facts_head_is_p(f, str_lit!("bind")) && _gt_eq(len(items), int_lit(4)) && mx_facts_sym_is_p(nth(items, _minus(len(items), int_lit(2))), str_lit!("in"))) {
+                    let m = nth(items, _minus(len(items), int_lit(1)));
                     let target = if syn_symbol_p(m) {
                         mx_facts_label_of(syn_symbol(mxp, maker_st, m)?, ls)
                     } else {
                         nil::<Product_11_12_13_14_15<Symbol, Int, List<bool>, List<bool>, Int>>()
                     };
                     if null_p(target) {
-                        match fail_at(mxp, maker_st, mx_fail, str_lit!("`(bind L in name)`: `name` a label of this node"), m)? {};
+                        match fail_at(mxp, maker_st, mx_fail, str_lit!("`(bind L … in name)`: `name` a label of this node"), m)? {};
                         return Ok(Product_11_12_13_14_15(imports, rib, rings, star, elems));
                     } else if _eq(car(target).1, int_lit(1)) {
                         match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a fact binding in a repeated part is "), str_lit!("each repetition's: followed by `...`")), m)? {};
                         return Ok(Product_11_12_13_14_15(imports, rib, rings, star, elems));
                     } else {
-                        let e = mx_facts_bound(mxp, maker_st, mx_fail, nth(items, int_lit(1)), ls)?;
-                        (fs, imports, elems) = (cdr(fs), cons(Product_11_12(car(target).2, e.0), imports), append(e.1, elems));
+                        let e = levels_bound(mxp, maker_st, mx_fail, reverse(mx_facts_first_n(cdr(items), _minus(len(items), int_lit(3)))), ls, nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>(), elems)?;
+                        (fs, imports, elems) = (cdr(fs), cons(Product_11_12(car(target).2, if null_p(cdr(e.0)) {
+                            car(e.0)
+                        } else {
+                            cage_of(e.0, f)
+                        }), imports), e.1);
                         continue;
                     }
                 } else if (mx_facts_head_is_p(f, str_lit!("export")) && not(top)) {
@@ -13916,7 +14320,7 @@ pub mod made__load__1__expand {
                     match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("what a use defines is said in what its "), string_append(str_lit!("signature makes, `(defn label …)`: the top node "), str_lit!("exports nothing"))), f)? {};
                     return Ok(Product_11_12_13_14_15(imports, rib, rings, star, elems));
                 } else {
-                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a fact is `(bind L in name)`, `(export L …)` or "), str_lit!("`(export* L …)`")), f)? {};
+                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a fact is `(bind L … in name)`, `(export L …)` "), str_lit!("or `(export* L …)`")), f)? {};
                     return Ok(Product_11_12_13_14_15(imports, rib, rings, star, elems));
                 }
             }
@@ -14383,7 +14787,7 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn instance_path(s: kayak_rt::data::DataAt<'static, Syn>) -> List<Str> {
+    pub fn instance_load(s: kayak_rt::data::DataAt<'static, Syn>) -> SynsA {
         let items = proper(s);
         let applied = if _eq(len(items), int_lit(1)) {
             proper(car(items))
@@ -14391,9 +14795,30 @@ pub mod made__load__1__expand {
             nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>()
         };
         if (_gt_eq(len(applied), int_lit(2)) && syn_symbol_p(car(applied)) && string_eq_p(syn_name(car(applied)), str_lit!("proj"))) {
-            load_path(nth(applied, int_lit(1)))
+            kayak_rt::heap_cons(nth(applied, int_lit(1)), kayak_rt::nil())
+        } else if null_p(items) {
+            nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>()
         } else {
+            kayak_rt::heap_cons(car(items), kayak_rt::nil())
+        }
+    }
+
+    #[inline]
+    pub fn instance_path(s: kayak_rt::data::DataAt<'static, Syn>) -> List<Str> {
+        let l = instance_load(s);
+        if null_p(l) {
             nil::<Str>()
+        } else {
+            load_path(car(l))
+        }
+    }
+
+    #[inline]
+    pub fn load_form_of(s: kayak_rt::data::DataAt<'static, Syn>) -> SynsA {
+        if null_p(load_path(s)) {
+            instance_load(s)
+        } else {
+            kayak_rt::heap_cons(s, kayak_rt::nil())
         }
     }
 
@@ -14436,6 +14861,24 @@ pub mod made__load__1__expand {
     pub fn imports_syntax_p(s: kayak_rt::data::DataAt<'static, Syn>) -> bool {
         let items = proper(s);
         (not(null_p(items)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit!("import-with-syntax")))
+    }
+
+    pub fn import_named(s: kayak_rt::data::DataAt<'static, Syn>) -> Str {
+        if syn_symbol_p(s) {
+            syn_name(s)
+        } else {
+            let items = proper(s);
+            let m = if (_eq(len(items), int_lit(3)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit!("with")) && syn_symbol_p(nth(items, int_lit(2)))) {
+                import_named(nth(items, int_lit(1)))
+            } else {
+                str_lit!("")
+            };
+            if string_eq_p(m, str_lit!("")) {
+                str_lit!("")
+            } else {
+                string_append(m, string_append(str_lit!("::"), syn_name(nth(items, int_lit(2)))))
+            }
+        }
     }
 
     pub fn all_names<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut xs: SynsA) -> Result<(), Unwind> {
@@ -14645,6 +15088,78 @@ pub mod made__load__1__expand {
         }
     }
 
+    pub fn frame_held<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut xs: SynsA, mut head: Str) -> Result<MxParserTypesNames, Unwind> {
+        loop {
+            if null_p(xs) {
+                return Ok(nil::<Symbol>());
+            } else if string_eq_p(mx_files_head_name(car(xs)), head) {
+                let items = proper(car(xs));
+                return Ok(append(if _lt(len(items), int_lit(2)) {
+                    nil::<Symbol>()
+                } else {
+                    defined_name(mxp, maker_st, nth(items, int_lit(1)))?
+                }, frame_held(mxp, maker_st, cdr(xs), head)?));
+            } else {
+                xs = cdr(xs);
+                continue;
+            }
+        }
+    }
+
+    pub fn mx_files_unaliased(mut ns: MxParserTypesNames) -> MxParserTypesNames {
+        loop {
+            if null_p(ns) {
+                return nil::<Symbol>();
+            } else {
+                let s = symbol_to_string(car(ns));
+                if (_gt(string_length(s), int_lit(4)) && string_eq_p(substring(s, int_lit(0), int_lit(4)), str_lit!("%ft:"))) {
+                    return kayak_rt::heap_cons(string_to_symbol(substring(s, int_lit(4), string_length(s))), mx_files_unaliased(cdr(ns)));
+                } else {
+                    ns = cdr(ns);
+                    continue;
+                }
+            }
+        }
+    }
+
+    #[inline]
+    pub fn frame_descs<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, xs: SynsA) -> Result<MxParserTypesNames, Unwind> {
+        Ok(mx_files_unaliased(append(frame_held(mxp, maker_st, xs, str_lit!("define-type"))?, frame_held(mxp, maker_st, xs, str_lit!("define-effect"))?)))
+    }
+
+    pub fn frame_of<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut forms: SynsA) -> Result<Product_11_12_13<Symbol, MxParserTypesNames, MxParserTypesNames>, Unwind> {
+        loop {
+            if null_p(forms) {
+                return Ok(Product_11_12_13(kayak_rt::sym_lit!("-"), the::<MxParserTypesNames>(nil::<Symbol>()), the::<MxParserTypesNames>(nil::<Symbol>())));
+            } else if not(null_p(cdr(forms))) {
+                forms = cdr(forms);
+                continue;
+            } else {
+                let items = proper(car(forms));
+                let named = if _lt(len(items), int_lit(3)) {
+                    nil::<Symbol>()
+                } else {
+                    defined_name(mxp, maker_st, nth(items, int_lit(1)))?
+                };
+                let s = if null_p(named) {
+                    str_lit!("")
+                } else {
+                    symbol_to_string(car(named))
+                };
+                if (string_eq_p(mx_files_head_name(car(forms)), str_lit!("define")) && _gt(string_length(s), int_lit(7)) && string_eq_p(substring(s, int_lit(0), int_lit(7)), str_lit!("%frame:"))) {
+                    let inner = proper(nth(items, int_lit(2)));
+                    if _lt(len(inner), int_lit(3)) {
+                        return Ok(Product_11_12_13(car(named), the::<MxParserTypesNames>(nil::<Symbol>()), the::<MxParserTypesNames>(nil::<Symbol>())));
+                    } else {
+                        return Ok(Product_11_12_13(car(named), frame_held(mxp, maker_st, proper(nth(inner, int_lit(2))), str_lit!("define"))?, frame_descs(mxp, maker_st, proper(nth(inner, int_lit(2))))?));
+                    }
+                } else {
+                    return Ok(Product_11_12_13(kayak_rt::sym_lit!("-"), the::<MxParserTypesNames>(nil::<Symbol>()), the::<MxParserTypesNames>(nil::<Symbol>())));
+                }
+            }
+        }
+    }
+
     pub fn macro_names<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, ms: List<FileMacro>) -> Result<MxParserTypesNames, Unwind> {
         if null_p(ms) {
             Ok(nil::<Symbol>())
@@ -14835,6 +15350,69 @@ pub mod made__load__1__expand {
                     found
                 };
                 (xs, ls, found) = (cdr(xs), load_noted(mxp, maker_st, x, ls)?, found2);
+                continue;
+            }
+        }
+    }
+
+    #[inline]
+    pub fn load_def_names(ls: LoadDefs) -> MxParserTypesNames {
+        if null_p(ls) {
+            nil::<Symbol>()
+        } else {
+            kayak_rt::heap_cons(car(ls).0, load_def_names(cdr(ls)))
+        }
+    }
+
+    pub fn loads_named<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut xs: SynsA, mut ns: MxParserTypesNames) -> Result<MxParserTypesNames, Unwind> {
+        loop {
+            if null_p(xs) {
+                return Ok(ns);
+            } else {
+                let items = proper(car(xs));
+                (xs, ns) = (cdr(xs), if (_gt_eq(len(items), int_lit(3)) && string_eq_p(mx_files_head_name(car(xs)), str_lit!("define")) && syn_symbol_p(nth(items, int_lit(1))) && not(null_p(def_path(nth(items, _minus(len(items), int_lit(1))))))) {
+                    cons(syn_symbol(mxp, maker_st, nth(items, int_lit(1)))?, ns)
+                } else {
+                    ns
+                });
+                continue;
+            }
+        }
+    }
+
+    pub fn relevant_p<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, x: kayak_rt::data::DataAt<'static, Syn>, ns: MxParserTypesNames) -> Result<bool, Unwind> {
+        Ok((defines_syntax_p(x) || imports_syntax_p(x) || {
+            let items = proper(x);
+            (_gt_eq(len(items), int_lit(3)) && string_eq_p(mx_files_head_name(x), str_lit!("define")) && syn_symbol_p(nth(items, int_lit(1))) && mx_files_name_in_p(syn_symbol(mxp, maker_st, nth(items, int_lit(1)))?, ns))
+        }))
+    }
+
+    pub fn relevant_from<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut xs: SynsA, mut ns: MxParserTypesNames, mut i: Int) -> Result<List<Product_11_12<Int, kayak_rt::data::DataAt<'static, Syn>>>, Unwind> {
+        loop {
+            if null_p(xs) {
+                return Ok(nil::<Product_11_12<Int, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>());
+            } else if relevant_p(mxp, maker_st, car(xs), ns)? {
+                return Ok(cons(Product_11_12(i, car(xs)), relevant_from(mxp, maker_st, cdr(xs), ns, _plus(i, int_lit(1)))?));
+            } else {
+                (xs, i) = (cdr(xs), _plus(i, int_lit(1)));
+                continue;
+            }
+        }
+    }
+
+    #[inline]
+    pub fn macro_relevant<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, xs: SynsA, ls: LoadDefs) -> Result<List<Product_11_12<Int, kayak_rt::data::DataAt<'static, Syn>>>, Unwind> {
+        Ok(relevant_from(mxp, maker_st, xs, loads_named(mxp, maker_st, xs, load_def_names(ls))?, int_lit(0))?)
+    }
+
+    pub fn relevant_after(mut i: Int, mut rel: List<Product_11_12<Int, kayak_rt::data::DataAt<'static, Syn>>>) -> SynsA {
+        loop {
+            if null_p(rel) {
+                return nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>();
+            } else if _gt(car(rel).0, i) {
+                return kayak_rt::heap_cons(car(rel).1, relevant_after(i, cdr(rel)));
+            } else {
+                rel = cdr(rel);
                 continue;
             }
         }
@@ -15061,7 +15639,7 @@ pub mod made__load__1__expand {
     pub fn macros_but(mut n: Symbol, mut ms: MacroEnv) -> MacroEnv {
         loop {
             if null_p(ms) {
-                return nil::<Product_11_12<Symbol, Product_11_12_13_14<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Int>>>();
+                return nil::<Product_11_12<Symbol, Product_11_12_13_14<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Int>>>();
             } else if symbol_eq_p(n, car(ms).0) {
                 ms = cdr(ms);
                 continue;
@@ -15198,6 +15776,14 @@ pub mod made__load__1__expand {
         }
     }
 
+    pub fn old_defn_export_p(body: kayak_rt::data::DataAt<'static, Syn>) -> bool {
+        let bs = proper_items(body);
+        (_eq(len(bs), int_lit(3)) && syn_symbol_p(car(bs)) && string_eq_p(syn_name(car(bs)), str_lit!("export")) && {
+            let r = proper_items(nth(bs, int_lit(2)));
+            (pair_p(r) && syn_symbol_p(car(r)) && string_eq_p(syn_name(car(r)), str_lit!("rho")))
+        })
+    }
+
     pub fn signature_made<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::data::DataAt<'static, Syn>) -> Result<Product_11_12<kayak_rt::data::DataAt<'static, Syn>, Int>, Unwind> {
         let items = proper_items(s);
         if (_eq(len(items), int_lit(3)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit!("macro/addressed"))) {
@@ -15210,7 +15796,10 @@ pub mod made__load__1__expand {
             } else {
                 str_lit!("")
             };
-            if string_eq_p(made, str_lit!("defn")) {
+            if (string_eq_p(made, str_lit!("defn")) && old_defn_export_p(nth(items, int_lit(1)))) {
+                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("what a use defines is said in what it makes, "), string_append(str_lit!("`(macro/addressed σ (defn (ℓ δ) …))`, not by "), string_append(str_lit!("`(export σ (rho (ℓ δ) …))` around its parts: the "), str_lit!("`rho`'s entries go in the `defn`")))), nth(items, int_lit(1)))? {};
+                Ok(Product_11_12(nth(items, int_lit(1)), int_lit(1)))
+            } else if string_eq_p(made, str_lit!("defn")) {
                 Ok(Product_11_12(nth(items, int_lit(1)), int_lit(1)))
             } else if string_eq_p(made, str_lit!("(defn")) {
                 Ok(Product_11_12(defined_in(mxp, maker_st, mx_fail, nth(items, int_lit(1)), m, cdr(ms))?, int_lit(1)))
@@ -15348,7 +15937,7 @@ pub mod made__load__1__expand {
                 Ok(cons(the::<SignedOpt>(nil::<Product_11_12_13<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, Int>>()), signed_each(mxp, maker_st, mx_fail, cdr(ws))?))
             } else {
                 let s = signature_of(mxp, maker_st, mx_fail, car(w.1))?;
-                set(maker_st.defined.get().unwrap(), cons(Product_11_12(w.0, Product_11_12_13_14(s.1, the::<Clauses>(nil::<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>()), s.0, s.2)), get(maker_st.defined.get().unwrap())));
+                set(maker_st.defined.get().unwrap(), cons(Product_11_12(w.0, Product_11_12_13_14(s.1, the::<Clauses>(nil::<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>()), s.0, s.2)), get(maker_st.defined.get().unwrap())));
                 Ok(cons(the::<SignedOpt>(kayak_rt::cons(s, kayak_rt::nil())), signed_each(mxp, maker_st, mx_fail, cdr(ws))?))
             }
         }
@@ -16823,7 +17412,7 @@ pub mod made__load__1__expand {
     pub fn pvars_for<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut cid: Int, mut vs: Vars, mut s: Sol, mut mx_parser_types_names: bool) -> Pvars {
         loop {
             if null_p(vs) {
-                return nil::<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>();
+                return nil::<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>();
             } else if _eq(cid, car(vs).0) {
                 let p = car(vs).2;
                 let k = kind_at(p, s.0);
@@ -16852,7 +17441,7 @@ pub mod made__load__1__expand {
                 } else {
                     s_data()
                 };
-                return cons(Product_11_12(car(vs).1, Product_11_12_13_14_15(core, the::<Levels>(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>()), false, nil::<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>(), car(vs).3)), pvars_for(mxp, maker_st, cid, cdr(vs), s, mx_parser_types_names));
+                return cons(Product_11_12(car(vs).1, Product_11_12_13_14_15(core, the::<MxEnvTypesLevels>(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>()), false, nil::<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>(), car(vs).3)), pvars_for(mxp, maker_st, cid, cdr(vs), s, mx_parser_types_names));
             } else {
                 vs = cdr(vs);
                 continue;
@@ -16863,7 +17452,7 @@ pub mod made__load__1__expand {
     pub fn placements_in<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut fs: MxNodesFound) -> Placements {
         loop {
             if null_p(fs) {
-                return nil::<Product_11_12_13_14_15<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, Int>>();
+                return nil::<Product_11_12_13_14_15<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, Int>>();
             } else {
                 let at = car(fs).0;
                 let tagcase_ = node_kids(mxp, maker_st, at);
@@ -16899,7 +17488,7 @@ pub mod made__load__1__expand {
     }
 
     pub fn try_placing<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, cid: Int, template: kayak_rt::data::DataAt<'static, Syn>, made: Int, s: Sol, mx_parser_types_names: bool) -> Result<List<MxInferPlaced>, Unwind> {
-        set(maker_st.mx_infer_got.get().unwrap(), nil::<Product_11_12<List<Product_11_12_13_14_15<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, Int>>, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Atm>>, List<Symbol>>>>>());
+        set(maker_st.mx_infer_got.get().unwrap(), nil::<Product_11_12<List<Product_11_12_13_14_15<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, Int>>, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Atm>>, List<Symbol>>>>>());
         let r = {
             let prompt_tag__ = maker_st.parse_tag.get().unwrap();
             match (move || -> Result<_, Unwind> {
@@ -16916,7 +17505,7 @@ pub mod made__load__1__expand {
         let tagcase_ = r;
         if made__load__0__expander_kc::Presult::__is_PErr(tagcase_) {
             let (m, x, y,) = made__load__0__expander_kc::Presult::__PErr(tagcase_);
-            Ok(the::<List<MxInferPlaced>>(nil::<Product_11_12<List<Product_11_12_13_14_15<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, Int>>, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Atm>>, List<Symbol>>>>>()))
+            Ok(the::<List<MxInferPlaced>>(nil::<Product_11_12<List<Product_11_12_13_14_15<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, Int>>, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Atm>>, List<Symbol>>>>>()))
         } else if made__load__0__expander_kc::Presult::__is_POk(tagcase_) {
             let (ts,) = made__load__0__expander_kc::Presult::__POk(tagcase_);
             Ok(get(maker_st.mx_infer_got.get().unwrap()))
@@ -17658,6 +18247,15 @@ pub mod made__load__1__expand {
         }
     }
 
+    pub fn mx_shown_entries_of<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, es: SynsA, r: Int) -> Result<MxShownLabels, Unwind> {
+        if null_p(es) {
+            Ok(nil::<Product_11_12_13<Int, Int, List<bool>>>())
+        } else {
+            let l = mx_shown_entry(mxp, maker_st, car(es), r)?;
+            Ok(cons(l, mx_shown_entries_of(mxp, maker_st, cdr(es), r)?))
+        }
+    }
+
     pub fn mx_shown_bound<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut b: kayak_rt::data::DataAt<'static, Syn>, mut r: Int) -> Result<MxShownLabel, Unwind> {
         loop {
             let items = proper_items(b);
@@ -17677,24 +18275,45 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn binds_of<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, xs: MxShownImports) -> Result<List<Product_11_12_13<Int, Addr, MxShownLabel>>, Unwind> {
+    pub fn mx_shown_level<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, b: kayak_rt::data::DataAt<'static, Syn>, r: Int) -> Result<MxShownLabels, Unwind> {
+        let items = proper_items(b);
+        if (mx_facts_head_is_p(b, str_lit!("rho")) && _gt(len(items), int_lit(2))) {
+            Ok(mx_shown_entries_of(mxp, maker_st, cdr(items), r)?)
+        } else {
+            Ok(kayak_rt::cons(mx_shown_bound(mxp, maker_st, b, r)?, kayak_rt::nil()))
+        }
+    }
+
+    pub fn rings_levels<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, rs: SynsA, r: Int) -> Result<List<MxShownLabels>, Unwind> {
+        if null_p(rs) {
+            Ok(nil::<List<Product_11_12_13<Int, Int, List<bool>>>>())
+        } else {
+            Ok(cons(if mx_facts_head_is_p(car(rs), str_lit!("at")) {
+                kayak_rt::cons(mx_shown_bound(mxp, maker_st, car(rs), r)?, kayak_rt::nil())
+            } else {
+                mx_shown_level(mxp, maker_st, car(rs), r)?
+            }, rings_levels(mxp, maker_st, cdr(rs), r)?))
+        }
+    }
+
+    pub fn mx_shown_levels<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, b: kayak_rt::data::DataAt<'static, Syn>, r: Int) -> Result<List<MxShownLabels>, Unwind> {
+        let items = proper_items(b);
+        if (mx_facts_head_is_p(b, str_lit!("cage")) && _gt(len(items), int_lit(2))) {
+            Ok(rings_levels(mxp, maker_st, cdr(items), r)?)
+        } else {
+            Ok(kayak_rt::cons(mx_shown_level(mxp, maker_st, b, r)?, kayak_rt::nil()))
+        }
+    }
+
+    pub fn binds_of<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, xs: MxShownImports) -> Result<List<Product_11_12_13<Int, Addr, List<MxShownLabels>>>, Unwind> {
         if null_p(xs) {
-            Ok(nil::<Product_11_12_13<Int, List<bool>, Product_11_12_13<Int, Int, List<bool>>>>())
+            Ok(nil::<Product_11_12_13<Int, List<bool>, List<List<Product_11_12_13<Int, Int, List<bool>>>>>>())
         } else {
             let r = car(xs).0;
             let tp = car(xs).1;
             let w = want_x(mxp, maker_st, r, tp);
-            let l = mx_shown_bound(mxp, maker_st, car(xs).2, r)?;
+            let l = mx_shown_levels(mxp, maker_st, car(xs).2, r)?;
             Ok(cons(Product_11_12_13(r, tp, l), binds_of(mxp, maker_st, cdr(xs))?))
-        }
-    }
-
-    pub fn mx_shown_entries_of<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, es: SynsA, r: Int) -> Result<MxShownLabels, Unwind> {
-        if null_p(es) {
-            Ok(nil::<Product_11_12_13<Int, Int, List<bool>>>())
-        } else {
-            let l = mx_shown_entry(mxp, maker_st, car(es), r)?;
-            Ok(cons(l, mx_shown_entries_of(mxp, maker_st, cdr(es), r)?))
         }
     }
 
@@ -17782,17 +18401,28 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn bind_facts<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, bs: List<Product_11_12_13<Int, Addr, MxShownLabel>>, a: Int, b: Int) -> Result<SynsA, Unwind> {
-        if null_p(bs) {
-            Ok(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>())
-        } else {
-            let r = car(bs).0;
-            let f = mk_list(kayak_rt::cons(mk_symbol(str_lit!("bind"), a, b), kayak_rt::cons(mx_shown_said(mxp, maker_st, car(bs).2, a, b)?, kayak_rt::cons(mk_symbol(str_lit!("in"), a, b), kayak_rt::cons(name_syn(mx_shown_name_of(mxp, maker_st, r, car(bs).1)?, a, b), kayak_rt::nil())))), a, b);
-            let rest = bind_facts(mxp, maker_st, cdr(bs), a, b)?;
-            if _eq(r, int_lit(0)) {
-                Ok(cons(f, rest))
+    pub fn binds_into(mut tp: Addr, mut bs: MxShownBinds) -> List<MxShownLabels> {
+        loop {
+            if null_p(bs) {
+                return nil::<List<Product_11_12_13<Int, Int, List<bool>>>>();
+            } else if (_eq(car(bs).0, int_lit(0)) && mx_types_addr_eq_p(car(bs).1, tp)) {
+                return append(car(bs).2, binds_into(tp, cdr(bs)));
             } else {
-                Ok(cons(f, cons(mk_symbol(str_lit!("..."), a, b), rest)))
+                bs = cdr(bs);
+                continue;
+            }
+        }
+    }
+
+    pub fn binds_not_into(mut tp: Addr, mut bs: MxShownBinds) -> MxShownBinds {
+        loop {
+            if null_p(bs) {
+                return nil::<Product_11_12_13<Int, List<bool>, List<List<Product_11_12_13<Int, Int, List<bool>>>>>>();
+            } else if (_eq(car(bs).0, int_lit(0)) && mx_types_addr_eq_p(car(bs).1, tp)) {
+                bs = cdr(bs);
+                continue;
+            } else {
+                return kayak_rt::heap_cons(car(bs), binds_not_into(tp, cdr(bs)));
             }
         }
     }
@@ -17802,6 +18432,44 @@ pub mod made__load__1__expand {
             Ok(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>())
         } else {
             Ok(cons(mx_shown_said(mxp, maker_st, car(ls), a, b)?, said_each(mxp, maker_st, cdr(ls), a, b)?))
+        }
+    }
+
+    pub fn mx_shown_levels_said<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, ls: List<MxShownLabels>, a: Int, b: Int) -> Result<SynsA, Unwind> {
+        if null_p(ls) {
+            Ok(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>())
+        } else {
+            Ok(cons(if null_p(cdr(car(ls))) {
+                mx_shown_said(mxp, maker_st, car(car(ls)), a, b)?
+            } else {
+                mk_list(said_each(mxp, maker_st, car(ls), a, b)?, a, b)
+            }, mx_shown_levels_said(mxp, maker_st, cdr(ls), a, b)?))
+        }
+    }
+
+    pub fn bind_facts<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, bs: MxShownBinds, a: Int, b: Int) -> Result<SynsA, Unwind> {
+        if null_p(bs) {
+            Ok(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>())
+        } else {
+            let r = car(bs).0;
+            let tp = car(bs).1;
+            let same = if _eq(r, int_lit(0)) {
+                binds_into(tp, cdr(bs))
+            } else {
+                nil::<List<Product_11_12_13<Int, Int, List<bool>>>>()
+            };
+            let mx_shown_levels = append(car(bs).2, same);
+            let f = mk_list(append(cons(mk_symbol(str_lit!("bind"), a, b), mx_shown_levels_said(mxp, maker_st, reverse(mx_shown_levels), a, b)?), kayak_rt::cons(mk_symbol(str_lit!("in"), a, b), kayak_rt::cons(name_syn(mx_shown_name_of(mxp, maker_st, r, tp)?, a, b), kayak_rt::nil()))), a, b);
+            let rest = bind_facts(mxp, maker_st, if _eq(r, int_lit(0)) {
+                binds_not_into(tp, cdr(bs))
+            } else {
+                cdr(bs)
+            }, a, b)?;
+            if _eq(r, int_lit(0)) {
+                Ok(cons(f, rest))
+            } else {
+                Ok(cons(f, cons(mk_symbol(str_lit!("..."), a, b), rest)))
+            }
         }
     }
 
@@ -18070,7 +18738,7 @@ pub mod made__load__1__expand {
             nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>()
         };
         let bare = strip(mxp, maker_st, sigma, int_lit(0), nil::<bool>())?;
-        let binds = binds_of(mxp, maker_st, reverse(get(maker_st.mx_shown_imported.get().unwrap())))?;
+        let mx_shown_binds = binds_of(mxp, maker_st, reverse(get(maker_st.mx_shown_imported.get().unwrap())))?;
         let cage = (ex && mx_facts_head_is_p(car(export), str_lit!("cage")));
         let exports = if ex {
             mx_shown_exports_of(mxp, maker_st, car(export))?
@@ -18090,7 +18758,7 @@ pub mod made__load__1__expand {
         };
         let a = syn_start(sigma);
         let b = syn_end(sigma);
-        let facts = append(bind_facts(mxp, maker_st, binds, a, b)?, if null_p(exports) {
+        let facts = append(bind_facts(mxp, maker_st, mx_shown_binds, a, b)?, if null_p(exports) {
             nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>()
         } else {
             kayak_rt::cons(mk_list(cons(mk_symbol(if cage {
@@ -18520,7 +19188,7 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn lvs_of<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, cid: Int, env: Levels) -> List<Lvs> {
+    pub fn lvs_of<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, cid: Int, env: MxEnvTypesLevels) -> List<Lvs> {
         if null_p(env) {
             kayak_rt::cons(the::<Lvs>(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Lv>>()), kayak_rt::nil())
         } else {
@@ -18529,27 +19197,27 @@ pub mod made__load__1__expand {
                 nil::<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Lv>>>()
             } else {
                 let tagcase_ = car(env);
-                if made__load__0__expander_kc::Level::__is_LvRib(tagcase_) {
-                    let (r#as,) = made__load__0__expander_kc::Level::__LvRib(tagcase_);
+                if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvRib(tagcase_) {
+                    let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvRib(tagcase_);
                     let es = rib_gents(mxp, maker_st, cid, r#as, nil::<Product_11_12_13<Int, Int, Int>>());
                     if null_p(es) {
                         nil::<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Lv>>>()
                     } else {
                         kayak_rt::cons(cons(iv_rib(gents_sorted(car(es), nil::<Product_11_12_13<Int, Int, Int>>())), car(rest)), kayak_rt::nil())
                     }
-                } else if made__load__0__expander_kc::Level::__is_LvCage(tagcase_) {
-                    let (n,) = made__load__0__expander_kc::Level::__LvCage(tagcase_);
+                } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvCage(tagcase_) {
+                    let (n,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvCage(tagcase_);
                     let p = mx_infer_var_part(mxp, maker_st, cid, n);
                     if null_p(p) {
                         nil::<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Lv>>>()
                     } else {
                         kayak_rt::cons(cons(iv_cage(car(p)), car(rest)), kayak_rt::nil())
                     }
-                } else if made__load__0__expander_kc::Level::__is_LvEarlier(tagcase_) {
-                    let (r#as,) = made__load__0__expander_kc::Level::__LvEarlier(tagcase_);
+                } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvEarlier(tagcase_) {
+                    let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvEarlier(tagcase_);
                     nil::<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Lv>>>()
-                } else if made__load__0__expander_kc::Level::__is_LvShape(tagcase_) {
-                    let (m,) = made__load__0__expander_kc::Level::__LvShape(tagcase_);
+                } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvShape(tagcase_) {
+                    let (m,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvShape(tagcase_);
                     nil::<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Lv>>>()
                 } else { kayak_rt::data::no_variant() }
             }
@@ -19402,7 +20070,7 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn sites_of_env<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, cid: Int, p: Int, env: Levels, out: SiteList) -> SiteList {
+    pub fn sites_of_env<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, cid: Int, p: Int, env: MxEnvTypesLevels, out: SiteList) -> SiteList {
         let ls = lvs_of(mxp, maker_st, cid, env);
         if null_p(ls) {
             out
@@ -19528,7 +20196,7 @@ pub mod made__load__1__expand {
                 let ribs = if null_p(e.0) {
                     nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Lv>>()
                 } else {
-                    let l = lvs_of(mxp, maker_st, cid, the::<Levels>(kayak_rt::cons(lv_rib(e.0), kayak_rt::nil())));
+                    let l = lvs_of(mxp, maker_st, cid, the::<MxEnvTypesLevels>(kayak_rt::cons(lv_rib(e.0), kayak_rt::nil())));
                     if (not(null_p(l)) && not(null_p(car(l)))) {
                         kayak_rt::cons(car(car(l)), kayak_rt::nil())
                     } else {
@@ -19900,15 +20568,15 @@ pub mod made__load__1__expand {
 
     pub fn provisional<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, us: Unsigneds, tys: Stys, makes: MxInferInts) -> MacroEnv {
         if null_p(us) {
-            nil::<Product_11_12<Symbol, Product_11_12_13_14<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Int>>>()
+            nil::<Product_11_12<Symbol, Product_11_12_13_14<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Int>>>()
         } else {
-            cons(Product_11_12(car(us).0, Product_11_12_13_14(car(tys), nil::<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>(), nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>(), car(makes))), provisional(mxp, maker_st, cdr(us), cdr(tys), cdr(makes)))
+            cons(Product_11_12(car(us).0, Product_11_12_13_14(car(tys), nil::<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>(), nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>(), car(makes))), provisional(mxp, maker_st, cdr(us), cdr(tys), cdr(makes)))
         }
     }
 
     pub fn placed_each<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, rs: Rules, makes: MxInferInts, cid: Int, s: Sol) -> Result<ByClause, Unwind> {
         if null_p(rs) {
-            Ok(nil::<List<Product_11_12<List<Product_11_12_13_14_15<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, Int>>, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Atm>>, List<Symbol>>>>>>())
+            Ok(nil::<List<Product_11_12<List<Product_11_12_13_14_15<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, Int>>, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Atm>>, List<Symbol>>>>>>())
         } else {
             Ok(cons(placements_of(mxp, maker_st, cid, car(rs).2, nth_int(makes, car(rs).0), s)?, placed_each(mxp, maker_st, cdr(rs), makes, _plus(cid, int_lit(1)), s)?))
         }
@@ -20104,6 +20772,8 @@ pub mod made__load__1__expand {
                 })
             } else if mx_keyword_p(d) {
                 mix(mxp, maker_st, int_lit(11), text_hash(mxp, maker_st, symbol_to_string(mx_keyword_to_symbol(d))))
+            } else if mx_utf8_p(d) {
+                mix(mxp, maker_st, int_lit(13), text_hash(mxp, maker_st, mx_utf8_to_string(d)))
             } else {
                 int_lit(3)
             }
@@ -20335,6 +21005,54 @@ pub mod made__load__1__expand {
         set(maker_st.form_tags.get().unwrap(), s.6)
     }
 
+    pub fn module_named_from(mut m: Str, mut out: kayak_rt::data::DataAt<'static, Syn>, mut start: Int, mut a: Int, mut b: Int) -> kayak_rt::data::DataAt<'static, Syn> {
+        loop {
+            let k = string_search(m, str_lit!("::"), start);
+            let end = if _lt(k, int_lit(0)) {
+                string_length(m)
+            } else {
+                k
+            };
+            let x = atom(kayak_rt::value::ToValue::to_value(string_to_symbol(substring(m, start, end))), a, b, int_lit(0));
+            let items = kayak_rt::heap_cons(atom(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("with")), a, b, int_lit(0)), kayak_rt::heap_cons(out, kayak_rt::heap_cons(x, kayak_rt::nil())));
+            let w = mx_eager_reader_types_lst(items, kayak_rt::value::list(syn_datums(items)), a, b, int_lit(0));
+            if _lt(k, int_lit(0)) {
+                return w;
+            } else {
+                (out, start) = (w, _plus(k, int_lit(2)));
+                continue;
+            }
+        }
+    }
+
+    #[inline]
+    pub fn path_sep(m: Str) -> Int {
+        if (_gt(string_length(m), int_lit(0)) && char_eq_p(string_ref(m, int_lit(0)), '%')) {
+            int_lit(-1)
+        } else {
+            string_search(m, str_lit!("::"), int_lit(0))
+        }
+    }
+
+    pub fn module_named(m: Str, a: Int, b: Int) -> kayak_rt::data::DataAt<'static, Syn> {
+        let k = path_sep(m);
+        if _lt_eq(k, int_lit(0)) {
+            atom(kayak_rt::value::ToValue::to_value(string_to_symbol(m)), a, b, int_lit(0))
+        } else {
+            module_named_from(m, atom(kayak_rt::value::ToValue::to_value(string_to_symbol(substring(m, int_lit(0), k))), a, b, int_lit(0)), _plus(k, int_lit(2)), a, b)
+        }
+    }
+
+    pub fn module_root(m: Symbol) -> Symbol {
+        let s = symbol_to_string(m);
+        let k = path_sep(s);
+        if _lt_eq(k, int_lit(0)) {
+            m
+        } else {
+            string_to_symbol(substring(s, int_lit(0), k))
+        }
+    }
+
     #[inline]
     pub fn seen_now<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>) -> SeenKeys {
         get(maker_st.keys_seen.get().unwrap())
@@ -20469,18 +21187,18 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn scope_binders<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ls: Levels, mut part: kayak_rt::data::DataAt<'static, Syn>, mut out: List<Symbol>) -> Result<List<Symbol>, Unwind> {
+    pub fn scope_binders<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ls: MxEnvTypesLevels, mut part: kayak_rt::data::DataAt<'static, Syn>, mut out: List<Symbol>) -> Result<List<Symbol>, Unwind> {
         loop {
             if null_p(ls) {
                 return Ok(the::<List<Symbol>>(reverse(out)));
             } else {
                 let tagcase_ = car(ls);
-                if made__load__0__expander_kc::Level::__is_LvRib(tagcase_) {
-                    let (r#as,) = made__load__0__expander_kc::Level::__LvRib(tagcase_);
+                if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvRib(tagcase_) {
+                    let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvRib(tagcase_);
                     (ls, out) = (cdr(ls), atoms_binders(mxp, maker_st, mx_fail, r#as, part, out)?);
                     continue;
-                } else if made__load__0__expander_kc::Level::__is_LvEarlier(tagcase_) {
-                    let (r#as,) = made__load__0__expander_kc::Level::__LvEarlier(tagcase_);
+                } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvEarlier(tagcase_) {
+                    let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvEarlier(tagcase_);
                     (ls, out) = (cdr(ls), atoms_binders(mxp, maker_st, mx_fail, r#as, part, out)?);
                     continue;
                 } else {
@@ -20644,7 +21362,7 @@ pub mod made__load__1__expand {
         let parts = the::<SynsA>(reverse(get(maker_st.pseudo_parts.get().unwrap())));
         let root = {
             nodes_reset_x(mxp, maker_st);
-            align(mxp, maker_st, mx_fail, int_lit(0), the::<Pvars>(nil::<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>()), sig, made, int_lit(-1), nil::<bool>())?
+            align(mxp, maker_st, mx_fail, int_lit(0), the::<Pvars>(nil::<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>()), sig, made, int_lit(-1), nil::<bool>())?
         };
         let mx_nodes_found = mx_scopes_walk(mxp, maker_st, mx_fail, root, maker_st.env_empty.get().unwrap(), false, int_lit(0))?;
         let vars = part_vars(mxp, maker_st, mx_fail, mx_nodes_found, parts, nil::<Product_11_12_13_14<Int, bool, List<Symbol>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>>>())?;
@@ -20747,18 +21465,18 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn bound_by<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut ls: Levels, mut n: Symbol, mut d: bool) -> Int {
+    pub fn bound_by<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut ls: MxEnvTypesLevels, mut n: Symbol, mut d: bool) -> Int {
         loop {
             if null_p(ls) {
                 return int_lit(-1);
             } else {
                 let b = {
                     let tagcase_ = car(ls);
-                    if made__load__0__expander_kc::Level::__is_LvRib(tagcase_) {
-                        let (r#as,) = made__load__0__expander_kc::Level::__LvRib(tagcase_);
+                    if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvRib(tagcase_) {
+                        let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvRib(tagcase_);
                         bound_in(mxp, maker_st, r#as, n, d)
-                    } else if made__load__0__expander_kc::Level::__is_LvEarlier(tagcase_) {
-                        let (r#as,) = made__load__0__expander_kc::Level::__LvEarlier(tagcase_);
+                    } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvEarlier(tagcase_) {
+                        let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvEarlier(tagcase_);
                         bound_in(mxp, maker_st, r#as, n, d)
                     } else {
                         let y = tagcase_;
@@ -21195,7 +21913,7 @@ pub mod made__load__1__expand {
     pub fn contract_said<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, sig: kayak_rt::data::DataAt<'static, Sty>, operands: kayak_rt::data::DataAt<'static, Syn>) -> Result<NamedNs, Unwind> {
         let r#use = {
             nodes_reset_x(mxp, maker_st);
-            align(mxp, maker_st, mx_fail, int_lit(2), the::<Pvars>(nil::<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>()), sig, operands, int_lit(-1), nil::<bool>())?
+            align(mxp, maker_st, mx_fail, int_lit(2), the::<Pvars>(nil::<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>()), sig, operands, int_lit(-1), nil::<bool>())?
         };
         let leaves = leaves_of(mxp, maker_st, mx_fail, int_lit(0), get(maker_st.nnodes.get().unwrap()), nil::<Product_11_12<Int, Int>>())?;
         let made = {
@@ -21205,7 +21923,7 @@ pub mod made__load__1__expand {
         let parts = the::<SynsA>(reverse(get(maker_st.pseudo_parts.get().unwrap())));
         let root = {
             nodes_reset_x(mxp, maker_st);
-            align(mxp, maker_st, mx_fail, int_lit(0), the::<Pvars>(nil::<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>()), sig, made, int_lit(-1), nil::<bool>())?
+            align(mxp, maker_st, mx_fail, int_lit(0), the::<Pvars>(nil::<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>()), sig, made, int_lit(-1), nil::<bool>())?
         };
         let mx_nodes_found = mx_scopes_walk(mxp, maker_st, mx_fail, root, maker_st.env_empty.get().unwrap(), false, int_lit(0))?;
         let e = node_export(mxp, maker_st, root);
@@ -21253,15 +21971,15 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn level_defines<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut ls: Levels, mut out: NamedNs) -> NamedNs {
+    pub fn level_defines<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut ls: MxEnvTypesLevels, mut out: NamedNs) -> NamedNs {
         loop {
             if null_p(ls) {
                 return out;
             } else {
                 (ls, out) = (cdr(ls), {
                     let tagcase_ = car(ls);
-                    if made__load__0__expander_kc::Level::__is_LvRib(tagcase_) {
-                        let (r#as,) = made__load__0__expander_kc::Level::__LvRib(tagcase_);
+                    if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvRib(tagcase_) {
+                        let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvRib(tagcase_);
                         atm_defines(mxp, maker_st, r#as, out)
                     } else {
                         let y = tagcase_;
@@ -21452,6 +22170,306 @@ pub mod made__load__1__expand {
         }
     }
 
+    pub fn renamed_macro<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut n: Str, mut internal: List<Product_11_12<Symbol, Symbol>>, mut tag: Int) -> List<Symbol> {
+        loop {
+            if null_p(internal) {
+                return nil::<Symbol>();
+            } else if string_eq_p(n, string_append(str_lit!("%~"), string_append(mx_fresh_tag_of(mxp, maker_st, tag), string_append(str_lit!(":"), symbol_to_string(car(internal).0))))) {
+                return kayak_rt::cons(car(internal).1, kayak_rt::nil());
+            } else {
+                internal = cdr(internal);
+                continue;
+            }
+        }
+    }
+
+    pub fn file_macros<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, s: kayak_rt::data::DataAt<'static, Syn>, internal: List<Product_11_12<Symbol, Symbol>>, tag: Int) -> kayak_rt::data::DataAt<'static, Syn> {
+        if null_p(internal) {
+            s
+        } else {
+            let tagcase_ = s;
+            if made__load__0__expander_kc::Syn::__is_Atom(tagcase_) {
+                let (d, a, b, x,) = made__load__0__expander_kc::Syn::__Atom(tagcase_);
+                if symbol_p(d) {
+                    let i = renamed_macro(mxp, maker_st, symbol_to_string(kayak_rt::value::unbox::<Symbol>(d)), internal, tag);
+                    if null_p(i) {
+                        s
+                    } else {
+                        atom(kayak_rt::value::ToValue::to_value(car(i)), a, b, x)
+                    }
+                } else {
+                    s
+                }
+            } else if made__load__0__expander_kc::Syn::__is_MxEagerReaderTypesLst(tagcase_) {
+                let (items, d, a, b, x,) = made__load__0__expander_kc::Syn::__MxEagerReaderTypesLst(tagcase_);
+                let xs = file_macros_each(mxp, maker_st, items, internal, tag);
+                mx_eager_reader_types_lst(xs, kayak_rt::value::list(syn_datums(xs)), a, b, x)
+            } else if made__load__0__expander_kc::Syn::__is_Dotted(tagcase_) {
+                let (items, t, d, a, b, x,) = made__load__0__expander_kc::Syn::__Dotted(tagcase_);
+                let (xs, u) = (file_macros_each(mxp, maker_st, items, internal, tag), file_macros(mxp, maker_st, t, internal, tag));
+                dotted(xs, u, mx_datum_dotted(syn_datums(xs), syn_to_datum(u)), a, b, x)
+            } else if made__load__0__expander_kc::Syn::__is_Vec(tagcase_) {
+                let (items, d, a, b, x,) = made__load__0__expander_kc::Syn::__Vec(tagcase_);
+                s
+            } else { kayak_rt::data::no_variant() }
+        }
+    }
+
+    pub fn file_macros_each<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, xs: SynsA, internal: List<Product_11_12<Symbol, Symbol>>, tag: Int) -> SynsA {
+        if null_p(xs) {
+            nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>()
+        } else {
+            cons(file_macros(mxp, maker_st, car(xs), internal, tag), file_macros_each(mxp, maker_st, cdr(xs), internal, tag))
+        }
+    }
+
+    pub fn mx_written_escaped(mut s: Str, mut i: Int, mut out: Str) -> Str {
+        loop {
+            if _gt_eq(i, string_length(s)) {
+                return out;
+            } else {
+                let c = string_ref(s, i);
+                (i, out) = (_plus(i, int_lit(1)), string_append(out, if char_eq_p(c, '"') {
+                    str_lit!("\\\"")
+                } else if char_eq_p(c, '\\') {
+                    str_lit!("\\\\")
+                } else if char_eq_p(c, integer_to_char(int_lit(10))) {
+                    str_lit!("\\n")
+                } else {
+                    char_to_string(c)
+                }));
+                continue;
+            }
+        }
+    }
+
+    pub fn char_text(c: char) -> Str {
+        if char_eq_p(c, ' ') {
+            str_lit!("#\\space")
+        } else if char_eq_p(c, integer_to_char(int_lit(10))) {
+            str_lit!("#\\newline")
+        } else if char_eq_p(c, integer_to_char(int_lit(9))) {
+            str_lit!("#\\tab")
+        } else {
+            string_append(str_lit!("#\\"), char_to_string(c))
+        }
+    }
+
+    pub fn datum_text(d: kayak_rt::value::Value) -> Str {
+        if kayak_rt::value::null_p(d) {
+            str_lit!("()")
+        } else if symbol_p(d) {
+            symbol_to_string(kayak_rt::value::unbox::<Symbol>(d))
+        } else if mx_keyword_p(d) {
+            string_append(str_lit!("#:"), symbol_to_string(mx_keyword_to_symbol(d)))
+        } else if string_p(d) {
+            string_append(str_lit!("\""), string_append(mx_written_escaped(kayak_rt::value::unbox::<Str>(d), int_lit(0), str_lit!("")), str_lit!("\"")))
+        } else if char_p(d) {
+            char_text(kayak_rt::value::unbox::<char>(d))
+        } else if int_p(d) {
+            int_to_string(kayak_rt::value::unbox::<Int>(d))
+        } else if f64_p(d) {
+            f64_to_string(kayak_rt::value::unbox::<f64>(d))
+        } else if bool_p(d) {
+            if kayak_rt::value::unbox::<bool>(d) {
+                str_lit!("#t")
+            } else {
+                str_lit!("#f")
+            }
+        } else {
+            str_lit!("#u")
+        }
+    }
+
+    pub fn syn_text(s: kayak_rt::data::DataAt<'static, Syn>) -> Str {
+        let tagcase_ = s;
+        if made__load__0__expander_kc::Syn::__is_Atom(tagcase_) {
+            let (d, a, b, x,) = made__load__0__expander_kc::Syn::__Atom(tagcase_);
+            datum_text(d)
+        } else if made__load__0__expander_kc::Syn::__is_MxEagerReaderTypesLst(tagcase_) {
+            let (items, d, a, b, x,) = made__load__0__expander_kc::Syn::__MxEagerReaderTypesLst(tagcase_);
+            string_append(str_lit!("("), string_append(syns_text(items), str_lit!(")")))
+        } else if made__load__0__expander_kc::Syn::__is_Dotted(tagcase_) {
+            let (items, tail, d, a, b, x,) = made__load__0__expander_kc::Syn::__Dotted(tagcase_);
+            string_append(str_lit!("("), string_append(syns_text(items), string_append(str_lit!(" . "), string_append(syn_text(tail), str_lit!(")")))))
+        } else if made__load__0__expander_kc::Syn::__is_Vec(tagcase_) {
+            let (items, d, a, b, x,) = made__load__0__expander_kc::Syn::__Vec(tagcase_);
+            string_append(str_lit!("#("), string_append(syns_text(items), str_lit!(")")))
+        } else { kayak_rt::data::no_variant() }
+    }
+
+    pub fn syns_text(xs: SynsA) -> Str {
+        if null_p(xs) {
+            str_lit!("")
+        } else if null_p(cdr(xs)) {
+            syn_text(car(xs))
+        } else {
+            string_append(syn_text(car(xs)), string_append(str_lit!(" "), syns_text(cdr(xs))))
+        }
+    }
+
+    pub fn last_slash(mut s: Str, mut i: Int) -> Int {
+        loop {
+            if _lt(i, int_lit(0)) {
+                return int_lit(-1);
+            } else if char_eq_p(string_ref(s, i), '/') {
+                return i;
+            } else {
+                i = _minus(i, int_lit(1));
+                continue;
+            }
+        }
+    }
+
+    pub fn key_dir(key: Str) -> Str {
+        let w = string_length(str_lit!("input:"));
+        let path = if (_gt_eq(string_length(key), w) && string_eq_p(substring(key, int_lit(0), w), str_lit!("input:"))) {
+            substring(key, w, string_length(key))
+        } else {
+            key
+        };
+        substring(path, int_lit(0), _plus(int_lit(1), last_slash(path, _minus(string_length(path), int_lit(1)))))
+    }
+
+    #[inline]
+    pub fn phase1_form(dir: Str, text: Str) -> Str {
+        string_append(int_to_string(string_length(dir)), string_append(str_lit!(":"), string_append(dir, text)))
+    }
+
+    pub fn mx_written_digits_end(mut s: Str, mut i: Int) -> Int {
+        loop {
+            if (_lt(i, string_length(s)) && char_numeric_p(string_ref(s, i))) {
+                i = _plus(i, int_lit(1));
+                continue;
+            } else {
+                return i;
+            }
+        }
+    }
+
+    pub fn digits_of(mut s: Str, mut i: Int, mut j: Int, mut n: Int) -> Int {
+        loop {
+            if _gt_eq(i, j) {
+                return n;
+            } else {
+                (i, n) = (_plus(i, int_lit(1)), _plus(_star(int_lit(10), n), _minus(char_to_integer(string_ref(s, i)), char_to_integer('0'))));
+                continue;
+            }
+        }
+    }
+
+    pub fn mx_written_refusal_place(why: Str) -> List<Product_11_12_13<Int, Int, Int>> {
+        if (_gt(string_length(why), int_lit(0)) && char_eq_p(string_ref(why, int_lit(0)), '@')) {
+            let i = mx_written_digits_end(why, int_lit(1));
+            let s = mx_written_digits_end(why, _plus(i, int_lit(1)));
+            let e = mx_written_digits_end(why, _plus(s, int_lit(1)));
+            kayak_rt::heap_cons(Product_11_12_13(digits_of(why, int_lit(1), i, int_lit(0)), digits_of(why, _plus(i, int_lit(1)), s, int_lit(0)), digits_of(why, _plus(s, int_lit(1)), e, int_lit(0))), kayak_rt::nil())
+        } else {
+            nil::<Product_11_12_13<Int, Int, Int>>()
+        }
+    }
+
+    pub fn line_end(mut s: Str, mut i: Int) -> Int {
+        loop {
+            if _gt_eq(i, string_length(s)) {
+                return i;
+            } else if char_eq_p(string_ref(s, i), integer_to_char(int_lit(10))) {
+                return i;
+            } else {
+                i = _plus(i, int_lit(1));
+                continue;
+            }
+        }
+    }
+
+    pub fn refusal_message(why: Str) -> Str {
+        if null_p(mx_written_refusal_place(why)) {
+            why
+        } else {
+            let n = line_end(why, int_lit(0));
+            if _lt(n, string_length(why)) {
+                substring(why, _plus(n, int_lit(1)), string_length(why))
+            } else {
+                str_lit!("")
+            }
+        }
+    }
+
+    #[inline]
+    pub fn phase1_forms_of(dir: Str, xs: SynsA) -> List<Str> {
+        if null_p(xs) {
+            nil::<Str>()
+        } else {
+            kayak_rt::heap_cons(phase1_form(dir, syn_text(car(xs))), phase1_forms_of(dir, cdr(xs)))
+        }
+    }
+
+    pub fn syn_at(s: kayak_rt::data::DataAt<'static, Syn>, at: Int) -> kayak_rt::data::DataAt<'static, Syn> {
+        let tagcase_ = s;
+        if made__load__0__expander_kc::Syn::__is_MxEagerReaderTypesLst(tagcase_) {
+            let (items, d, a, b, x,) = made__load__0__expander_kc::Syn::__MxEagerReaderTypesLst(tagcase_);
+            syn_at_in(s, items, at, int_lit(1), nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>())
+        } else if made__load__0__expander_kc::Syn::__is_Dotted(tagcase_) {
+            let (items, tail, d, a, b, x,) = made__load__0__expander_kc::Syn::__Dotted(tagcase_);
+            syn_at_in(s, items, at, int_lit(1), kayak_rt::heap_cons(tail, kayak_rt::nil()))
+        } else if made__load__0__expander_kc::Syn::__is_Vec(tagcase_) {
+            let (items, d, a, b, x,) = made__load__0__expander_kc::Syn::__Vec(tagcase_);
+            syn_at_in(s, items, at, int_lit(2), nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>())
+        } else {
+            let y = tagcase_;
+            s
+        }
+    }
+
+    pub fn syn_at_in(mut s: kayak_rt::data::DataAt<'static, Syn>, mut xs: SynsA, mut at: Int, mut o: Int, mut tail: SynsA) -> kayak_rt::data::DataAt<'static, Syn> {
+        loop {
+            if null_p(xs) {
+                if null_p(tail) {
+                    return s;
+                } else {
+                    let (n, t_at) = (string_length(syn_text(car(tail))), _plus(o, int_lit(2)));
+                    if (_gt_eq(at, t_at) && _lt(at, _plus(t_at, n))) {
+                        return syn_at(car(tail), _minus(at, t_at));
+                    } else {
+                        return s;
+                    }
+                }
+            } else {
+                let n = string_length(syn_text(car(xs)));
+                if (_gt_eq(at, o) && _lt(at, _plus(o, n))) {
+                    return syn_at(car(xs), _minus(at, o));
+                } else {
+                    (xs, o) = (cdr(xs), _plus(_plus(o, n), int_lit(1)));
+                    continue;
+                }
+            }
+        }
+    }
+
+    pub fn nth_syn(mut xs: SynsA, mut i: Int) -> kayak_rt::data::DataAt<'static, Syn> {
+        loop {
+            if _eq(i, int_lit(0)) {
+                return car(xs);
+            } else {
+                (xs, i) = (cdr(xs), _minus(i, int_lit(1)));
+                continue;
+            }
+        }
+    }
+
+    pub fn refused_part(s: kayak_rt::data::DataAt<'static, Syn>, new: SynsA, old: Int, place: List<Product_11_12_13<Int, Int, Int>>) -> kayak_rt::data::DataAt<'static, Syn> {
+        if null_p(place) {
+            s
+        } else {
+            let i = _minus(car(place).0, old);
+            if (_gt_eq(i, int_lit(0)) && _lt(i, length(new))) {
+                syn_at(nth_syn(new, i), car(place).1)
+            } else {
+                s
+            }
+        }
+    }
+
     #[inline]
     pub fn style_named(n: Str) -> Int {
         if string_eq_p(n, str_lit!("er-macro-transformer")) {
@@ -21499,91 +22517,6 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn mx_procedural_escaped(mut s: Str, mut i: Int, mut out: Str) -> Str {
-        loop {
-            if _gt_eq(i, string_length(s)) {
-                return out;
-            } else {
-                let c = string_ref(s, i);
-                (i, out) = (_plus(i, int_lit(1)), string_append(out, if char_eq_p(c, '"') {
-                    str_lit!("\\\"")
-                } else if char_eq_p(c, '\\') {
-                    str_lit!("\\\\")
-                } else if char_eq_p(c, integer_to_char(int_lit(10))) {
-                    str_lit!("\\n")
-                } else {
-                    char_to_string(c)
-                }));
-                continue;
-            }
-        }
-    }
-
-    pub fn char_text(c: char) -> Str {
-        if char_eq_p(c, ' ') {
-            str_lit!("#\\space")
-        } else if char_eq_p(c, integer_to_char(int_lit(10))) {
-            str_lit!("#\\newline")
-        } else if char_eq_p(c, integer_to_char(int_lit(9))) {
-            str_lit!("#\\tab")
-        } else {
-            string_append(str_lit!("#\\"), char_to_string(c))
-        }
-    }
-
-    pub fn datum_text(d: kayak_rt::value::Value) -> Str {
-        if kayak_rt::value::null_p(d) {
-            str_lit!("()")
-        } else if symbol_p(d) {
-            symbol_to_string(kayak_rt::value::unbox::<Symbol>(d))
-        } else if mx_keyword_p(d) {
-            string_append(str_lit!("#:"), symbol_to_string(mx_keyword_to_symbol(d)))
-        } else if string_p(d) {
-            string_append(str_lit!("\""), string_append(mx_procedural_escaped(kayak_rt::value::unbox::<Str>(d), int_lit(0), str_lit!("")), str_lit!("\"")))
-        } else if char_p(d) {
-            char_text(kayak_rt::value::unbox::<char>(d))
-        } else if int_p(d) {
-            int_to_string(kayak_rt::value::unbox::<Int>(d))
-        } else if f64_p(d) {
-            f64_to_string(kayak_rt::value::unbox::<f64>(d))
-        } else if bool_p(d) {
-            if kayak_rt::value::unbox::<bool>(d) {
-                str_lit!("#t")
-            } else {
-                str_lit!("#f")
-            }
-        } else {
-            str_lit!("#u")
-        }
-    }
-
-    pub fn syn_text(s: kayak_rt::data::DataAt<'static, Syn>) -> Str {
-        let tagcase_ = s;
-        if made__load__0__expander_kc::Syn::__is_Atom(tagcase_) {
-            let (d, a, b, x,) = made__load__0__expander_kc::Syn::__Atom(tagcase_);
-            datum_text(d)
-        } else if made__load__0__expander_kc::Syn::__is_MxEagerReaderTypesLst(tagcase_) {
-            let (items, d, a, b, x,) = made__load__0__expander_kc::Syn::__MxEagerReaderTypesLst(tagcase_);
-            string_append(str_lit!("("), string_append(syns_text(items), str_lit!(")")))
-        } else if made__load__0__expander_kc::Syn::__is_Dotted(tagcase_) {
-            let (items, tail, d, a, b, x,) = made__load__0__expander_kc::Syn::__Dotted(tagcase_);
-            string_append(str_lit!("("), string_append(syns_text(items), string_append(str_lit!(" . "), string_append(syn_text(tail), str_lit!(")")))))
-        } else if made__load__0__expander_kc::Syn::__is_Vec(tagcase_) {
-            let (items, d, a, b, x,) = made__load__0__expander_kc::Syn::__Vec(tagcase_);
-            string_append(str_lit!("#("), string_append(syns_text(items), str_lit!(")")))
-        } else { kayak_rt::data::no_variant() }
-    }
-
-    pub fn syns_text(xs: SynsA) -> Str {
-        if null_p(xs) {
-            str_lit!("")
-        } else if null_p(cdr(xs)) {
-            syn_text(car(xs))
-        } else {
-            string_append(syn_text(car(xs)), string_append(str_lit!(" "), syns_text(cdr(xs))))
-        }
-    }
-
     pub fn copy_sources<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut from: Array<Product_11_12<Int, Int>>, mut to: Array<Product_11_12<Int, Int>>, mut i: Int) -> () {
         loop {
             if _eq(i, array_length(from)) {
@@ -21622,7 +22555,7 @@ pub mod made__load__1__expand {
     pub fn macro_of_defined(mut n: Symbol, mut ms: MacroEnv) -> List<Macro> {
         loop {
             if null_p(ms) {
-                return nil::<Product_11_12_13_14<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Int>>();
+                return nil::<Product_11_12_13_14<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Int>>();
             } else if symbol_eq_p(n, car(ms).0) {
                 return kayak_rt::heap_cons(car(ms).1, kayak_rt::nil());
             } else {
@@ -21635,7 +22568,7 @@ pub mod made__load__1__expand {
     pub fn procedural_in(mut n: Symbol, mut ps: List<Procedural>) -> List<Product_11_12_13_14_15<Int, Str, DefEnv, bool, List<Str>>> {
         loop {
             if null_p(ps) {
-                return nil::<Product_11_12_13_14_15<Int, Str, Product_11_12_13<Int, Symbol, List<Symbol>>, bool, List<Str>>>();
+                return nil::<Product_11_12_13_14_15<Int, Str, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>, bool, List<Str>>>();
             } else if symbol_eq_p(n, car(ps).0) {
                 return kayak_rt::heap_cons(Product_11_12_13_14_15(car(ps).1, car(ps).2, car(ps).3, car(ps).4, car(ps).5), kayak_rt::nil());
             } else {
@@ -21650,7 +22583,7 @@ pub mod made__load__1__expand {
         if (not(null_p(m)) && (_eq(car(m).3, int_lit(3)) || null_p(car(m).1))) {
             procedural_in(n, get(maker_st.procedurals.get().unwrap()))
         } else {
-            nil::<Product_11_12_13_14_15<Int, Str, Product_11_12_13<Int, Symbol, List<Symbol>>, bool, List<Str>>>()
+            nil::<Product_11_12_13_14_15<Int, Str, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>, bool, List<Str>>>()
         }
     }
 
@@ -22019,7 +22952,7 @@ pub mod made__load__1__expand {
         Ok((reserved_p(mxp, maker_st, n) || desc_word_p(mxp, maker_st, n, true) || type_form_p(mxp, maker_st, n) || named_p(n, kernel_sigs(mxp, maker_st, mx_fail)?) || named_p(n, kernel_definitions(mxp, maker_st, mx_fail)?) || string_eq_p(n, str_lit!("else")) || string_eq_p(n, str_lit!("=>")) || string_eq_p(n, str_lit!("quote")) || string_eq_p(n, str_lit!("quasiquote")) || string_eq_p(n, str_lit!("unquote")) || string_eq_p(n, str_lit!("unquote-splicing")) || string_eq_p(n, str_lit!("syntax-rules")) || string_eq_p(n, str_lit!("trailmark")) || _gt_eq(style_named(n), int_lit(0)) || macro_p(mxp, maker_st, string_to_symbol(n))))
     }
 
-    pub fn unaliased(s: kayak_rt::data::DataAt<'static, Syn>) -> kayak_rt::data::DataAt<'static, Syn> {
+    pub fn mx_procedural_unaliased(s: kayak_rt::data::DataAt<'static, Syn>) -> kayak_rt::data::DataAt<'static, Syn> {
         let tagcase_ = s;
         if made__load__0__expander_kc::Syn::__is_Atom(tagcase_) {
             let (d, a, b, x,) = made__load__0__expander_kc::Syn::__Atom(tagcase_);
@@ -22039,7 +22972,7 @@ pub mod made__load__1__expand {
             mx_eager_reader_types_lst(xs, kayak_rt::value::list(syn_datums(xs)), a, b, x)
         } else if made__load__0__expander_kc::Syn::__is_Dotted(tagcase_) {
             let (items, tail, d, a, b, x,) = made__load__0__expander_kc::Syn::__Dotted(tagcase_);
-            let (xs, t) = (unaliased_each(items), unaliased(tail));
+            let (xs, t) = (unaliased_each(items), mx_procedural_unaliased(tail));
             dotted(xs, t, mx_datum_dotted(syn_datums(xs), syn_to_datum(t)), a, b, x)
         } else if made__load__0__expander_kc::Syn::__is_Vec(tagcase_) {
             let (items, d, a, b, x,) = made__load__0__expander_kc::Syn::__Vec(tagcase_);
@@ -22053,7 +22986,7 @@ pub mod made__load__1__expand {
         if null_p(xs) {
             nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>()
         } else {
-            kayak_rt::heap_cons(unaliased(car(xs)), unaliased_each(cdr(xs)))
+            kayak_rt::heap_cons(mx_procedural_unaliased(car(xs)), unaliased_each(cdr(xs)))
         }
     }
 
@@ -22081,7 +23014,7 @@ pub mod made__load__1__expand {
                 base
             };
             if (string_eq_p(h, str_lit!("quote")) || string_eq_p(h, str_lit!("quasiquote"))) {
-                Ok(unaliased(s))
+                Ok(mx_procedural_unaliased(s))
             } else {
                 let xs = keywords_each(mxp, maker_st, mx_fail, items)?;
                 Ok(mx_eager_reader_types_lst(xs, kayak_rt::value::list(syn_datums(xs)), a, b, x))
@@ -22155,14 +23088,14 @@ pub mod made__load__1__expand {
         let in_use = kayak_rt::closure1((mx_fail, name, a, b,), |(mx_fail, name, a, b,), m: Str| {
             Ok(match mx_fail.call(string_append(str_lit!("a use of `"), string_append(symbol_to_string(name), string_append(str_lit!("`: "), m))), a, b)? {})
         });
-        let opened = kayak_rt::closure1((mxp, maker_st, mx_fail, made, style,), |(mxp, maker_st, mx_fail, made, style,), at: kayak_rt::data::DataAt<'static, Syn>| {
-            Ok(keywords(mxp, maker_st, mx_fail, if _eq(style, int_lit(1)) {
+        let opened = kayak_rt::closure1((mxp, maker_st, mx_fail, made, p, style,), |(mxp, maker_st, mx_fail, made, p, style,), at: kayak_rt::data::DataAt<'static, Syn>| {
+            Ok(keywords(mxp, maker_st, mx_fail, file_macros(mxp, maker_st, if _eq(style, int_lit(1)) {
                 closed(mxp, maker_st, mx_fail, at, true, made)?
             } else if _eq(style, int_lit(2)) {
                 closed(mxp, maker_st, mx_fail, at, false, made)?
             } else {
                 tagged(mxp, maker_st, at, made)
-            })?)
+            }, p.2.3, made))?)
         });
         let tagcase_ = mx_call_procedural(style, p.1, syn_to_datum(s), mx_fresh_tag_of(mxp, maker_st, made), p.4);
         let tag_ = kayak_rt::sum_tag(tagcase_);
@@ -22211,7 +23144,7 @@ pub mod made__load__1__expand {
             Ok(expand_procedural(mxp, maker_st, mx_fail, name, s, made)?)
         } else {
             nodes_reset_x(mxp, maker_st);
-            align(mxp, maker_st, in_use, int_lit(2), the::<Pvars>(nil::<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>()), sig, operands, int_lit(-1), nil::<bool>())?;
+            align(mxp, maker_st, in_use, int_lit(2), the::<Pvars>(nil::<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>()), sig, operands, int_lit(-1), nil::<bool>())?;
             let out = expand_procedural(mxp, maker_st, mx_fail, name, s, made)?;
             if _eq(get(maker_st.mx_procedural_contracts.get().unwrap()), int_lit(0)) {
                 Ok(out)
@@ -22219,7 +23152,7 @@ pub mod made__load__1__expand {
                 let held = if defn {
                     defined_held(mxp, maker_st, at_use, sig, operands, out, made)?;
                     nodes_reset_x(mxp, maker_st);
-                    align(mxp, maker_st, in_use, int_lit(2), the::<Pvars>(nil::<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>()), sig, operands, int_lit(-1), nil::<bool>())?
+                    align(mxp, maker_st, in_use, int_lit(2), the::<Pvars>(nil::<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>()), sig, operands, int_lit(-1), nil::<bool>())?
                 } else {
                     int_lit(0)
                 };
@@ -22368,7 +23301,7 @@ pub mod made__load__1__expand {
                 })
             } else {
                 in_use
-            }, int_lit(2), the::<Pvars>(nil::<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>()), sig, operands, int_lit(-1), nil::<bool>())?;
+            }, int_lit(2), the::<Pvars>(nil::<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>()), sig, operands, int_lit(-1), nil::<bool>())?;
             Ok(())
         }
     }
@@ -22413,17 +23346,9 @@ pub mod made__load__1__expand {
         (null_p(get(maker_st.phase1_forms.get().unwrap())) && null_p(get(maker_st.procedurals.get().unwrap())))
     }
 
-    #[inline]
-    pub fn syns_texts(xs: SynsA) -> List<Str> {
-        if null_p(xs) {
-            nil::<Str>()
-        } else {
-            kayak_rt::heap_cons(syn_text(car(xs)), syns_texts(cdr(xs)))
-        }
-    }
-
-    pub fn for_syntax_x<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::data::DataAt<'static, Syn>) -> Result<(), Unwind> {
-        let fs = append(get(maker_st.phase1_forms.get().unwrap()), syns_texts({
+    pub fn for_syntax_x<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::data::DataAt<'static, Syn>, dir: Str) -> Result<(), Unwind> {
+        let old = get(maker_st.phase1_forms.get().unwrap());
+        let new = {
             let tagcase_ = s;
             if made__load__0__expander_kc::Syn::__is_MxEagerReaderTypesLst(tagcase_) {
                 let (items, d, a, b, x,) = made__load__0__expander_kc::Syn::__MxEagerReaderTypesLst(tagcase_);
@@ -22432,7 +23357,8 @@ pub mod made__load__1__expand {
                 let y = tagcase_;
                 nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>()
             }
-        }));
+        };
+        let fs = append(old, phase1_forms_of(dir, new));
         let tagcase_ = mx_procedural_run(mxp, maker_st, forms_text(fs));
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("ok") } {
@@ -22440,7 +23366,8 @@ pub mod made__load__1__expand {
             Ok(set(maker_st.phase1_forms.get().unwrap(), fs))
         } else if tag_ == const { kayak_rt::tag_hash("failed") } {
             let why: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-            Ok(match mx_fail.call(string_append(str_lit!("`begin-for-syntax`: "), why), syn_start(s), syn_end(s))? {})
+            let at = refused_part(s, new, _minus(length(fs), length(new)), mx_written_refusal_place(why));
+            Ok(match mx_fail.call(string_append(str_lit!("`begin-for-syntax`: "), refusal_message(why)), syn_start(at), syn_end(at))? {})
         } else { unreachable!() }
     }
 
@@ -22507,7 +23434,7 @@ pub mod made__load__1__expand {
             if tag_ == const { kayak_rt::tag_hash("ok") } {
                 let v: Str = kayak_rt::sum_payload::<Str>(tagcase_);
                 set(maker_st.procedurals.get().unwrap(), cons(Product_11_12_13_14_15_16(syn_symbol(mxp, maker_st, name)?, p.1, text, e, not(null_p(signed)), get(maker_st.phase1_forms.get().unwrap())), get(maker_st.procedurals.get().unwrap())));
-                set(maker_st.defined.get().unwrap(), cons(Product_11_12(syn_symbol(mxp, maker_st, name)?, the::<Macro>(Product_11_12_13_14(sig, the::<Clauses>(nil::<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>()), the::<SynsA>(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>()), if null_p(signed) {
+                set(maker_st.defined.get().unwrap(), cons(Product_11_12(syn_symbol(mxp, maker_st, name)?, the::<Macro>(Product_11_12_13_14(sig, the::<Clauses>(nil::<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>()), the::<SynsA>(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>()), if null_p(signed) {
                     int_lit(3)
                 } else {
                     car(signed).2
@@ -22525,11 +23452,11 @@ pub mod made__load__1__expand {
         if null_p(file) {
             get(maker_st.def_env_now.get().unwrap())
         } else {
-            Product_11_12_13(if _eq(get(maker_st.def_env_now.get().unwrap()).0, int_lit(3)) {
+            Product_11_12_13_14_15_16_17(if _eq(get(maker_st.def_env_now.get().unwrap()).0, int_lit(3)) {
                 int_lit(3)
             } else {
                 int_lit(1)
-            }, car(file).0, car(file).1)
+            }, car(file).0, car(file).1, car(file).3, car(file).5, car(file).6, car(file).7)
         }
     }
 
@@ -22545,9 +23472,9 @@ pub mod made__load__1__expand {
 
     pub fn file_scope_begin_x<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>) -> ScopeSaved {
         let saved = Product_11_12_13_14_15(get(maker_st.defined.get().unwrap()), get(maker_st.procedurals.get().unwrap()), get(maker_st.def_env_now.get().unwrap()), get(maker_st.marks.get().unwrap()), get(maker_st.phase1_forms.get().unwrap()));
-        set(maker_st.defined.get().unwrap(), nil::<Product_11_12<Symbol, Product_11_12_13_14<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Int>>>());
-        set(maker_st.procedurals.get().unwrap(), nil::<Product_11_12_13_14_15_16<Symbol, Int, Str, Product_11_12_13<Int, Symbol, List<Symbol>>, bool, List<Str>>>());
-        set(maker_st.def_env_now.get().unwrap(), Product_11_12_13(int_lit(2), kayak_rt::sym_lit!("within"), nil::<Symbol>()));
+        set(maker_st.defined.get().unwrap(), nil::<Product_11_12<Symbol, Product_11_12_13_14<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Int>>>());
+        set(maker_st.procedurals.get().unwrap(), nil::<Product_11_12_13_14_15_16<Symbol, Int, Str, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>, bool, List<Str>>>());
+        set(maker_st.def_env_now.get().unwrap(), Product_11_12_13_14_15_16_17(int_lit(2), kayak_rt::sym_lit!("within"), nil::<Symbol>(), nil::<Product_11_12<Symbol, Symbol>>(), kayak_rt::sym_lit!("-"), nil::<Symbol>(), nil::<Symbol>()));
         set(maker_st.phase1_forms.get().unwrap(), nil::<Str>());
         set(maker_st.marks.get().unwrap(), nil::<Product_11_12<Symbol, Int>>());
         saved
@@ -22628,6 +23555,33 @@ pub mod made__load__1__expand {
             nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>()
         } else {
             cons(in_expansion(mxp, maker_st, car(xs), made), each_in(mxp, maker_st, cdr(xs), made))
+        }
+    }
+
+    pub fn frame_selected<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, act: List<kayak_rt::data::DataAt<'static, Action>>, t: kayak_rt::data::DataAt<'static, Syn>, made: Int) -> List<kayak_rt::data::DataAt<'static, Syn>> {
+        if (null_p(act) || not(syn_symbol_p(t))) {
+            nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>()
+        } else {
+            let tagcase_ = car(act);
+            if made__load__0__expander_kc::Action::__is_ActFrameType(tagcase_) {
+                let (m, f, i,) = made__load__0__expander_kc::Action::__ActFrameType(tagcase_);
+                let a = source_key(mxp, maker_st, syn_start(t), made);
+                let b = source_key(mxp, maker_st, syn_end(t), made);
+                let at = kayak_rt::closure1s((made, a, b,), |(made, a, b,), s: Symbol| {
+                    atom(kayak_rt::value::ToValue::to_value(s), a, b, made)
+                });
+                let lib = at.call(if i {
+                    string_to_symbol(mx_procedural_alias(mxp, maker_st, symbol_to_string(m), made))
+                } else {
+                    m
+                });
+                let w = list_at(a, b, made, kayak_rt::cons(at.call(kayak_rt::sym_lit!("with")), kayak_rt::cons(lib, kayak_rt::cons(at.call(f), kayak_rt::nil()))), nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>());
+                let ft = at.call(string_to_symbol(string_append(str_lit!("%ft:"), syn_name(t))));
+                kayak_rt::cons(list_at(a, b, made, kayak_rt::cons(at.call(kayak_rt::sym_lit!("select")), kayak_rt::cons(w, kayak_rt::cons(ft, kayak_rt::nil()))), nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>()), kayak_rt::nil())
+            } else {
+                let y = tagcase_;
+                nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>()
+            }
         }
     }
 
@@ -22827,7 +23781,7 @@ pub mod made__load__1__expand {
         Ok(false)
     }
 
-    pub fn inside_said(mut ls: List<Link>, mut k: Int, mut out: Str) -> Str {
+    pub fn mx_procedural_inside_said(mut ls: List<Link>, mut k: Int, mut out: Str) -> Str {
         loop {
             if (null_p(ls) || _eq(k, int_lit(0))) {
                 return out;
@@ -22845,9 +23799,9 @@ pub mod made__load__1__expand {
     pub fn use_entered_p<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, n: Symbol, s: kayak_rt::data::DataAt<'static, Syn>, fuel: Int) -> Result<bool, Unwind> {
         let (ls, shown) = (get(maker_st.chain.get().unwrap()), string_append(str_lit!("`"), string_append(symbol_to_string(n), str_lit!("`"))));
         if _eq(fuel, int_lit(0)) {
-            Ok(limit_failed(mxp, maker_st, mx_fail, n, s, ls, string_append(str_lit!("this macro's expansion does not end: "), string_append(int_to_string(get(maker_st.max_uses.get().unwrap())), string_append(str_lit!(" uses expanded in one form, the last of "), string_append(shown, inside_said(ls, int_lit(4), str_lit!("")))))))?)
+            Ok(limit_failed(mxp, maker_st, mx_fail, n, s, ls, string_append(str_lit!("this macro's expansion does not end: "), string_append(int_to_string(get(maker_st.max_uses.get().unwrap())), string_append(str_lit!(" uses expanded in one form, the last of "), string_append(shown, mx_procedural_inside_said(ls, int_lit(4), str_lit!("")))))))?)
         } else if _eq(get(maker_st.chain_depth.get().unwrap()), get(maker_st.max_depth.get().unwrap())) {
-            Ok(limit_failed(mxp, maker_st, mx_fail, n, s, ls, string_append(str_lit!("this macro's expansion does not end: its uses are "), string_append(int_to_string(get(maker_st.max_depth.get().unwrap())), string_append(str_lit!(" deep, each in the "), string_append(str_lit!("expansion of the one before, the last of "), string_append(shown, inside_said(ls, int_lit(4), str_lit!(""))))))))?)
+            Ok(limit_failed(mxp, maker_st, mx_fail, n, s, ls, string_append(str_lit!("this macro's expansion does not end: its uses are "), string_append(int_to_string(get(maker_st.max_depth.get().unwrap())), string_append(str_lit!(" deep, each in the "), string_append(str_lit!("expansion of the one before, the last of "), string_append(shown, mx_procedural_inside_said(ls, int_lit(4), str_lit!(""))))))))?)
         } else {
             set(maker_st.chain.get().unwrap(), cons(Product_11_12_13(n, s, int_lit(-1)), ls));
             set(maker_st.chain_depth.get().unwrap(), _plus(get(maker_st.chain_depth.get().unwrap()), int_lit(1)));
@@ -22881,7 +23835,7 @@ pub mod made__load__1__expand {
                 } else {
                     symbol_to_string(car(file).0)
                 };
-                Ok(cons(Product_11_12(n, mk_list(kayak_rt::cons(mk_symbol(str_lit!("select"), a, b), kayak_rt::cons(mk_symbol(m, a, b), kayak_rt::cons(ty, kayak_rt::nil()))), a, b)), rest))
+                Ok(cons(Product_11_12(n, mk_list(kayak_rt::cons(mk_symbol(str_lit!("select"), a, b), kayak_rt::cons(module_named(m, a, b), kayak_rt::cons(ty, kayak_rt::nil()))), a, b)), rest))
             }
         }
     }
@@ -22897,7 +23851,7 @@ pub mod made__load__1__expand {
     }
 
     pub fn stub(c: kayak_rt::data::DataAt<'static, Syn>) -> Clause {
-        Product_11_12_13_14_15_16_17_18(c, c, the::<Actions>(nil::<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>()), the::<Pvars>(nil::<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>()), the::<MxNodesContracts>(nil::<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>()), def_env_top(), the::<Marked>(nil::<Product_11_12<Symbol, Int>>()), the::<List<Int>>(nil::<Int>()))
+        Product_11_12_13_14_15_16_17_18(c, c, the::<Actions>(nil::<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>()), the::<Pvars>(nil::<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>()), the::<MxNodesContracts>(nil::<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>()), def_env_top(), the::<Marked>(nil::<Product_11_12<Symbol, Int>>()), the::<List<Int>>(nil::<Int>()))
     }
 
     pub fn pinfo_at<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, at: Int, f: Product_11_12_13_14<Int, kayak_rt::data::DataAt<'static, MxEnvIndexedEnv>, bool, Int>) -> Pinfo {
@@ -22942,7 +23896,7 @@ pub mod made__load__1__expand {
 
     pub fn pattern_vars<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, sig: kayak_rt::data::DataAt<'static, Sty>, pattern: kayak_rt::data::DataAt<'static, Syn>, defn: Int, lits: MxParserTypesNames) -> Result<Product_11_12<Pvars, List<MxExportsExported>>, Unwind> {
         nodes_reset_x(mxp, maker_st);
-        let root = align(mxp, maker_st, mx_fail, int_lit(0), the::<Pvars>(nil::<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>()), sig, pattern, int_lit(-1), nil::<bool>())?;
+        let root = align(mxp, maker_st, mx_fail, int_lit(0), the::<Pvars>(nil::<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>()), sig, pattern, int_lit(-1), nil::<bool>())?;
         let mx_top_said = literals_said(mxp, maker_st, mx_fail, lits, int_lit(0))?;
         let mx_nodes_found = mx_scopes_walk(mxp, maker_st, mx_fail, root, maker_st.env_empty.get().unwrap(), false, int_lit(0))?;
         let e = node_export(mxp, maker_st, root);
@@ -22951,7 +23905,7 @@ pub mod made__load__1__expand {
         } else {
             nil::<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Atm>>, List<Symbol>>>()
         };
-        Ok(Product_11_12(pvars_of(mxp, maker_st, mx_fail, mx_nodes_found, nil::<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>(), defn)?, declared))
+        Ok(Product_11_12(pvars_of(mxp, maker_st, mx_fail, mx_nodes_found, nil::<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>(), defn)?, declared))
     }
 
     pub fn action_at(mut path: Addr, mut r#as: Actions) -> List<kayak_rt::data::DataAt<'static, Action>> {
@@ -23038,13 +23992,15 @@ pub mod made__load__1__expand {
                 } else {
                     act_module_type(car(file).0)
                 }, kayak_rt::nil()))
+            } else if mx_files_name_in_p(n, car(file).7) {
+                Ok(kayak_rt::cons(act_frame_type(car(file).0, car(file).5, _eq(def_env_of_file(mxp, maker_st, file).0, int_lit(3))), kayak_rt::nil()))
             } else {
                 Ok(kayak_rt::cons(act_standard_type(), kayak_rt::nil()))
             }
-        } else if (null_p(file) || mx_files_name_in_p(n, car(file).1) || mx_files_name_in_p(n, car(file).4)) {
+        } else if (null_p(file) || mx_files_name_in_p(n, car(file).1) || mx_files_name_in_p(n, car(file).6) || mx_files_name_in_p(n, car(file).4)) {
             Ok(kayak_rt::cons(act_alias(), kayak_rt::nil()))
         } else {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(symbol_to_string(n), string_append(str_lit!("` is neither a value the file's "), string_append(str_lit!("module shows nor a standard binding: a file's macro "), str_lit!("names only those, as they are where it is imported"))))), s)? {};
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(symbol_to_string(n), string_append(str_lit!("` is neither a value the file "), string_append(str_lit!("defines nor a standard binding: a file's macro "), str_lit!("names only those, as they are where it is imported"))))), s)? {};
             Ok(kayak_rt::cons(act_alias(), kayak_rt::nil()))
         }
     }
@@ -23285,14 +24241,14 @@ pub mod made__load__1__expand {
             };
             let shown = sig_shown(mxp, maker_st, cs, sig)?;
             let s = signature_of(mxp, maker_st, said_fail(mxp, maker_st, mx_fail, n, sig_shown(mxp, maker_st, cs, car(inferred))?), sig)?;
-            set(maker_st.defined.get().unwrap(), cons(Product_11_12(car(ws).0, Product_11_12_13_14(s.1, the::<Clauses>(nil::<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>()), the::<SynsA>(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>()), s.2)), get(maker_st.defined.get().unwrap())));
+            set(maker_st.defined.get().unwrap(), cons(Product_11_12(car(ws).0, Product_11_12_13_14(s.1, the::<Clauses>(nil::<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>()), the::<SynsA>(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>()), s.2)), get(maker_st.defined.get().unwrap())));
             Ok(cons(Product_11_12(the::<SignedOpt>(kayak_rt::cons(s, kayak_rt::nil())), the::<List<Str>>(kayak_rt::cons(shown, kayak_rt::nil()))), inferred_each(mxp, maker_st, mx_fail, cdr(ws), cdr(mx_files_written), cdr(inferred))?))
         }
     }
 
     pub fn check_each<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, cs: SynsA, sig: kayak_rt::data::DataAt<'static, Sty>, defn: Int, poly: SynsA, lits: MxParserTypesNames, file: Scopes, name: Symbol) -> Result<Clauses, Unwind> {
         if null_p(cs) {
-            Ok(nil::<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>())
+            Ok(nil::<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>())
         } else {
             let c = check_clause(mxp, maker_st, mx_fail, car(cs), sig, defn, poly, lits, file, name)?;
             Ok(cons(c, check_each(mxp, maker_st, mx_fail, cdr(cs), sig, defn, poly, lits, file, name)?))
@@ -23316,7 +24272,7 @@ pub mod made__load__1__expand {
         let tagcase_ = r;
         if made__load__0__expander_kc::Presult::__is_PErr(tagcase_) {
             let (m, x, y,) = made__load__0__expander_kc::Presult::__PErr(tagcase_);
-            Ok(the::<List<Clauses>>(nil::<List<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>>()))
+            Ok(the::<List<Clauses>>(nil::<List<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>>()))
         } else if made__load__0__expander_kc::Presult::__is_POk(tagcase_) {
             let (ts,) = made__load__0__expander_kc::Presult::__POk(tagcase_);
             Ok(get(maker_st.tried_checks.get().unwrap()))
@@ -23334,7 +24290,7 @@ pub mod made__load__1__expand {
         if null_p(s) {
             Ok(nil::<Product_11_12_13<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, Int>>())
         } else {
-            set(maker_st.defined.get().unwrap(), cons(Product_11_12(w.0, Product_11_12_13_14(car(s).1, the::<Clauses>(nil::<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>()), the::<SynsA>(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>()), car(s).2)), get(maker_st.defined.get().unwrap())));
+            set(maker_st.defined.get().unwrap(), cons(Product_11_12(w.0, Product_11_12_13_14(car(s).1, the::<Clauses>(nil::<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>()), the::<SynsA>(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>()), car(s).2)), get(maker_st.defined.get().unwrap())));
             if null_p(tried_check(mxp, maker_st, w, car(s), file)?) {
                 set(maker_st.defined.get().unwrap(), was);
                 Ok(nil::<Product_11_12_13<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, Int>>())
@@ -23346,7 +24302,7 @@ pub mod made__load__1__expand {
 
     pub fn checked_each<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ws: Writtens, sigs: List<MxTopSaid>, file: Scopes) -> Result<MacroEnv, Unwind> {
         if null_p(ws) {
-            Ok(nil::<Product_11_12<Symbol, Product_11_12_13_14<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Int>>>())
+            Ok(nil::<Product_11_12<Symbol, Product_11_12_13_14<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Int>>>())
         } else {
             let w = car(ws);
             let s0 = car(car(sigs).0);
@@ -23409,7 +24365,7 @@ pub mod made__load__1__expand {
     pub fn state_at(mut s: Int, mut xs: ByStates) -> ByStates {
         loop {
             if null_p(xs) {
-                return nil::<Product_11_12_13_14_15_16_17<Int, List<Product_11_12<Symbol, Product_11_12_13_14<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Int>>>, List<Product_11_12<Symbol, Str>>, List<Symbol>, List<Product_11_12<Int, Int>>, List<Product_11_12<Symbol, Int>>, Product_11_12<List<Str>, List<Product_11_12_13_14_15_16<Symbol, Int, Str, Product_11_12_13<Int, Symbol, List<Symbol>>, bool, List<Str>>>>>>();
+                return nil::<Product_11_12_13_14_15_16_17<Int, List<Product_11_12<Symbol, Product_11_12_13_14<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Int>>>, List<Product_11_12<Symbol, Str>>, List<Symbol>, List<Product_11_12<Int, Int>>, List<Product_11_12<Symbol, Int>>, Product_11_12<List<Str>, List<Product_11_12_13_14_15_16<Symbol, Int, Str, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>, bool, List<Str>>>>>>();
             } else if _eq(s, car(xs).0) {
                 return the::<ByStates>(kayak_rt::heap_cons(car(xs), kayak_rt::nil()));
             } else {
@@ -23423,12 +24379,12 @@ pub mod made__load__1__expand {
         let at = state_at(s, get(maker_st.by_state.get().unwrap()));
         set(maker_st.with_uses.get().unwrap(), nil::<Product_11_12_13_14_15_16<Int, Int, Symbol, Int, Int, Int>>());
         if null_p(at) {
-            set(maker_st.defined.get().unwrap(), nil::<Product_11_12<Symbol, Product_11_12_13_14<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Int>>>());
+            set(maker_st.defined.get().unwrap(), nil::<Product_11_12<Symbol, Product_11_12_13_14<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Int>>>());
             set(maker_st.loads.get().unwrap(), nil::<Product_11_12<Symbol, Str>>());
             set(maker_st.mx_top_globals.get().unwrap(), nil::<Symbol>());
             seen_x(mxp, maker_st, nil::<Product_11_12<Int, Int>>());
             set(maker_st.marks.get().unwrap(), nil::<Product_11_12<Symbol, Int>>());
-            phase1_state_x(mxp, maker_st, Product_11_12(nil::<Str>(), nil::<Product_11_12_13_14_15_16<Symbol, Int, Str, Product_11_12_13<Int, Symbol, List<Symbol>>, bool, List<Str>>>()))
+            phase1_state_x(mxp, maker_st, Product_11_12(nil::<Str>(), nil::<Product_11_12_13_14_15_16<Symbol, Int, Str, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>, bool, List<Str>>>()))
         } else {
             set(maker_st.defined.get().unwrap(), car(at).1);
             set(maker_st.loads.get().unwrap(), car(at).2);
@@ -23707,8 +24663,11 @@ pub mod made__load__1__expand {
                 str_lit!("")
             }
         };
+        let framed = frame_selected(mxp, maker_st, act, t, made);
         if not(string_eq_p(typed, str_lit!(""))) {
             Ok(selected(mxp, maker_st, string_to_symbol(typed), t, made))
+        } else if not(null_p(framed)) {
+            Ok(car(framed))
         } else if syn_symbol_p(t) {
             let a = source_key(mxp, maker_st, ta, made);
             let b = source_key(mxp, maker_st, tb, made);
@@ -24013,7 +24972,7 @@ pub mod made__load__1__expand {
         } else if string_eq_p(head, str_lit!("begin")) {
             Ok(expand_defns(mxp, maker_st, mx_fail, cdr(items))?)
         } else if (string_eq_p(head, str_lit!("define-syntax")) || string_eq_p(head, str_lit!("define-syntax-rec"))) {
-            made_syntax_add_x(mxp, maker_st, define_macro(mxp, maker_st, mx_fail, s, nil::<Product_11_12_13_14_15<Symbol, List<Symbol>, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, List<Symbol>>>())?);
+            made_syntax_add_x(mxp, maker_st, define_macro(mxp, maker_st, mx_fail, s, nil::<Product_11_12_13_14_15_16_17_18<Symbol, List<Symbol>, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, List<Symbol>, Symbol, List<Symbol>, List<Symbol>>>())?);
             Ok(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>())
         } else {
             Ok(kayak_rt::cons(expand_in(mxp, maker_st, mx_fail, s, nil::<Product_11_12<Int, Int>>())?, kayak_rt::nil()))
@@ -24218,14 +25177,14 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn hole_scope<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, c: Clause, n: Symbol, levels: Levels, ps: Pvars) -> Result<ScopeVars, Unwind> {
-        if null_p(levels) {
+    pub fn hole_scope<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, c: Clause, n: Symbol, mx_env_types_levels: MxEnvTypesLevels, ps: Pvars) -> Result<ScopeVars, Unwind> {
+        if null_p(mx_env_types_levels) {
             Ok(nil::<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>())
         } else {
-            let tagcase_ = car(levels);
-            if made__load__0__expander_kc::Level::__is_LvRib(tagcase_) {
-                let (r#as,) = made__load__0__expander_kc::Level::__LvRib(tagcase_);
-                Ok(append(rib_scope(mxp, maker_st, mx_fail, c, n, r#as, ps)?, hole_scope(mxp, maker_st, mx_fail, c, n, cdr(levels), ps)?))
+            let tagcase_ = car(mx_env_types_levels);
+            if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvRib(tagcase_) {
+                let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvRib(tagcase_);
+                Ok(append(rib_scope(mxp, maker_st, mx_fail, c, n, r#as, ps)?, hole_scope(mxp, maker_st, mx_fail, c, n, cdr(mx_env_types_levels), ps)?))
             } else {
                 let y = tagcase_;
                 match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(symbol_to_string(n), string_append(str_lit!("` is in the scope of a "), string_append(str_lit!("part's ribcage: not yet where a macro's parts "), str_lit!("are typed"))))), pattern_place(mxp, maker_st, c, n)?)? {};
@@ -24418,6 +25377,65 @@ pub mod made__load__1__expand {
         }
     }
 
+    #[inline]
+    pub fn path_at(lib: Str) -> Int {
+        string_search(lib, str_lit!("::"), int_lit(0))
+    }
+
+    pub fn step_load<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut n: Symbol, mut xs: SynsA, mut out: SynsA) -> Result<SynsA, Unwind> {
+        loop {
+            if null_p(xs) {
+                return Ok(out);
+            } else {
+                let items = proper(car(xs));
+                (xs, out) = (cdr(xs), if (_gt_eq(len(items), int_lit(3)) && string_eq_p(mx_files_head_name(car(xs)), str_lit!("define")) && syn_symbol_p(nth(items, int_lit(1))) && symbol_eq_p(n, syn_symbol(mxp, maker_st, nth(items, int_lit(1)))?)) {
+                    if _lt_eq(len(items), int_lit(4)) {
+                        load_form_of(nth(items, _minus(len(items), int_lit(1))))
+                    } else {
+                        nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>()
+                    }
+                } else {
+                    out
+                });
+                continue;
+            }
+        }
+    }
+
+    pub fn no_step(lib: Str, path: Str, step: Str) -> Str {
+        string_append(str_lit!("`"), string_append(lib, string_append(str_lit!("`: `"), string_append(path, string_append(str_lit!("` defines no `"), string_append(step, string_append(str_lit!("` as `(load-module \"path\")` or an "), string_append(str_lit!("instance of one, `((load-module \"path\") arg …)`, which `import-with-syntax` "), str_lit!("of a path reads the macros of")))))))))
+    }
+
+    pub fn path_file<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut form: kayak_rt::data::DataAt<'static, Syn>, mut lib: Str, mut f: LoadedFile, mut start: Int, mut fs: Files) -> Result<Files, Unwind> {
+        loop {
+            let k = string_search(lib, str_lit!("::"), start);
+            let end = if _lt(k, int_lit(0)) {
+                string_length(lib)
+            } else {
+                k
+            };
+            let step = substring(lib, start, end);
+            let load = step_load(mxp, maker_st, string_to_symbol(step), raw_forms(mxp, maker_st, f), nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>())?;
+            let g = if null_p(load) {
+                nil::<Product_11_12_13_14_15_16_17_18<Int, Int, Str, Str, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Str, Str, bool>>()
+            } else {
+                mx_files_read_at(syn_start(car(load)), fs)
+            };
+            if null_p(load) {
+                match fail_at(mxp, maker_st, mx_fail, no_step(lib, f.3, step), form)? {};
+                return Ok(nil::<Product_11_12_13_14_15_16_17_18<Int, Int, Str, Str, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Str, Str, bool>>());
+            } else if null_p(g) {
+                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("cannot read `"), string_append(step, str_lit!("`'s file"))), form)? {};
+                return Ok(nil::<Product_11_12_13_14_15_16_17_18<Int, Int, Str, Str, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Str, Str, bool>>());
+            } else if _lt(k, int_lit(0)) {
+                return Ok(g);
+            } else {
+                (f, start) = (car(g), _plus(k, int_lit(2)));
+                continue;
+            }
+        }
+    }
+
     pub fn taken_names<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut ns: MxParserTypesNames, mut mx_files_filter: List<MxFilesFilter>) -> Result<MxParserTypesNames, Unwind> {
         loop {
             if null_p(ns) {
@@ -24564,6 +25582,29 @@ pub mod made__load__1__expand {
         }
     }
 
+    pub fn procedural_entry(mut n: Symbol, mut ps: List<Procedural>) -> List<Procedural> {
+        loop {
+            if null_p(ps) {
+                return nil::<Product_11_12_13_14_15_16<Symbol, Int, Str, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>, bool, List<Str>>>();
+            } else if symbol_eq_p(n, car(ps).0) {
+                return kayak_rt::heap_cons(car(ps), kayak_rt::nil());
+            } else {
+                ps = cdr(ps);
+                continue;
+            }
+        }
+    }
+
+    pub fn procedural_as_x<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, n: Symbol, i: Symbol) -> () {
+        let p = procedural_entry(n, get(maker_st.procedurals.get().unwrap()));
+        if null_p(p) {
+            ()
+        } else {
+            let e = car(p);
+            set(maker_st.procedurals.get().unwrap(), cons(Product_11_12_13_14_15_16(i, e.1, e.2, e.3, e.4, e.5), get(maker_st.procedurals.get().unwrap())))
+        }
+    }
+
     pub fn by_internal_each<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut ns: MxParserTypesNames, mut internal: List<Product_11_12<Symbol, Symbol>>) -> () {
         loop {
             if null_p(ns) {
@@ -24575,7 +25616,8 @@ pub mod made__load__1__expand {
                 } else if _gt(k, int_lit(0)) {
                     set(maker_st.marks.get().unwrap(), cons(Product_11_12(car(i), k), get(maker_st.marks.get().unwrap())))
                 } else if not(null_p(m)) {
-                    set(maker_st.defined.get().unwrap(), cons(Product_11_12(car(i), car(m)), get(maker_st.defined.get().unwrap())))
+                    set(maker_st.defined.get().unwrap(), cons(Product_11_12(car(i), car(m)), get(maker_st.defined.get().unwrap())));
+                    procedural_as_x(mxp, maker_st, car(ns), car(i))
                 } else {
                     ()
                 };
@@ -24605,7 +25647,7 @@ pub mod made__load__1__expand {
     pub fn internal_macros(mut own: MacroEnv) -> MacroEnv {
         loop {
             if null_p(own) {
-                return nil::<Product_11_12<Symbol, Product_11_12_13_14<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Int>>>();
+                return nil::<Product_11_12<Symbol, Product_11_12_13_14<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Int>>>();
             } else if internal_name_p(car(own).0) {
                 return kayak_rt::heap_cons(car(own), internal_macros(cdr(own)));
             } else {
@@ -24703,7 +25745,8 @@ pub mod made__load__1__expand {
             } else {
                 car(inst)
             };
-            let mx_nodes_scope = Product_11_12_13_14_15(shared, shown.0, shown.1, internal, get(maker_st.standard_names.get().unwrap()));
+            let frame = frame_of(mxp, maker_st, forms)?;
+            let mx_nodes_scope = Product_11_12_13_14_15_16_17_18(shared, shown.0, shown.1, internal, get(maker_st.standard_names.get().unwrap()), frame.0, frame.1, frame.2);
             Ok(define_file(mxp, maker_st, in_file, forms, mx_nodes_scope, mx_files_filter, fs, ikey, prefix, if null_p(inst) {
                 int_lit(1)
             } else {
@@ -24718,10 +25761,10 @@ pub mod made__load__1__expand {
 
     pub fn define_file<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, forms: SynsA, mx_nodes_scope: MxNodesScope, mx_files_filter: List<MxFilesFilter>, fs: Files, key: Str, prefix: Str, kind: Int, first: kayak_rt::data::DataAt<'static, Syn>) -> Result<MxImportsGiven, Unwind> {
         let (program, program_marks, program_phase1, program_env, keys) = (get(maker_st.defined.get().unwrap()), get(maker_st.marks.get().unwrap()), phase1_forms_now(mxp, maker_st), def_env_is(mxp, maker_st), file_keys_begin_x(mxp, maker_st, prefix));
-        set(maker_st.defined.get().unwrap(), nil::<Product_11_12<Symbol, Product_11_12_13_14<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Int>>>());
+        set(maker_st.defined.get().unwrap(), nil::<Product_11_12<Symbol, Product_11_12_13_14<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Int>>>());
         set(maker_st.marks.get().unwrap(), nil::<Product_11_12<Symbol, Int>>());
         phase1_forms_x(mxp, maker_st, nil::<Str>());
-        def_env_now_x(mxp, maker_st, Product_11_12_13(kind, mx_nodes_scope.0, mx_nodes_scope.1));
+        def_env_now_x(mxp, maker_st, Product_11_12_13_14_15_16_17(kind, mx_nodes_scope.0, mx_nodes_scope.1, mx_nodes_scope.3, mx_nodes_scope.5, mx_nodes_scope.6, mx_nodes_scope.7));
         let st = define_forms(mxp, maker_st, mx_fail, forms, false, mx_nodes_scope, fs, key, Product_11_12_13(mx_nodes_scope.3, nil::<Product_11_12<Symbol, bool>>(), nil::<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>()))?;
         let own = get(maker_st.defined.get().unwrap());
         let own_marks = get(maker_st.marks.get().unwrap());
@@ -24753,10 +25796,10 @@ pub mod made__load__1__expand {
         if (not(h) && hide_form_p(x)) {
             Ok(define_forms(mxp, maker_st, mx_fail, cdr(proper(x)), true, mx_nodes_scope, fs, key, st)?)
         } else if for_syntax_p(x) {
-            for_syntax_x(mxp, maker_st, mx_fail, x)?;
+            for_syntax_x(mxp, maker_st, mx_fail, x, key_dir(key))?;
             Ok(st)
         } else if defines_syntax_p(x) {
-            let ns = define_macro(mxp, maker_st, mx_fail, x, kayak_rt::cons(Product_11_12_13_14_15(mx_nodes_scope.0, mx_nodes_scope.1, mx_nodes_scope.2, internal, mx_nodes_scope.4), kayak_rt::nil()))?;
+            let ns = define_macro(mxp, maker_st, mx_fail, x, kayak_rt::cons(Product_11_12_13_14_15_16_17_18(mx_nodes_scope.0, mx_nodes_scope.1, mx_nodes_scope.2, internal, mx_nodes_scope.4, mx_nodes_scope.5, mx_nodes_scope.6, mx_nodes_scope.7), kayak_rt::nil()))?;
             by_internal_each(mxp, maker_st, ns, internal);
             Ok(Product_11_12_13(internal, onto_mades(ns, h, made), ls))
         } else if imports_syntax_p(x) {
@@ -24807,34 +25850,47 @@ pub mod made__load__1__expand {
         let items = proper(form);
         let a = syn_start(form);
         let b = syn_end(form);
-        if not(((_eq(len(items), int_lit(2)) || _eq(len(items), int_lit(3))) && syn_symbol_p(nth(items, int_lit(1))))) {
+        let named = if (_eq(len(items), int_lit(2)) || _eq(len(items), int_lit(3))) {
+            import_named(nth(items, int_lit(1)))
+        } else {
+            str_lit!("")
+        };
+        if string_eq_p(named, str_lit!("")) {
             match fail_at(mxp, maker_st, mx_fail, maker_st.import_usage.get().unwrap(), form)? {};
             Ok(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>())
         } else {
-            let lib = syn_symbol(mxp, maker_st, nth(items, int_lit(1)))?;
+            let lib = string_to_symbol(named);
+            let root = module_root(lib);
             let mx_files_filter = if _eq(len(items), int_lit(3)) {
                 the::<List<MxFilesFilter>>(kayak_rt::cons(name_filter(mxp, maker_st, mx_fail, nth(items, int_lit(2)))?, kayak_rt::nil()))
             } else {
                 nil::<Product_11_12<bool, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>()
             };
-            let path = mx_files_load_of(lib, get(maker_st.loads.get().unwrap()));
+            let path = mx_files_load_of(root, get(maker_st.loads.get().unwrap()));
             if null_p(path) {
-                match fail_at(mxp, maker_st, mx_fail, not_load(lib), form)? {};
+                match fail_at(mxp, maker_st, mx_fail, not_load(root), form)? {};
                 Ok(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>())
             } else {
-                let f = loaded_path(car(path), fs);
-                if null_p(f) {
+                let f0 = loaded_path(car(path), fs);
+                let f = if (null_p(f0) || symbol_eq_p(root, lib)) {
+                    f0
+                } else {
+                    path_file(mxp, maker_st, mx_fail, form, named, car(f0), _plus(path_at(named), int_lit(2)), fs)?
+                };
+                if null_p(f0) {
                     match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("cannot read `"), string_append(car(path), str_lit!("`"))), form)? {};
                     Ok(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>())
+                } else if null_p(f) {
+                    Ok(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>())
                 } else {
-                    let inst = if mx_files_name_in_p(lib, get(maker_st.instances.get().unwrap())) {
+                    let inst = if (not(symbol_eq_p(root, lib)) || mx_files_name_in_p(lib, get(maker_st.instances.get().unwrap()))) {
                         kayak_rt::cons(lib, kayak_rt::nil())
                     } else {
                         nil::<Symbol>()
                     };
                     let g = mx_imports_given_names(file_macros_of(mxp, maker_st, mx_fail, form, car(f), mx_files_filter, fs, inst)?);
                     set(maker_st.mx_imports_imported.get().unwrap(), taken_names(mxp, maker_st, g, mx_files_filter)?);
-                    Ok(include_of(mxp, maker_st, mk_symbol(symbol_to_string(lib), a, b), mx_files_filter, g, a, b)?)
+                    Ok(include_of(mxp, maker_st, module_named(named, a, b), mx_files_filter, g, a, b)?)
                 }
             }
         }
@@ -24845,12 +25901,68 @@ pub mod made__load__1__expand {
         get(maker_st.mx_imports_imported.get().unwrap())
     }
 
-    pub fn import_in_file<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, form: kayak_rt::data::DataAt<'static, Syn>, ls: FileLoads, fs: Files) -> Result<SynsA, Unwind> {
+    #[inline]
+    pub fn path_not_param(lib: Str, root: Symbol) -> Str {
+        string_append(str_lit!("`"), string_append(lib, string_append(str_lit!("`: `import-with-syntax` of a path in a module file takes one from a "), string_append(str_lit!("module parameter, `(m (load-moduleof \"path\"))`, and `"), string_append(symbol_to_string(root), str_lit!("` is not one"))))))
+    }
+
+    pub fn import_path_in_file<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, form: kayak_rt::data::DataAt<'static, Syn>, lib: Str, ls: FileLoads, fs: Files, ps: FileLoads, hidden: bool) -> Result<(), Unwind> {
+        let items = proper(form);
+        let mx_files_filter = if _eq(len(items), int_lit(3)) {
+            the::<List<MxFilesFilter>>(kayak_rt::cons(name_filter(mxp, maker_st, mx_fail, nth(items, int_lit(2)))?, kayak_rt::nil()))
+        } else {
+            nil::<Product_11_12<bool, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>()
+        };
+        let root = module_root(string_to_symbol(lib));
+        let param = if null_p(load_of_file(root, ls)) {
+            load_of_file(root, ps)
+        } else {
+            nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>()
+        };
+        let f = if (null_p(param) || not(hidden)) {
+            nil::<Product_11_12_13_14_15_16_17_18<Int, Int, Str, Str, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Str, Str, bool>>()
+        } else {
+            mx_files_read_at(syn_start(car(param)), fs)
+        };
+        let g = if null_p(f) {
+            nil::<Product_11_12_13_14_15_16_17_18<Int, Int, Str, Str, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Str, Str, bool>>()
+        } else {
+            path_file(mxp, maker_st, mx_fail, form, lib, car(f), _plus(path_at(lib), int_lit(2)), fs)?
+        };
+        if null_p(param) {
+            Ok(match fail_at(mxp, maker_st, mx_fail, path_not_param(lib, root), form)? {})
+        } else if not(hidden) {
+            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(lib, string_append(str_lit!("` is of a module parameter of this file, which "), string_append(str_lit!("no importer of it sees: import its macros in a `hide`, "), string_append(str_lit!("`(hide (import-with-syntax "), string_append(lib, str_lit!("))`"))))))), form)? {})
+        } else if null_p(f) {
+            Ok(match fail_at(mxp, maker_st, mx_fail, not_load(root), form)? {})
+        } else if null_p(g) {
+            Ok(())
+        } else {
+            file_macros_of(mxp, maker_st, mx_fail, form, car(g), mx_files_filter, fs, kayak_rt::cons(string_to_symbol(lib), kayak_rt::nil()))?;
+            Ok(())
+        }
+    }
+
+    #[inline]
+    pub fn param_not_hidden(m: Symbol) -> Str {
+        let s = symbol_to_string(m);
+        string_append(str_lit!("`"), string_append(s, string_append(str_lit!("` is a module parameter of this file, which no importer of it "), string_append(str_lit!("sees: import its macros in a `hide`, `(hide (import-with-syntax "), string_append(s, str_lit!("))`"))))))
+    }
+
+    pub fn import_in_file<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, form: kayak_rt::data::DataAt<'static, Syn>, ls: FileLoads, fs: Files, ps: FileLoads, hidden: bool) -> Result<SynsA, Unwind> {
         let items = proper(form);
         let a = syn_start(form);
         let b = syn_end(form);
-        if not(((_eq(len(items), int_lit(2)) || _eq(len(items), int_lit(3))) && syn_symbol_p(nth(items, int_lit(1))))) {
+        let named = if (_eq(len(items), int_lit(2)) || _eq(len(items), int_lit(3))) {
+            import_named(nth(items, int_lit(1)))
+        } else {
+            str_lit!("")
+        };
+        if string_eq_p(named, str_lit!("")) {
             match fail_at(mxp, maker_st, mx_fail, maker_st.import_usage.get().unwrap(), form)? {};
+            Ok(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>())
+        } else if not(symbol_eq_p(module_root(string_to_symbol(named)), string_to_symbol(named))) {
+            import_path_in_file(mxp, maker_st, mx_fail, form, named, ls, fs, ps, hidden)?;
             Ok(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>())
         } else {
             let mx_files_filter = if _eq(len(items), int_lit(3)) {
@@ -24858,13 +25970,29 @@ pub mod made__load__1__expand {
             } else {
                 nil::<Product_11_12<bool, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>()
             };
-            let load = load_of_file(syn_symbol(mxp, maker_st, nth(items, int_lit(1)))?, ls);
+            let lib = syn_symbol(mxp, maker_st, nth(items, int_lit(1)))?;
+            let param = if null_p(load_of_file(lib, ls)) {
+                load_of_file(lib, ps)
+            } else {
+                nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>()
+            };
+            let load = if null_p(param) {
+                load_of_file(lib, ls)
+            } else {
+                param
+            };
             let f = if null_p(load) {
                 nil::<Product_11_12_13_14_15_16_17_18<Int, Int, Str, Str, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Str, Str, bool>>()
             } else {
                 mx_files_read_at(syn_start(car(load)), fs)
             };
-            if not(null_p(instance_loaded(syn_symbol(mxp, maker_st, nth(items, int_lit(1)))?, ls))) {
+            if (not(null_p(param)) && not(hidden)) {
+                match fail_at(mxp, maker_st, mx_fail, param_not_hidden(lib), form)? {};
+                Ok(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>())
+            } else if (not(null_p(param)) && not(null_p(f))) {
+                file_macros_of(mxp, maker_st, mx_fail, form, car(f), mx_files_filter, fs, kayak_rt::cons(lib, kayak_rt::nil()))?;
+                Ok(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>())
+            } else if not(null_p(instance_loaded(syn_symbol(mxp, maker_st, nth(items, int_lit(1)))?, ls))) {
                 match fail_at(mxp, maker_st, mx_fail, instance_in_file(syn_symbol(mxp, maker_st, nth(items, int_lit(1)))?), form)? {};
                 Ok(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>())
             } else if null_p(f) {
@@ -24873,6 +26001,31 @@ pub mod made__load__1__expand {
             } else {
                 Ok(include_of(mxp, maker_st, mk_symbol(string_append(str_lit!("%shared:"), car(f).6), a, b), mx_files_filter, mx_imports_given_names(file_macros_of(mxp, maker_st, mx_fail, form, car(f), mx_files_filter, fs, nil::<Symbol>())?), a, b)?)
             }
+        }
+    }
+
+    pub fn param_loads<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut bs: SynsA) -> Result<FileLoads, Unwind> {
+        loop {
+            if null_p(bs) {
+                return Ok(nil::<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>());
+            } else {
+                let b = proper(car(bs));
+                if (_gt_eq(len(b), int_lit(2)) && syn_symbol_p(car(b)) && string_eq_p(mx_files_head_name(nth(b, int_lit(1))), str_lit!("load-moduleof"))) {
+                    return Ok(cons(Product_11_12(syn_symbol(mxp, maker_st, car(b))?, nth(b, int_lit(1))), param_loads(mxp, maker_st, cdr(bs))?));
+                } else {
+                    bs = cdr(bs);
+                    continue;
+                }
+            }
+        }
+    }
+
+    pub fn params_loaded<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, x: kayak_rt::data::DataAt<'static, Syn>) -> Result<FileLoads, Unwind> {
+        let items = proper(x);
+        if _lt(len(items), int_lit(2)) {
+            Ok(nil::<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>())
+        } else {
+            Ok(param_loads(mxp, maker_st, proper(nth(items, int_lit(1))))?)
         }
     }
 
@@ -24910,15 +26063,15 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn lits_onto(mut ls: Levels, mut out: List<Int>) -> List<Int> {
+    pub fn lits_onto(mut ls: MxEnvTypesLevels, mut out: List<Int>) -> List<Int> {
         loop {
             if null_p(ls) {
                 return out;
             } else {
                 (ls, out) = (cdr(ls), {
                     let tagcase_ = car(ls);
-                    if made__load__0__expander_kc::Level::__is_LvRib(tagcase_) {
-                        let (r#as,) = made__load__0__expander_kc::Level::__LvRib(tagcase_);
+                    if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvRib(tagcase_) {
+                        let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvRib(tagcase_);
                         atm_lits(r#as, out)
                     } else {
                         let y = tagcase_;
@@ -26465,6 +27618,35 @@ pub mod made__load__1__expand {
     }
 
     #[inline]
+    pub fn label_p(s: kayak_rt::data::DataAt<'static, Syn>) -> bool {
+        (syn_symbol_p(s) || syn_keyword_p(s))
+    }
+
+    pub fn mx_shaper_label_of<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, s: kayak_rt::data::DataAt<'static, Syn>) -> Result<Symbol, Unwind> {
+        let tagcase_ = s;
+        if made__load__0__expander_kc::Syn::__is_Atom(tagcase_) {
+            let (d, a, b, x,) = made__load__0__expander_kc::Syn::__Atom(tagcase_);
+            if mx_keyword_p(d) {
+                Ok(mx_keyword_to_symbol(d))
+            } else {
+                Ok(syn_symbol(mxp, maker_st, s)?)
+            }
+        } else {
+            let y = tagcase_;
+            Ok(syn_symbol(mxp, maker_st, s)?)
+        }
+    }
+
+    #[inline]
+    pub fn product_shape(fs: MxParserTypesMembers) -> MxParserTypesShapes {
+        if null_p(fs) {
+            nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxParserTypesShape>>()
+        } else {
+            one(sh_product(fs))
+        }
+    }
+
+    #[inline]
     pub fn modnames_shape<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, ms: SynsA) -> Result<MxParserTypesShapes, Unwind> {
         Ok(modnames_from(mxp, maker_st, ms, nil::<Product_11_12<Symbol, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxParserTypesShape>>>>(), nil::<Product_11_12<Symbol, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxParserTypesShape>>>>())?)
     }
@@ -26589,6 +27771,38 @@ pub mod made__load__1__expand {
         }
     }
 
+    pub fn field_shape(s: MxParserTypesShapes, f: Symbol) -> MxParserTypesShapes {
+        if null_p(s) {
+            nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxParserTypesShape>>()
+        } else {
+            let tagcase_ = car(s);
+            if made__load__0__expander_kc::MxParserTypesShape::__is_ShProduct(tagcase_) {
+                let (fs,) = made__load__0__expander_kc::MxParserTypesShape::__ShProduct(tagcase_);
+                let m = mx_shaper_member_of(f, fs);
+                if null_p(m) {
+                    nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxParserTypesShape>>()
+                } else {
+                    car(m).1
+                }
+            } else {
+                let y = tagcase_;
+                nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxParserTypesShape>>()
+            }
+        }
+    }
+
+    #[inline]
+    pub fn held_shape(s: MxParserTypesShapes) -> MxParserTypesShapes {
+        let tagcase_ = car(s);
+        if made__load__0__expander_kc::MxParserTypesShape::__is_ShCell(tagcase_) {
+            let (x,) = made__load__0__expander_kc::MxParserTypesShape::__ShCell(tagcase_);
+            x
+        } else {
+            let y = tagcase_;
+            nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxParserTypesShape>>()
+        }
+    }
+
     pub fn extended(a: MxParserTypesShapes, b: MxParserTypesShapes) -> MxParserTypesShapes {
         if (null_p(a) || null_p(b)) {
             nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxParserTypesShape>>()
@@ -26611,9 +27825,9 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn mx_shaper_exported<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ex: Rooted, s: kayak_rt::data::DataAt<'static, Syn>) -> Result<Levels, Unwind> {
+    pub fn mx_shaper_exported<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ex: Rooted, s: kayak_rt::data::DataAt<'static, Syn>) -> Result<MxEnvTypesLevels, Unwind> {
         if null_p(ex) {
-            Ok(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>())
+            Ok(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>())
         } else {
             Ok(append(evaluate(mxp, maker_st, mx_fail, car(ex).0, car(ex).1, s)?, mx_shaper_exported(mxp, maker_st, mx_fail, cdr(ex), s)?))
         }
@@ -26648,6 +27862,27 @@ pub mod made__load__1__expand {
                         } else {
                             return false;
                         }
+                    } else {
+                        let y = tagcase_;
+                        return false;
+                    }
+                } else if made__load__0__expander_kc::MxParserTypesShape::__is_ShCell(tagcase_) {
+                    let (x0,) = made__load__0__expander_kc::MxParserTypesShape::__ShCell(tagcase_);
+                    let tagcase_ = car(b);
+                    if made__load__0__expander_kc::MxParserTypesShape::__is_ShCell(tagcase_) {
+                        let (x1,) = made__load__0__expander_kc::MxParserTypesShape::__ShCell(tagcase_);
+                        (a, b) = (x0, x1);
+                        continue;
+                    } else {
+                        let y = tagcase_;
+                        return false;
+                    }
+                } else if made__load__0__expander_kc::MxParserTypesShape::__is_ShProduct(tagcase_) {
+                    let (f0,) = made__load__0__expander_kc::MxParserTypesShape::__ShProduct(tagcase_);
+                    let tagcase_ = car(b);
+                    if made__load__0__expander_kc::MxParserTypesShape::__is_ShProduct(tagcase_) {
+                        let (f1,) = made__load__0__expander_kc::MxParserTypesShape::__ShProduct(tagcase_);
+                        return members_eq_p(f0, f1);
                     } else {
                         let y = tagcase_;
                         return false;
@@ -26858,6 +28093,19 @@ pub mod made__load__1__expand {
                 }
             } else if string_eq_p(h, str_lit!("proj")) {
                 Ok(exp_shape(mxp, maker_st, mx_fail, at_e.call(int_lit(1)))?)
+            } else if string_eq_p(h, str_lit!("product")) {
+                Ok(product_shape(fields_shapes(mxp, maker_st, mx_fail, cdr(items), cdr(e), false)?))
+            } else if (string_eq_p(h, str_lit!("extract")) && _eq(k, int_lit(3)) && label_p(nth(items, int_lit(2)))) {
+                Ok(field_shape(exp_shape(mxp, maker_st, mx_fail, at_e.call(int_lit(1)))?, mx_shaper_label_of(mxp, maker_st, nth(items, int_lit(2)))?))
+            } else if ((string_eq_p(h, str_lit!("new")) || string_eq_p(h, str_lit!("get"))) && _gt_eq(k, int_lit(2)) && _gt_eq(at_e.call(int_lit(1)), int_lit(0)) && primitive_p(mxp, maker_st, mx_fail, at)?) {
+                let x = exp_shape(mxp, maker_st, mx_fail, at_e.call(int_lit(1)))?;
+                if null_p(x) {
+                    Ok(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxParserTypesShape>>())
+                } else if string_eq_p(h, str_lit!("new")) {
+                    Ok(one(sh_cell(x)))
+                } else {
+                    Ok(held_shape(x))
+                }
             } else if (string_eq_p(h, str_lit!("if")) && _eq(k, int_lit(4))) {
                 let (a, b) = (exp_shape(mxp, maker_st, mx_fail, at_e.call(int_lit(2)))?, exp_shape(mxp, maker_st, mx_fail, at_e.call(int_lit(3)))?);
                 if (not(null_p(a)) && shapes_eq_p(a, b)) {
@@ -26889,6 +28137,52 @@ pub mod made__load__1__expand {
                 }
             }
         }
+    }
+
+    pub fn fields_shapes<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, fs: SynsA, es: List<Int>, ty: bool) -> Result<MxParserTypesMembers, Unwind> {
+        if (null_p(fs) || null_p(es)) {
+            Ok(nil::<Product_11_12<Symbol, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxParserTypesShape>>>>())
+        } else {
+            let parts = proper_items(car(fs));
+            let rest = fields_shapes(mxp, maker_st, mx_fail, cdr(fs), cdr(es), ty)?;
+            let x = if (_lt(car(es), int_lit(0)) || null_p(parts)) {
+                int_lit(-1)
+            } else {
+                elem(mxp, maker_st, car(es), if ty {
+                    _minus(len(parts), int_lit(1))
+                } else {
+                    int_lit(1)
+                })
+            };
+            if (_lt(x, int_lit(0)) || not(label_p(car(parts)))) {
+                Ok(rest)
+            } else {
+                let s = if ty {
+                    mx_shaper_ty_shape(mxp, maker_st, mx_fail, x)?
+                } else {
+                    exp_shape(mxp, maker_st, mx_fail, x)?
+                };
+                if null_p(s) {
+                    Ok(rest)
+                } else {
+                    Ok(cons(Product_11_12(mx_shaper_label_of(mxp, maker_st, car(parts))?, s), rest))
+                }
+            }
+        }
+    }
+
+    pub fn primitive_p<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, at: Int) -> Result<bool, Unwind> {
+        let op = mx_shaper_int_at(elems(mxp, maker_st, at), int_lit(0));
+        Ok((_gt_eq(op, int_lit(0)) && {
+            let tagcase_ = node_kids(mxp, maker_st, op);
+            if made__load__0__expander_kc::MxNodesKids::__is_KRef(tagcase_) {
+                let (n, d, free,) = made__load__0__expander_kc::MxNodesKids::__KRef(tagcase_);
+                (not(d) && _eq(resolve(mxp, maker_st, mx_fail, op, n, false)?.0, int_lit(-1)) && null_p(names_find(n, get(maker_st.top_vals.get().unwrap()))) && null_p(global_shape(mxp, maker_st, n, false)))
+            } else {
+                let y = tagcase_;
+                false
+            }
+        }))
     }
 
     #[inline]
@@ -26969,21 +28263,21 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn levels_members<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ls: Levels, mut got: Product_11_12_13<MxParserTypesMembers, MxParserTypesMembers, bool>) -> Result<Product_11_12_13<MxParserTypesMembers, MxParserTypesMembers, bool>, Unwind> {
+    pub fn levels_members<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ls: MxEnvTypesLevels, mut got: Product_11_12_13<MxParserTypesMembers, MxParserTypesMembers, bool>) -> Result<Product_11_12_13<MxParserTypesMembers, MxParserTypesMembers, bool>, Unwind> {
         loop {
             if (null_p(ls) || not(got.2)) {
                 return Ok(got);
             } else {
                 (ls, got) = (cdr(ls), {
                     let tagcase_ = car(ls);
-                    if made__load__0__expander_kc::Level::__is_LvRib(tagcase_) {
-                        let (r#as,) = made__load__0__expander_kc::Level::__LvRib(tagcase_);
+                    if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvRib(tagcase_) {
+                        let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvRib(tagcase_);
                         atms_members(mxp, maker_st, mx_fail, r#as, got)?
-                    } else if made__load__0__expander_kc::Level::__is_LvEarlier(tagcase_) {
-                        let (r#as,) = made__load__0__expander_kc::Level::__LvEarlier(tagcase_);
+                    } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvEarlier(tagcase_) {
+                        let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvEarlier(tagcase_);
                         atms_members(mxp, maker_st, mx_fail, r#as, got)?
-                    } else if made__load__0__expander_kc::Level::__is_LvShape(tagcase_) {
-                        let (m,) = made__load__0__expander_kc::Level::__LvShape(tagcase_);
+                    } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvShape(tagcase_) {
+                        let (m,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvShape(tagcase_);
                         let s = exp_shape(mxp, maker_st, mx_fail, m)?;
                         if null_p(s) {
                             Product_11_12_13(got.0, got.1, false)
@@ -26997,8 +28291,8 @@ pub mod made__load__1__expand {
                                 Product_11_12_13(got.0, got.1, false)
                             }
                         }
-                    } else if made__load__0__expander_kc::Level::__is_LvCage(tagcase_) {
-                        let (c,) = made__load__0__expander_kc::Level::__LvCage(tagcase_);
+                    } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvCage(tagcase_) {
+                        let (c,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvCage(tagcase_);
                         Product_11_12_13(got.0, got.1, false)
                     } else { kayak_rt::data::no_variant() }
                 });
@@ -27089,6 +28383,15 @@ pub mod made__load__1__expand {
                 }
             } else if string_eq_p(h, str_lit!("poly")) {
                 Ok(mx_shaper_ty_shape(mxp, maker_st, mx_fail, at_e.call(_minus(k, int_lit(1))))?)
+            } else if (string_eq_p(h, str_lit!("ref")) && _gt_eq(k, int_lit(2))) {
+                let x = mx_shaper_ty_shape(mxp, maker_st, mx_fail, at_e.call(int_lit(1)))?;
+                if null_p(x) {
+                    Ok(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxParserTypesShape>>())
+                } else {
+                    Ok(one(sh_cell(x)))
+                }
+            } else if string_eq_p(h, str_lit!("productof")) {
+                Ok(product_shape(fields_shapes(mxp, maker_st, mx_fail, cdr(items), cdr(e), true)?))
             } else if (string_eq_p(h, str_lit!("select")) && _eq(k, int_lit(3)) && syn_symbol_p(nth(items, int_lit(2)))) {
                 Ok(mx_shaper_member_shape(exp_shape(mxp, maker_st, mx_fail, at_e.call(int_lit(1)))?, syn_symbol(mxp, maker_st, nth(items, int_lit(2)))?, true))
             } else if (string_eq_p(h, str_lit!("->")) && _eq(k, int_lit(3))) {
@@ -27524,18 +28827,18 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn defined_onto<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ls: Levels) -> Result<(), Unwind> {
+    pub fn defined_onto<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ls: MxEnvTypesLevels) -> Result<(), Unwind> {
         loop {
             if null_p(ls) {
                 return Ok(());
             } else {
                 {
                     let tagcase_ = car(ls);
-                    if made__load__0__expander_kc::Level::__is_LvRib(tagcase_) {
-                        let (r#as,) = made__load__0__expander_kc::Level::__LvRib(tagcase_);
+                    if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvRib(tagcase_) {
+                        let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvRib(tagcase_);
                         defined_atoms(mxp, maker_st, mx_fail, r#as)?
-                    } else if made__load__0__expander_kc::Level::__is_LvShape(tagcase_) {
-                        let (m,) = made__load__0__expander_kc::Level::__LvShape(tagcase_);
+                    } else if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvShape(tagcase_) {
+                        let (m,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvShape(tagcase_);
                         let s = exp_shape(mxp, maker_st, mx_fail, m)?;
                         if null_p(s) {
                             ()
@@ -28294,8 +29597,28 @@ pub mod made__load__1__expand {
         }
     }
 
+    pub fn captor_of<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, n: Symbol, d: bool, mx_env_indexed_env: kayak_rt::data::DataAt<'static, MxEnvIndexedEnv>) -> Int {
+        let l = env_lookup(mxp, maker_st, mx_env_indexed_env, n, d, int_lit(0), kayak_rt::closure1((mxp, maker_st,), |(mxp, maker_st,), a0| mx_nodes_binder_name(mxp, maker_st, a0)));
+        match l.0 {
+            case_ if kayak_rt::_eq(case_, int_lit(0)) => {
+                l.1
+            }
+            case_ if kayak_rt::_eq(case_, int_lit(1)) => {
+                int_lit(-2)
+            }
+            _ => {
+                int_lit(-1)
+            }
+        }
+    }
+
+    #[inline]
+    pub fn inst_captor<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, h: DefEnv, mx_env_indexed_env: kayak_rt::data::DataAt<'static, MxEnvIndexedEnv>) -> Int {
+        captor_of(mxp, maker_st, module_root(h.1), false, mx_env_indexed_env)
+    }
+
     pub fn instance_named_p(base: Str, free: Int, h: DefEnv) -> bool {
-        (_eq(h.0, int_lit(3)) && ((_eq(free, int_lit(0)) && mx_syntax_name_in_p(string_to_symbol(base), h.2)) || (_eq(free, int_lit(1)) && string_eq_p(base, symbol_to_string(h.1)))))
+        (_eq(h.0, int_lit(3)) && ((_eq(free, int_lit(0)) && mx_syntax_name_in_p(string_to_symbol(base), h.2)) || (_eq(free, int_lit(0)) && mx_syntax_name_in_p(string_to_symbol(base), h.5)) || (_eq(free, int_lit(1)) && string_eq_p(base, symbol_to_string(h.1)))))
     }
 
     pub fn cdrs_of(mut p: Addr, mut k: Int) -> Int {
@@ -28380,27 +29703,12 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn captor_of<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, n: Symbol, d: bool, mx_env_indexed_env: kayak_rt::data::DataAt<'static, MxEnvIndexedEnv>) -> Int {
-        let l = env_lookup(mxp, maker_st, mx_env_indexed_env, n, d, int_lit(0), kayak_rt::closure1((mxp, maker_st,), |(mxp, maker_st,), a0| mx_nodes_binder_name(mxp, maker_st, a0)));
-        match l.0 {
-            case_ if kayak_rt::_eq(case_, int_lit(0)) => {
-                l.1
-            }
-            case_ if kayak_rt::_eq(case_, int_lit(1)) => {
-                int_lit(-2)
-            }
-            _ => {
-                int_lit(-1)
-            }
-        }
-    }
-
     pub fn alias_written<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, base: Str, d: bool, free: Int, h: DefEnv, s: kayak_rt::data::DataAt<'static, Syn>) -> Result<kayak_rt::data::DataAt<'static, Syn>, Unwind> {
         let ab = syn_span(s);
         let a = ab.0;
         let b = ab.1;
         let with_of = kayak_rt::closure1s((base, a, b,), |(base, a, b,), m: Str| {
-            mk_list(kayak_rt::cons(mk_symbol(str_lit!("with"), a, b), kayak_rt::cons(mk_symbol(m, a, b), kayak_rt::cons(mk_symbol(base, a, b), kayak_rt::nil()))), a, b)
+            mk_list(kayak_rt::cons(mk_symbol(str_lit!("with"), a, b), kayak_rt::cons(module_named(m, a, b), kayak_rt::cons(mk_symbol(base, a, b), kayak_rt::nil()))), a, b)
         });
         match h.0 {
             case_ if kayak_rt::_eq(case_, int_lit(0)) => {
@@ -28418,8 +29726,10 @@ pub mod made__load__1__expand {
             _ => {
                 if (_eq(free, int_lit(0)) && mx_syntax_name_in_p(string_to_symbol(base), h.2)) {
                     Ok(with_of.call(symbol_to_string(h.1)))
+                } else if (_eq(free, int_lit(0)) && mx_syntax_name_in_p(string_to_symbol(base), h.5)) {
+                    Ok(mk_list(kayak_rt::cons(mk_symbol(str_lit!("with"), a, b), kayak_rt::cons(mk_list(kayak_rt::cons(mk_symbol(str_lit!("with"), a, b), kayak_rt::cons(module_named(symbol_to_string(h.1), a, b), kayak_rt::cons(mk_symbol(symbol_to_string(h.4), a, b), kayak_rt::nil()))), a, b), kayak_rt::cons(mk_symbol(base, a, b), kayak_rt::nil()))), a, b))
                 } else if instance_named_p(base, free, h) {
-                    Ok(mk_symbol(base, a, b))
+                    Ok(module_named(base, a, b))
                 } else if _eq(free, int_lit(0)) {
                     Ok(with_of.call(str_lit!("#%fx")))
                 } else if _eq(free, int_lit(2)) {
@@ -28522,7 +29832,7 @@ pub mod made__load__1__expand {
                             if within {
                                 Product_11_12(mx_shapes_parts, captor_noted(mxp, maker_st, mx_fail, captor_of(mxp, maker_st, string_to_symbol(base), d, mx_env_indexed_env), top, base, false, node_syn(mxp, maker_st, at), x, out.1)?)
                             } else if inst {
-                                Product_11_12(mx_shapes_parts, captor_noted(mxp, maker_st, mx_fail, captor_of(mxp, maker_st, h.1, false, mx_env_indexed_env), top, symbol_to_string(h.1), true, x, x, out.1)?)
+                                Product_11_12(mx_shapes_parts, captor_noted(mxp, maker_st, mx_fail, inst_captor(mxp, maker_st, h, mx_env_indexed_env), top, symbol_to_string(h.1), true, x, x, out.1)?)
                             } else {
                                 Product_11_12(mx_shapes_parts, out.1)
                             }
@@ -28554,14 +29864,14 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn levels_binders(ls: Levels) -> MxShapesInts {
+    pub fn levels_binders(ls: MxEnvTypesLevels) -> MxShapesInts {
         if null_p(ls) {
             nil::<Int>()
         } else {
             append({
                 let tagcase_ = car(ls);
-                if made__load__0__expander_kc::Level::__is_LvRib(tagcase_) {
-                    let (r#as,) = made__load__0__expander_kc::Level::__LvRib(tagcase_);
+                if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvRib(tagcase_) {
+                    let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvRib(tagcase_);
                     atms_binders(r#as)
                 } else {
                     let y = tagcase_;
@@ -28698,15 +30008,15 @@ pub mod made__load__1__expand {
         }
     }
 
-    pub fn aliases_noted<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut ls: Levels) -> () {
+    pub fn aliases_noted<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut ls: MxEnvTypesLevels) -> () {
         loop {
             if null_p(ls) {
                 return ();
             } else {
                 {
                     let tagcase_ = car(ls);
-                    if made__load__0__expander_kc::Level::__is_LvRib(tagcase_) {
-                        let (r#as,) = made__load__0__expander_kc::Level::__LvRib(tagcase_);
+                    if made__load__0__expander_kc::MxEnvTypesLevel::__is_LvRib(tagcase_) {
+                        let (r#as,) = made__load__0__expander_kc::MxEnvTypesLevel::__LvRib(tagcase_);
                         atms_aliases_noted(mxp, maker_st, r#as)
                     } else {
                         let y = tagcase_;
@@ -29340,9 +30650,9 @@ pub mod made__load__1__expand {
             Ok(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>())
         } else if defines_syntax_p(s) {
             drive_taken(mxp, maker_st, syntax_names(mxp, maker_st, s)?, s)?;
-            Ok(drive_checks(mxp, maker_st, define_macro(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), s, nil::<Product_11_12_13_14_15<Symbol, List<Symbol>, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, List<Symbol>>>())?)?)
+            Ok(drive_checks(mxp, maker_st, define_macro(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), s, nil::<Product_11_12_13_14_15_16_17_18<Symbol, List<Symbol>, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, List<Symbol>, Symbol, List<Symbol>, List<Symbol>>>())?)?)
         } else if for_syntax_p(s) {
-            for_syntax_x(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), s)?;
+            for_syntax_x(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), s, str_lit!(""))?;
             Ok(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>())
         } else if imports_syntax_p(s) {
             Ok(drive_not_yet(mxp, maker_st, s, str_lit!("a file's macros, `import-with-syntax`"))?)
@@ -29583,6 +30893,12 @@ pub mod made__load__1__expand {
         } else if made__load__0__expander_kc::MxParserTypesShape::__is_ShFun(tagcase_) {
             let (ps, r,) = made__load__0__expander_kc::MxParserTypesShape::__ShFun(tagcase_);
             mx_datum_list(kayak_rt::heap_cons(drive_sym(str_lit!("f")), kayak_rt::heap_cons(mx_datum_list(drive_shapes_each(ps)), kayak_rt::heap_cons(drive_shapes_datum(r), kayak_rt::nil()))))
+        } else if made__load__0__expander_kc::MxParserTypesShape::__is_ShCell(tagcase_) {
+            let (h,) = made__load__0__expander_kc::MxParserTypesShape::__ShCell(tagcase_);
+            mx_datum_list(kayak_rt::heap_cons(drive_sym(str_lit!("c")), kayak_rt::heap_cons(drive_shapes_datum(h), kayak_rt::nil())))
+        } else if made__load__0__expander_kc::MxParserTypesShape::__is_ShProduct(tagcase_) {
+            let (fs,) = made__load__0__expander_kc::MxParserTypesShape::__ShProduct(tagcase_);
+            mx_datum_list(kayak_rt::heap_cons(drive_sym(str_lit!("p")), kayak_rt::heap_cons(drive_members_datum(fs), kayak_rt::nil())))
         } else { kayak_rt::data::no_variant() }
     }
 
@@ -29630,6 +30946,10 @@ pub mod made__load__1__expand {
     pub fn drive_datum_shape(d: kayak_rt::value::Value) -> kayak_rt::data::DataAt<'static, MxParserTypesShape> {
         if loc_is_sym_p(loc_nth(d, int_lit(0)), str_lit!("m")) {
             sh_module(drive_datum_members(loc_nth(d, int_lit(1))), drive_datum_members(loc_nth(d, int_lit(2))))
+        } else if loc_is_sym_p(loc_nth(d, int_lit(0)), str_lit!("c")) {
+            sh_cell(drive_datum_shapes(loc_nth(d, int_lit(1))))
+        } else if loc_is_sym_p(loc_nth(d, int_lit(0)), str_lit!("p")) {
+            sh_product(drive_datum_members(loc_nth(d, int_lit(1))))
         } else {
             sh_fun(drive_datum_shapes_each(loc_nth(d, int_lit(1))), drive_datum_shapes(loc_nth(d, int_lit(2))))
         }
@@ -29926,9 +31246,13 @@ pub mod made__load__1__expand {
             kernel_forms: std::cell::Cell::new(None),
             scope_forms: std::cell::Cell::new(None),
             reserved_words: std::cell::Cell::new(None),
-            description_heads: std::cell::Cell::new(None),
-            type_forms: std::cell::Cell::new(None),
-            description_words: std::cell::Cell::new(None),
+            mx_kernel_description_heads: std::cell::Cell::new(None),
+            mx_kernel_type_forms: std::cell::Cell::new(None),
+            mx_kernel_description_words: std::cell::Cell::new(None),
+            reserved_table: std::cell::Cell::new(None),
+            mx_syntax_description_words: std::cell::Cell::new(None),
+            mx_syntax_description_heads: std::cell::Cell::new(None),
+            mx_syntax_type_forms: std::cell::Cell::new(None),
             marks: std::cell::Cell::new(None),
             mark_count: std::cell::Cell::new(None),
             oneof_apart: std::cell::Cell::new(None),
@@ -29936,6 +31260,8 @@ pub mod made__load__1__expand {
             syntax_sigs: std::cell::Cell::new(None),
             path_usage: std::cell::Cell::new(None),
             kernel_read: std::cell::Cell::new(None),
+            kernel_literals: std::cell::Cell::new(None),
+            kernel_literals_found: std::cell::Cell::new(None),
             scope_read: std::cell::Cell::new(None),
             env_empty: std::cell::Cell::new(None),
             defined: std::cell::Cell::new(None),
@@ -30100,12 +31426,16 @@ pub mod made__load__1__expand {
         maker_st.load_base.set(Some(int_lit(1000000000)));
         maker_st.parse_tag.set(Some(make_continuation_prompt_tag()));
         maker_st.dt_type_forms.set(Some(kayak_rt::cons(kayak_rt::sym_lit!("arrayof"), kayak_rt::cons(kayak_rt::sym_lit!("narrayof"), kayak_rt::cons(kayak_rt::sym_lit!("bloblet"), kayak_rt::cons(kayak_rt::sym_lit!("composable"), kayak_rt::cons(kayak_rt::sym_lit!("dletrec"), kayak_rt::cons(kayak_rt::sym_lit!("icell"), kayak_rt::cons(kayak_rt::sym_lit!("listof"), kayak_rt::cons(kayak_rt::sym_lit!("mark-key"), kayak_rt::cons(kayak_rt::sym_lit!("moduleof"), kayak_rt::cons(kayak_rt::sym_lit!("mu"), kayak_rt::cons(kayak_rt::sym_lit!("nat"), kayak_rt::cons(kayak_rt::sym_lit!("nlist"), kayak_rt::cons(kayak_rt::sym_lit!("oneshot"), kayak_rt::cons(kayak_rt::sym_lit!("pairof"), kayak_rt::cons(kayak_rt::sym_lit!("place"), kayak_rt::cons(kayak_rt::sym_lit!("poly"), kayak_rt::cons(kayak_rt::sym_lit!("productof"), kayak_rt::cons(kayak_rt::sym_lit!("prompt-tag"), kayak_rt::cons(kayak_rt::sym_lit!("proves"), kayak_rt::cons(kayak_rt::sym_lit!("ref"), kayak_rt::cons(kayak_rt::sym_lit!("select"), kayak_rt::cons(kayak_rt::sym_lit!("subr"), kayak_rt::cons(kayak_rt::sym_lit!("sumof"), kayak_rt::cons(kayak_rt::sym_lit!("tupleof"), kayak_rt::cons(kayak_rt::sym_lit!("bool"), kayak_rt::cons(kayak_rt::sym_lit!("oneof"), kayak_rt::cons(kayak_rt::sym_lit!("union"), kayak_rt::cons(kayak_rt::sym_lit!("anyof"), kayak_rt::cons(kayak_rt::sym_lit!("allof"), kayak_rt::cons(kayak_rt::sym_lit!("->"), kayak_rt::cons(kayak_rt::sym_lit!("->*"), kayak_rt::cons(kayak_rt::sym_lit!("restrict"), kayak_rt::cons(kayak_rt::sym_lit!("modnames"), kayak_rt::nil())))))))))))))))))))))))))))))))))));
-        maker_st.kernel_forms.set(Some(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("es")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("es"))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("formals")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("f")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("f")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("D")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("f")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("D")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("let-bindings")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("b")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil)), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("b"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("D")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("let*-clauses")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("c")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("cage")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("c")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("cage")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("at")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("D")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("letrec-bindings")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("b")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("lambda")), kayak_rt::value::Value::Nil))), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("b"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("D")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("defrec-bindings")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("b")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("lambda")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ADA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("b"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("D")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dbinders")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("b")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("kind")), kayak_rt::value::Value::Nil)), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("b"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("D")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("kind")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::Value::Nil))), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("b"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("D")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("descs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ds")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ds"))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("arms")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("a")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("label")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ADA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))))), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("a"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("literal")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("else")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ADA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))))), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("a"))), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("cond-clauses")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("c")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs"))), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("c"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("literal")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("else")), kayak_rt::value::Value::Nil)), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs"))), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("c"))), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("fields")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("p")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("label")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil)), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("p"))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("lambda")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("formals")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("let")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("let-bindings")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("let*")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("let*-clauses")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("cage")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("at")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("letrec")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("letrec-bindings")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("if")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("begin")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("and")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("or")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("quote")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("data")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("the")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("sum")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("label")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("extract")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("label")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("product")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("fields")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("tuple")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("tagcase")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("arms"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("cond")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("cond-clauses")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("plambda")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dbinders")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("proj")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("descs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("letregion")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("letfreeze")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("letrena")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("place")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("letreap")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("place")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rlambda")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("formals")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AD")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("%app")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("%construct")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("label")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("defns")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("d")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("cage")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("defn")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("d")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("cage")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("at")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("cage")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("at")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("D")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("at")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("definition")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AD")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("definition")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define*")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("lambda")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AD")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("definition")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define-rec")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("defrec-bindings")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("definition")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define-type")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dbinders"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("DA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("definition")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define-effect")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("definition")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define-generative")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("label")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("label")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::Value::Nil)))))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ADDD")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ADDDDD")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dbinders"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("DA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("label")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("label")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::Value::Nil)))))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ADDD")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ADDDDD")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("definition")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("begin")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("defns")), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))))))))))))))))))))))))))))))))))))))))))))));
+        maker_st.kernel_forms.set(Some(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("es")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("es"))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("formals")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("f")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("f")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("D")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("f")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("D")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("let-bindings")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("b")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil)), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("b"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("D")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("let*-clauses")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("c")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("cage")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("c")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("cage")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("at")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("D")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("letrec-bindings")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("b")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("lambda")), kayak_rt::value::Value::Nil))), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("b"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("D")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("defrec-bindings")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("b")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("lambda")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ADA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("b"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("D")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dbinders")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("b")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("kind")), kayak_rt::value::Value::Nil)), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("b"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("D")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("kind")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::Value::Nil))), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("b"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("D")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("descs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ds")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ds"))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("arms")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("a")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("label")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ADA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))))), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("a"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("literal")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("else")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ADA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))))), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("a"))), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("cond-clauses")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("c")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs"))), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("c"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("literal")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("else")), kayak_rt::value::Value::Nil)), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs"))), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("c"))), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("fields")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("p")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("label")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil)), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("p"))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("lambda")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("formals")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("let")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("let-bindings")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("let*")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("let*-clauses")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("cage")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("at")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("letrec")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("letrec-bindings")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("if")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("begin")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("and")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("or")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("quote")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("data")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("the")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("sum")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("label")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("extract")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("label")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("product")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("fields")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("tuple")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("tagcase")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("arms"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("cond")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("cond-clauses")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("plambda")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dbinders")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("proj")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("descs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("letregion")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("letfreeze")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("letrena")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("place")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("letreap")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("place")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rlambda")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("formals")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AD")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("%app")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("%construct")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("label")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("defns")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("d")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("cage")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("defn")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("d")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("cage")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("at")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("cage")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("at")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("D")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("at")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("definition")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AD")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("definition")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define*")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("lambda")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AD")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("definition")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define-rec")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("defrec-bindings")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("definition")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define-type")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dbinders"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("DA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("definition")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define-effect")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("definition")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define-generative")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("label")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("label")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::Value::Nil)))))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ADDD")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ADDDDD")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dbinders"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("DA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("label")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("label")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::Value::Nil)))))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ADDD")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ADDDDD")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("definition")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("begin")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("defns")), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))))))))))))))))))))))))))))))))))))))))))))));
         maker_st.scope_forms.set(Some(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("items")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("d")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("cage")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("item")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("d"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("cage")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("at")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("at")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("D")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("clause")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("arm1")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ids")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("i")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("id")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("i"))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("given-opt")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("literal")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("given")), kayak_rt::value::Value::Nil)), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ids"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvars")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("d")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("d"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("D")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import-names")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("n")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("n"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("D")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("literal")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("type")), kayak_rt::value::Value::Nil)), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvars"))), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("n"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("DA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("D")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("literal")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("effect")), kayak_rt::value::Value::Nil)), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvars"))), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("n"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("DA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("D")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("variants")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("v")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("descs"))), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("v"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("D")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("case-clauses")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("c")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("data")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("data"))), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs"))), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("c"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("literal")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("else")), kayak_rt::value::Value::Nil)), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs"))), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("c"))), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("typecase-arm")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("kind")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AD")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("kind")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvars")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("n")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("n"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("D")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("tag-arm")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("label")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AD")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("label")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvars")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AD")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("tag-arms")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("a")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("tag-arm")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("a"))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("typecase-arms")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("a")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("typecase-arm")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("a"))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("select-arm")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("data")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AD")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("select-arms")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("a")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("select-arm")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("a"))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("vlambda")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("stage")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("clause")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("clause")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("given-opt")))))))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("session-check")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("clause")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("clause")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("given-opt")))))))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("reify-effect")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("given-opt"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("reify-region")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("given-opt"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("reify-type")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("given-opt"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("session-commit!")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("syscall-available?")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("data")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("send")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("receive")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("self")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("icell-get")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("icell-put!")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("spawn")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ADDA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("place")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ADDA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("place")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("spawn-monitored")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ADDADD")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("place")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AADD")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ADDADD")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("place")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)))))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("par")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("let-bindings")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("race")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("attempt")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("attempt-within")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("pselect")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("select-arms")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("tagcase")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("tag-arms"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("case")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("case-clauses"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("typecase")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("typecase-arms"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("confirm-length")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("arm1")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("acyclic")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("arm1")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("confirm-nat")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("arm1")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("convention")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("make-bloblet")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rmake-bloblet")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bloblet-ref")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bloblet-set!")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bloblet-freeze")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bloblet-byte")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bloblet-set-byte!")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bloblet-bytes")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("blobref-at")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("blobref+")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("blobref-owner")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("blobref-offset")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("blobref-get")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("blobref-set!")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("blobref-index")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("blobref-length")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("blobref-variant!")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("module")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("items")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("cage")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("at")), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("extend")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("shape")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("load-module")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("data")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("load-input")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("data")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("%loaded")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("data")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("data")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("with")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("exprs")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("shape")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("%datum")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("data")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("form")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("prompt")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("definition")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define-datatype")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("variants")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("D")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dbinders"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("variants")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("DA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("AA")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("D")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("definition")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define-convention")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("data"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dvar")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("definition")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define-syscall")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("data")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("definition")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define-optional-syscall")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bvar")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("data")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("desc")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("var")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("definition")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("include")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("shape")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("data")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("shape")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("definition")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("id")), kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import-names"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rho")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("D")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rib")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("definition")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("hide")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("items")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("definition")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("module-parameters")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("data")), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("definition")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import-with-syntax")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::Value::Nil), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("shape")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("export")), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("expr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("data")), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("shape")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("A")), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("definition")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define-syntax")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("data")), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("definition")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define-syntax-rec")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("data")), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))));
         maker_st.reserved_words.set(Some(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("lambda")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("plambda")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("proj")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("if")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("letrec")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("let")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("begin")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define*")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define-type")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define-generative")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("subr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("->")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("->*")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("poly")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ref")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("pairof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dletrec")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("void")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("pure")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("maxeff")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("read")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("write")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("alloc")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("goto")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("comefrom")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("region")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("effect")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("type")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("prompt")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("prompt-tag")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("composable")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("oneshot")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mark-key")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("listof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("cond")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("case")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("else")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("and")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("or")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("let*")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define-effect")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define-convention")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define-syscall")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define-optional-syscall")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("syscall-available?")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("module-parameters")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("the")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bloblet")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("fields")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("frozen")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("arrayof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("icell")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("await")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define-rec")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("letrena")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("letreap")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rlambda")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("quote")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("productof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("sumof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("product")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("tupleof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("tuple")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("extract")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("sum")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("tagcase")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("module")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("moduleof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("with")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("select")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("load-module")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("import")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define-datatype")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("make-bloblet")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bloblet-ref")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bloblet-set!")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bloblet-freeze")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bloblet-byte")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bloblet-set-byte!")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bloblet-bytes")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("rmake-bloblet")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dlambda")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("=>")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("blobref-at")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("blobref+")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("blobref-owner")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("blobref-offset")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("blobref-get")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("blobref-set!")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("blobref-index")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("blobref-length")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("blobref-variant!")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("vlambda")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("stage")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("session-check")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("session-commit!")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("typecase")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("reify-type")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("reify-effect")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("reify-region")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("confirm-length")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("confirm-nat")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("convention")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("extend")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("load-input")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("quasiquote")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("letregion")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("letfreeze")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("spawn")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("spawn-monitored")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("send")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("receive")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("self")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("par")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("race")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("attempt")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("attempt-within")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("pselect")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("icell-get")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("icell-put!")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("acyclic")), kayak_rt::value::Value::Nil))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))));
-        maker_st.description_heads.set(Some(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("arrayof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("narrayof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bloblet")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("composable")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dletrec")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("icell")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("listof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mark-key")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("moduleof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("nat")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("nlist")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("oneshot")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("pairof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("place")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("poly")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("productof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("prompt-tag")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("proves")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ref")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("select")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("subr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("sumof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("tupleof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bool")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("oneof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("anyof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("allof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("->")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("->*")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("restrict")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("modnames")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("read")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("write")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("alloc")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("goto")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("comefrom")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("await")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("init")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("send")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("receive")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("io")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("maxeff")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("globals")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("conv")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("fields")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("frozen")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("requires")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ensures")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("<=")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("+")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("-")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dlambda")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("acyclic")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("const")), kayak_rt::value::Value::Nil))))))))))))))))))))))))))))))))))))))))))))))))))))))))));
-        maker_st.type_forms.set(Some(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("arrayof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("narrayof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bloblet")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("composable")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dletrec")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("icell")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("listof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mark-key")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("moduleof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("nat")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("nlist")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("oneshot")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("pairof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("place")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("poly")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("productof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("prompt-tag")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("proves")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ref")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("select")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("subr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("sumof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("tupleof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bool")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("oneof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("anyof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("allof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("->")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("->*")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("restrict")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("modnames")), kayak_rt::value::Value::Nil)))))))))))))))))))))))))))))))))));
-        maker_st.description_words.set(Some(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("void")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("pure")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("spin")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("nondet")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("stage")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("gensym")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("heap")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("const")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("acyclic")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("finite")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("cellular")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("native")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("fx")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("distinct")), kayak_rt::value::Value::Nil))))))))))))))));
+        maker_st.mx_kernel_description_heads.set(Some(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("arrayof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("narrayof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bloblet")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("composable")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dletrec")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("icell")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("listof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mark-key")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("moduleof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("nat")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("nlist")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("oneshot")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("pairof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("place")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("poly")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("productof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("prompt-tag")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("proves")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ref")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("select")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("subr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("sumof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("tupleof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bool")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("oneof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("anyof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("allof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("->")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("->*")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("restrict")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("modnames")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("read")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("write")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("alloc")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("goto")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("comefrom")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("await")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("init")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("send")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("receive")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("io")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("maxeff")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("globals")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("conv")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("fields")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("frozen")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("requires")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ensures")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("<=")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("+")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("-")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dlambda")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("acyclic")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("const")), kayak_rt::value::Value::Nil))))))))))))))))))))))))))))))))))))))))))))))))))))))))));
+        maker_st.mx_kernel_type_forms.set(Some(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("arrayof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("narrayof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bloblet")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("composable")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("dletrec")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("icell")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("listof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mark-key")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("moduleof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("mu")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("nat")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("nlist")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("oneshot")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("pairof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("place")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("poly")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("productof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("prompt-tag")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("proves")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("ref")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("select")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("subr")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("sumof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("tupleof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("bool")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("oneof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("union")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("anyof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("allof")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("->")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("->*")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("restrict")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("modnames")), kayak_rt::value::Value::Nil)))))))))))))))))))))))))))))))))));
+        maker_st.mx_kernel_description_words.set(Some(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("void")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("pure")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("spin")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("nondet")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("stage")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("gensym")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("heap")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("const")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("acyclic")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("finite")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("cellular")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("native")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("fx")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("distinct")), kayak_rt::value::Value::Nil))))))))))))))));
+        maker_st.reserved_table.set(Some(words_into(mxp, maker_st, words_table(mxp, maker_st, maker_st.reserved_words.get().unwrap()), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("|#%fx|")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("|#%toplevel|")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define-syntax")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("define-syntax-rec")), kayak_rt::value::Value::Nil)))))));
+        maker_st.mx_syntax_description_words.set(Some(words_table(mxp, maker_st, maker_st.mx_kernel_description_words.get().unwrap())));
+        maker_st.mx_syntax_description_heads.set(Some(words_table(mxp, maker_st, maker_st.mx_kernel_description_heads.get().unwrap())));
+        maker_st.mx_syntax_type_forms.set(Some(words_table(mxp, maker_st, maker_st.mx_kernel_type_forms.get().unwrap())));
         maker_st.marks.set(Some(new(nil::<Product_11_12<Symbol, Int>>())));
         maker_st.mark_count.set(Some(new(int_lit(2))));
         maker_st.oneof_apart.set(Some(string_append(str_lit!("a syntax type: a `oneof`'s members must be told apart by their shapes in the "), str_lit!("source (an `expr` may be anything)"))));
@@ -30113,9 +31443,11 @@ pub mod made__load__1__expand {
         maker_st.syntax_sigs.set(Some(new(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>())));
         maker_st.path_usage.set(Some(string_append(str_lit!("an address is `(path #:a #:d …)`, its steps from the root, `#:a` the car "), str_lit!("and `#:d` the cdr"))));
         maker_st.kernel_read.set(Some(new(Product_11_12_13(the::<MxTypesNamed>(nil::<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>>>()), the::<MxTypesNamed>(nil::<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>>>()), the::<MxTypesNamed>(nil::<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>>>())))));
+        maker_st.kernel_literals.set(Some(new(nil::<Symbol>())));
+        maker_st.kernel_literals_found.set(Some(new(false)));
         maker_st.scope_read.set(Some(new(Product_11_12_13(the::<MxTypesNamed>(nil::<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>>>()), the::<MxTypesNamed>(nil::<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>>>()), the::<MxTypesNamed>(nil::<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>>>())))));
-        maker_st.env_empty.set(Some(env_of(Product_11_12(the::<Levels>(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>()), the::<MxEnvIndexedGroups>(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Group>>())))));
-        maker_st.defined.set(Some(new(nil::<Product_11_12<Symbol, Product_11_12_13_14<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Int>>>())));
+        maker_st.env_empty.set(Some(env_of(Product_11_12(the::<MxEnvTypesLevels>(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>()), the::<MxEnvIndexedGroups>(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Group>>())))));
+        maker_st.defined.set(Some(new(nil::<Product_11_12<Symbol, Product_11_12_13_14<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Int>>>())));
         maker_st.node_syns.set(Some(new(make_array(int_lit(256), atom_at(int_lit(0))))));
         maker_st.node_paths.set(Some(new(make_array(int_lit(256), the::<Addr>(nil::<bool>())))));
         maker_st.node_cores.set(Some(new(make_array(int_lit(256), s_nil()))));
@@ -30153,7 +31485,7 @@ pub mod made__load__1__expand {
         maker_st.mx_facts_named.set(Some(new(nil::<Product_11_12_13<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, Int>>())));
         maker_st.open.set(Some(new(nil::<Symbol>())));
         maker_st.shape_usage.set(Some(string_append(str_lit!("`(letrec-shape ((name node) …) (_ part …))`, a node `(node-name tree fact "), str_lit!("…)` or `(union node …)`"))));
-        maker_st.import_usage.set(Some(string_append(str_lit!("`(import-with-syntax name)`, the name a module loaded by `load-module`, or "), str_lit!("`(import-with-syntax name (only name …))` or `(except name …)`"))));
+        maker_st.import_usage.set(Some(string_append(str_lit!("`(import-with-syntax name)`, the name a module loaded by `load-module`, or "), string_append(str_lit!("a path to one, `env::name`, or "), str_lit!("`(import-with-syntax name (only name …))` or `(except name …)`")))));
         maker_st.define_usage.set(Some(string_append(str_lit!("`(define-syntax name [signature] (syntax-rules [#:trailmarks (name …)] "), str_lit!("((_ . pattern) template) …))`"))));
         maker_st.rec_usage.set(Some(str_lit!("`(define-syntax-rec (name [signature] (syntax-rules [#:trailmarks (name …)] clause …)) …)`")));
         maker_st.rules_usage.set(Some(str_lit!("`(syntax-rules [#:trailmarks (name …)] ((_ . pattern) template) …)`")));
@@ -30165,7 +31497,7 @@ pub mod made__load__1__expand {
         maker_st.mx_infer_absorbed.set(Some(new(nil::<Product_11_12_13<Int, Int, Int>>())));
         maker_st.mx_infer_roots.set(Some(new(nil::<Int>())));
         maker_st.built_round.set(Some(new(int_lit(0))));
-        maker_st.mx_infer_got.set(Some(new(nil::<Product_11_12<List<Product_11_12_13_14_15<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, Int>>, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Atm>>, List<Symbol>>>>>())));
+        maker_st.mx_infer_got.set(Some(new(nil::<Product_11_12<List<Product_11_12_13_14_15<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, Int>>, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Atm>>, List<Symbol>>>>>())));
         maker_st.shown.set(Some(new(nil::<Product_11_12<Str, bool>>())));
         maker_st.mx_shown_regions.set(Some(new(nil::<Product_11_12_13_14_15<Int, Int, List<bool>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>())));
         maker_st.mx_shown_imported.set(Some(new(nil::<Product_11_12_13<Int, List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>())));
@@ -30192,22 +31524,22 @@ pub mod made__load__1__expand {
         maker_st.source_base.set(Some(int_lit(1125899906842624)));
         maker_st.sources.set(Some(new(make_array(int_lit(1024), Product_11_12(int_lit(0), int_lit(0))))));
         maker_st.nsources.set(Some(new(int_lit(0))));
-        maker_st.procedurals.set(Some(new(nil::<Product_11_12_13_14_15_16<Symbol, Int, Str, Product_11_12_13<Int, Symbol, List<Symbol>>, bool, List<Str>>>())));
+        maker_st.procedurals.set(Some(new(nil::<Product_11_12_13_14_15_16<Symbol, Int, Str, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>, bool, List<Str>>>())));
         maker_st.mx_procedural_contracts.set(Some(new(int_lit(1))));
         maker_st.trusts.set(Some(new(make_array(int_lit(1024), false))));
         maker_st.recheck.set(Some(new(int_lit(0))));
         maker_st.phase1_forms.set(Some(new(nil::<Str>())));
         maker_st.def_env_now.set(Some(new(def_env_top())));
-        maker_st.mx_procedural_def_envs.set(Some(new(nil::<Product_11_12<Str, Product_11_12_13<Int, Symbol, List<Symbol>>>>())));
+        maker_st.mx_procedural_def_envs.set(Some(new(nil::<Product_11_12<Str, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>>>())));
         maker_st.chain.set(Some(new(nil::<Product_11_12_13<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, Int>>())));
         maker_st.chain_depth.set(Some(new(int_lit(0))));
         maker_st.max_uses.set(Some(new(int_lit(10000))));
         maker_st.max_depth.set(Some(new(int_lit(1000))));
         maker_st.mx_top_clause_usage.set(Some(str_lit!("a clause is `((_ . pattern) template)`")));
         maker_st.tried_sigs.set(Some(new(nil::<Product_11_12_13<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, Int>>())));
-        maker_st.tried_checks.set(Some(new(nil::<List<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>>())));
+        maker_st.tried_checks.set(Some(new(nil::<List<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>>())));
         maker_st.loads.set(Some(new(nil::<Product_11_12<Symbol, Str>>())));
-        maker_st.by_state.set(Some(new(nil::<Product_11_12_13_14_15_16_17<Int, List<Product_11_12<Symbol, Product_11_12_13_14<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Int>>>, List<Product_11_12<Symbol, Str>>, List<Symbol>, List<Product_11_12<Int, Int>>, List<Product_11_12<Symbol, Int>>, Product_11_12<List<Str>, List<Product_11_12_13_14_15_16<Symbol, Int, Str, Product_11_12_13<Int, Symbol, List<Symbol>>, bool, List<Str>>>>>>())));
+        maker_st.by_state.set(Some(new(nil::<Product_11_12_13_14_15_16_17<Int, List<Product_11_12<Symbol, Product_11_12_13_14<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<Product_11_12_13_14_15_16_17_18<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::MxEnvTypesLevel>>, bool, List<Product_11_12<List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>, Int>>>, List<Product_11_12<Symbol, Str>>, List<Symbol>, List<Product_11_12<Int, Int>>, List<Product_11_12<Symbol, Int>>, Product_11_12<List<Str>, List<Product_11_12_13_14_15_16<Symbol, Int, Str, Product_11_12_13_14_15_16_17<Int, Symbol, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, Symbol, List<Symbol>, List<Symbol>>, bool, List<Str>>>>>>())));
         maker_st.mx_top_globals.set(Some(new(nil::<Symbol>())));
         maker_st.globals_before.set(Some(new(nil::<Symbol>())));
         maker_st.expansions.set(Some(new(nil::<Product_11_12_13_14_15<Int, Symbol, Int, Int, bool>>())));
@@ -30293,6 +31625,42 @@ impl<'mxp, Place_Mxp: kayak_rt::Visit> MadeLoad1ExpandFace<'mxp, Place_Mxp> {
         made__load__1__expand::mx_datum_int_p(d)
     }
 
+    pub fn mx_utf8_p(self, d: kayak_rt::value::Value) -> bool {
+        made__load__1__expand::mx_utf8_p(d)
+    }
+
+    pub fn mx_utf8_to_string(self, d: kayak_rt::value::Value) -> Str {
+        made__load__1__expand::mx_utf8_to_string(d)
+    }
+
+    pub fn mx_symbol_hash(self, s: Symbol) -> Int {
+        made__load__1__expand::mx_symbol_hash(s)
+    }
+
+    pub fn mx_symbol_eq_p(self, a: Symbol, b: Symbol) -> bool {
+        made__load__1__expand::mx_symbol_eq_p(a, b)
+    }
+
+    pub fn mx_make_table(self, hash: kayak_rt::Proc1s<'mxp, Symbol, Int>, same: kayak_rt::Proc2s<'mxp, Symbol, Symbol, bool>) -> Array<List<Symbol>> {
+        made__load__1__expand::mx_make_table(self.0, self.1, hash, same)
+    }
+
+    pub fn mx_table_bucket(self, k: Symbol) -> Int {
+        made__load__1__expand::mx_table_bucket(k)
+    }
+
+    pub fn mx_table_has_p(self, b: List<Symbol>, k: Symbol) -> bool {
+        made__load__1__expand::mx_table_has_p(b, k)
+    }
+
+    pub fn mx_table_ref(self, t: Array<List<Symbol>>, k: Symbol, d: bool) -> bool {
+        made__load__1__expand::mx_table_ref(self.0, self.1, t, k, d)
+    }
+
+    pub fn mx_table_set_x(self, t: Array<List<Symbol>>, k: Symbol, v: bool) -> () {
+        made__load__1__expand::mx_table_set_x(self.0, self.1, t, k, v)
+    }
+
     pub fn mx_eq_p(self, a: bool, b: bool) -> bool {
         made__load__1__expand::mx_eq_p(a, b)
     }
@@ -30307,6 +31675,14 @@ impl<'mxp, Place_Mxp: kayak_rt::Visit> MadeLoad1ExpandFace<'mxp, Place_Mxp> {
 
     pub fn mx_datum_vector_to_list(self, d: kayak_rt::value::Value) -> List<kayak_rt::value::Value> {
         made__load__1__expand::mx_datum_vector_to_list(d)
+    }
+
+    pub fn words_into(self, t: Array<List<Symbol>>, ws: kayak_rt::value::Value) -> Array<List<Symbol>> {
+        made__load__1__expand::words_into(self.0, self.1, t, ws)
+    }
+
+    pub fn words_table(self, ws: kayak_rt::value::Value) -> Array<List<Symbol>> {
+        made__load__1__expand::words_table(self.0, self.1, ws)
     }
 
     pub fn drive_program(self, forms: kayak_rt::value::Value) -> Result<kayak_rt::value::Value, Unwind> {

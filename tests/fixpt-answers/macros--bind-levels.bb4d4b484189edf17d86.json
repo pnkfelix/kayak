@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"bind-levels.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"acc : int ! pure",
+"17 : int ! (maxeff spin (read (globals acc)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

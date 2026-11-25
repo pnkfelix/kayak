@@ -1,0 +1,31 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"prompt-delimits.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"u : (prompt-tag int int (read (globals u v)) @p) ! (alloc @p)",
+"v : (prompt-tag int int (read (globals u v)) @p) ! (alloc @p)",
+"own : (subr (read (globals u)) (int) int) ! pure",
+"other : (subr (maxeff (goto @p) (read (globals u v))) (int) int) ! pure",
+"23 : int ! (maxeff (goto @p) (read (globals other own u v)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

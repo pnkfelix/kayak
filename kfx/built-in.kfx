@@ -1,6 +1,6 @@
 "built-in.kfx: the modules Fixpt builds in that KFX has (C107), each
  loaded by its name, `(load-module \"fx26:NAME\")`, its text Fixpt's at
- 6f7bd73. Written by scripts/built-in.py: edit that, not this."
+ 06a3666. Written by scripts/built-in.py: edit that, not this."
 
 (define built-in-0 string
   ";; Conditions, design B (`docs/research/conditions.md`, `TODO.md` §89): a
@@ -120,6 +120,7 @@
             (val arm-asrv arm-op3)
             (val arm-msub arm-op4)
             (val arm-lsl-imm arm-op3)
+            (val arm-ldurb arm-op3)
             (val arm-nop int)))
 
 ;; What the native convention's compiler uses of the encoders
@@ -1707,6 +1708,11 @@
 (define kind-icell int 46)
 (define kind-mailbox int 47)
 (define kind-keyword int 48)
+(define kind-utf8 int 49)
+(define kind-utf8-ascii int 50)
+(define kind-utf8-slice int 51)
+(define kind-bytes-slice int 52)
+(define kind-str-slice int 53)
 (define kind-extension int 255)
 
 ;;; A closure's fields, and an environment frame's, by negative offset.
@@ -1714,6 +1720,15 @@
 (define closure-extra0 int 4)
 (define frame-parent int 2)
 (define frame-slot0 int 3)
+
+;;; A `utf8` slice's fields, by negative offset. 1 is the trailer.
+(define utf8-slice-owner int 2)
+(define utf8-slice-start int 3)
+(define utf8-slice-end int 4)
+(define utf8-slice-count int 5)
+(define view-slice-owner int 2)
+(define view-slice-start int 3)
+(define view-slice-end int 4)
 
 ;;; A code bloblet's fields, by negative offset from its code. 1 is the trailer.
 (define code-entry int 2)
@@ -1975,7 +1990,18 @@
             (val header-kind-width int)
             (val header-fields-lo int)
             (val header-fields-frozen-lo int)
-            (val header-suffix-frozen-lo int)))
+            (val header-suffix-frozen-lo int)
+            (val header-bytes-lo int)
+            (val kind-utf8-ascii int)
+            ;; A `utf8` slice's fields, which register code reads in line.
+            (val utf8-slice-owner int)
+            (val utf8-slice-start int)
+            (val utf8-slice-end int)
+            (val utf8-slice-count int)
+            ;; A slice of bytes' or of a string's, so.
+            (val view-slice-owner int)
+            (val view-slice-start int)
+            (val view-slice-end int)))
 ")
 
 (define built-in-9 string
@@ -2217,6 +2243,9 @@
          ((\"f32<=\") \"%fx26-f32<=\")
          ((\"f32>=\") \"%fx26-f32>=\")
          ((\"clock\") \"%fx26-clock\")
+         ((\"utf8?\") \"%fx26-utf8?\")
+         ((\"str=?\") \"%fx26-str=?\")
+         ((\"str<?\") \"%fx26-str<?\")
          ((\"i8-or\") \"%fx26-i8-or\")
          ((\"u8-or\") \"%fx26-u8-or\")
          ((\"i32<=\") \"%fx26-i32<=\")
@@ -2236,6 +2265,7 @@
          ((\"array?\") \"%fx26-array?\")
          ((\"modulo\") \"modulo\")
          ((\"%stage\") \"%fx26-stage\")
+         ((\"utf8=?\") \"%fx26-utf8=?\")
          ((\"i8-and\") \"%fx26-i8-and\")
          ((\"i8-xor\") \"%fx26-i8-xor\")
          ((\"i8-shl\") \"%fx26-i8-shl\")
@@ -2278,6 +2308,8 @@
          ((\"f32-abs\") \"%fx26-f32-abs\")
          ((\"f32-neg\") \"%fx26-f32-neg\")
          ((\"type-at\") \"%fx26-type-at\")
+         ((\"bytes=?\") \"%fx26-bytes=?\")
+         ((\"str-ref\") \"%fx26-str-ref\")
          ((\"int->i8\") \"%fx26-int->i8\")
          ((\"i8->int\") \"%fx26-i8->int\")
          ((\"int->u8\") \"%fx26-int->u8\")
@@ -2334,6 +2366,7 @@
          ((\"f32-flat\") \"%fx26-flat-f32\")
          ((\"f64-flat\") \"%fx26-flat-f64\")
          ((\"list-dir\") \"%fx26-list-dir\")
+         ((\"utf8-ref\") \"%fx26-utf8-ref\")
          ((\"int->i32\") \"%fx26-int->i32\")
          ((\"i32->int\") \"%fx26-i32->int\")
          ((\"int->u32\") \"%fx26-int->u32\")
@@ -2368,6 +2401,8 @@
          ((\"seal-code\") \"%fx26-seal-code\")
          ((\"read-file\") \"%fx26-read-file\")
          ((\"file-info\") \"%fx26-file-info\")
+         ((\"utf8-next\") \"%fx26-utf8-next\")
+         ((\"str-slice\") \"%fx26-str-slice\")
          ((\"remainder\") \"%fx26-remainder\")
          ((\"string<=?\") \"%fx26-string<=?\")
          ((\"string>=?\") \"%fx26-string>=?\")
@@ -2396,6 +2431,8 @@
          ((\"read-bytes\") \"%fx26-read-bytes\")
          ((\"type-bound\") \"%fx26-evidence-bound\")
          ((\"write-file\") \"%fx26-write-file\")
+         ((\"utf8-slice\") \"%fx26-utf8-slice\")
+         ((\"str-length\") \"%fx26-str-length\")
          ((\"datum-list\") \"%fx26-list-copy\")
          ((\"length-is?\") \"%fx26-length-is?\")
          ((\"datum-int?\") \"%fx26-fixnum?\")
@@ -2429,6 +2466,11 @@
          ((\"make-string\") \"%fx26-make-string\")
          ((\"string-set!\") \"%fx26-string-set!\")
          ((\"string-copy\") \"%fx26-string-copy\")
+         ((\"utf8-length\") \"%fx26-utf8-length\")
+         ((\"bytes-slice\") \"%fx26-bytes-slice\")
+         ((\"str->string\") \"%fx26-str->string\")
+         ((\"bytes->utf8\") \"%fx26-bytes->utf8\")
+         ((\"utf8->bytes\") \"%fx26-utf8->bytes\")
          ((\"i8-quotient\") \"%fx26-i8-quotient\")
          ((\"u8-quotient\") \"%fx26-u8-quotient\")
          ((\"bitwise-and\") \"%fx26-bitwise-and\")
@@ -2468,6 +2510,8 @@
          ((\"string-copy!\") \"%fx26-string-copy!\")
          ((\"string->utf8\") \"%fx26-string->utf8\")
          ((\"utf8->string\") \"%fx26-utf8->string\")
+         ((\"bytes-length\") \"%fx26-bytes-length\")
+         ((\"bytes-u8-ref\") \"%fx26-bytes-u8-ref\")
          ((\"i8-remainder\") \"%fx26-i8-remainder\")
          ((\"u8-remainder\") \"%fx26-u8-remainder\")
          ((\"i32-quotient\") \"%fx26-i32-quotient\")
@@ -2509,6 +2553,7 @@
          ((\"%reify-region\") \"%fx26-reify-region\")
          ((\"process-start\") \"%fx26-process-start\")
          ((\"process-write\") \"%fx26-process-write\")
+         ((\"bytes-as-utf8\") \"%fx26-bytes-as-utf8\")
          ((\"i32-remainder\") \"%fx26-i32-remainder\")
          ((\"u32-remainder\") \"%fx26-u32-remainder\")
          ((\"i64-remainder\") \"%fx26-i64-remainder\")
@@ -2530,6 +2575,7 @@
          ((\"process-output\") \"%fx26-process-output\")
          ((\"process-status\") \"%fx26-process-status\")
          ((\"process-signal\") \"%fx26-process-signal\")
+         ((\"utf8-substring\") \"%fx26-utf8-substring\")
          ((\"string-compare\") \"%fx26-string-compare\")
          ((\"symbol-compare\") \"%fx26-symbol-compare\")
          ((\"certify-length\") \"%fx26-first\")
@@ -2560,6 +2606,7 @@
          ((\"terminal-restore\") \"%fx26-terminal-restore\")
          ((\"native-procedure\") \"%fx26-native-procedure\")
          ((\"bytevector-copy!\") \"%fx26-bytevector-copy!\")
+         ((\"utf8-byte-length\") \"%fx26-utf8-byte-length\")
          ((\"arithmetic-shift\") \"%fx26-arithmetic-shift\")
          ((\"symbol-name-hash\") \"%symbol-hash\")
          ((\"close-over-word!\") \"%fx26-close-over-word!\")
@@ -2571,6 +2618,7 @@
          ((\"session-redefines\") \"%fx26-session-redefines\")
          ((\"bytevector-length\") \"bytevector-length\")
          ((\"bytevector-u8-ref\") \"bytevector-u8-ref\")
+         ((\"bytes->bytevector\") \"%fx26-bytes->bytevector\")
          ((\"datum-denominator\") \"%denominator\")
          ((\"set-register-twin\") \"%set-register-twin\")
          ((\"runtime-primitive\") \"%runtime-primitive\")

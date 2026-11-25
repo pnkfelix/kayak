@@ -110,6 +110,14 @@ impl Show for Str {
     }
 }
 
+/// UTF-8 text, as Fixpt writes it: `#utf8"…"`, its text a string's.
+impl Show for crate::Utf8 {
+    fn show(&self, out: &mut String) {
+        out.push_str("#utf8");
+        self.0.show(out);
+    }
+}
+
 /// A list, `(1 2 3)`; `nil`, `()`.
 impl<T: Show + crate::Trace> Show for crate::ListAt<'_, T> {
     fn show(&self, out: &mut String) {

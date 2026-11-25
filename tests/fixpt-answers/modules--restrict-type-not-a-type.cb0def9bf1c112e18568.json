@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"restrict-type-not-a-type.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/modules/restrict-type-not-a-type.fx:3:62: the module gives no type `x`",
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

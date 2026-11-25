@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"dependent-moduleof-restrict.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define b : (moduleof (abs t type) (val zero t) (val next (subr pure (t) t)) (val value (subr pure (t) int))) ! (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/dm-base.fx))",
+"define u : (moduleof (val two (subr pure () b..t))) ! (read (globals %shared:input:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/dm-user.fx b))",
+"define e : env-t ! (read (globals b u))",
+"define z : (moduleof (val %hidden:base (moduleof (abs t type) (val zero t) (val next (subr pure (t) t)) (val value (subr pure (t) int)))) (val user (moduleof (val two (subr pure () (select base t))))) (val show (subr pure ((select base t)) int))) ! (read (globals e))",
+"int ! (read (globals z))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

@@ -1,0 +1,33 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"utf8-literals.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"t : utf8 ! pure",
+"#utf8\"aé😀z\" : utf8 ! (read (globals t))",
+"\"aé😀z\" : string ! (read (globals t))",
+"8 : nat ! (read (globals t))",
+"#t : bool ! (read (globals t))",
+"#utf8\"quoted\" : utf8 ! pure",
+"once : (subr pure () utf8) ! pure",
+"\"once\" : string ! (read (globals once))",
+"#utf8\"\" : utf8 ! pure",
+"\"λq\\t\" : string ! pure",
+"\"back \\\"quoted\\\"\" : string ! pure",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

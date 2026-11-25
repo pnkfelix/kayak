@@ -32,11 +32,11 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/recursive/parametric-rose.fx:7:1: calling `total` may read any global, `total` too, so `total` may reach itself through a global: its type must say `spin`",
+"fixpt: <programs>/recursive/parametric-rose.fx:7:1: calling `total` may read any global, `total` too, so `total` may reach itself through a global: its type must say `spin`",
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

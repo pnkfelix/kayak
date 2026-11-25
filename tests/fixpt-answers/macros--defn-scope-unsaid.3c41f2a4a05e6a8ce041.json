@@ -1,0 +1,23 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"defn-scope-unsaid.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: read error: <kayak>-snapshot/tests/fx26/programs/macros/defn-scope-unsaid.fx:7:51: `e2` is placed in the scope of `a`, but its signature says it is in no scope of the pattern's binders",
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

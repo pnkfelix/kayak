@@ -12,12 +12,12 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/macros/typed-letrec-pure.fx:10:48: `%f:1593428241.1` is declared a (subr pure (int) int): a (subr pure (int) int) is expected here, and this is a (subr spin (int) int)",
+"fixpt: <programs>/macros/typed-letrec-pure.fx:10:48: `%f:1593428241.1` is declared a (subr pure (int) int): a (subr pure (int) int) is expected here, and this is a (subr spin (int) int)",
 "  beyond what is expected, it has spin; it may not end: `%f:1593428241.1` is named in `%f:1593428241.1` other than as a call's operator: whoever is given it may call it again, with anything",
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

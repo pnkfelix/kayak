@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/modules/defined-twice-conversion.fx:3:11: `up-t` is defined twice in this module",
+"fixpt: <programs>/modules/defined-twice-conversion.fx:3:11: `up-t` is defined twice in this module",
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

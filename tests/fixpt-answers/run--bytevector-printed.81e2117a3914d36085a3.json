@@ -1,0 +1,46 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"bytevector-printed.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (10 cells, cellular):",
+"     0: closure word made over 0",
+"     3: global! made",
+"     5: global made",
+"     7: tcall 0",
+"     9: exit",
+"",
+"word made (9 cells, cellular):",
+"     0: lit \"Aé\\x0;\"",
+"     2: prim %fx26-string->utf8 1",
+"     5: prim %fx26-utf8->bytes 1",
+"     8: return",
+"  its register code (19 cells, not compiled):",
+"       0: args 0",
+"       2: save 0",
+"       4: const \"Aé\\x0;\"",
+"       6: setreg 1",
+"       8: prim %fx26-string->utf8 1",
+"      11: setreg 1",
+"      13: prim %fx26-utf8->bytes 1",
+"      16: pop 0",
+"      18: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

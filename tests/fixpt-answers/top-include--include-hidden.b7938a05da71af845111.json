@@ -29,7 +29,7 @@
 {
 "code": 1,
 "out": [
-"m : (moduleof (desc t include-lib.fx..t) (desc pair-of-t (pairof include-lib.fx..t include-lib.fx..t @heap)) (desc touches (read @heap)) (val zero include-lib.fx..t) (val value (subr pure (include-lib.fx..t) int)) (val both (subr (alloc @heap) (include-lib.fx..t) pair-of-t))) ! (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/top-include/../module-files/include-lib.fx))",
+"m : (moduleof (desc t include-lib.fx..t) (desc pair-of-t (pairof include-lib.fx..t include-lib.fx..t @heap)) (desc touches (read @heap)) (val zero include-lib.fx..t) (val value (subr pure (include-lib.fx..t) int)) (val both (subr (alloc @heap) (include-lib.fx..t) pair-of-t))) ! (read (globals %shared:<programs>/top-include/../module-files/include-lib.fx))",
 "zero : include-lib.fx..t ! (read (globals m))",
 "value : (subr pure (include-lib.fx..t) int) ! (read (globals m))",
 "both : (subr (alloc @heap) (include-lib.fx..t) (select m pair-of-t)) ! (read (globals m))",
@@ -39,11 +39,11 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/top-include/include-hidden.fx:5:1: unbound variable `secret`",
+"fixpt: <programs>/top-include/include-hidden.fx:5:1: unbound variable `secret`",
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

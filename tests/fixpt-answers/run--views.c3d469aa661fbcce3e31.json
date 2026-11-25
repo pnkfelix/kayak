@@ -1,0 +1,53 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"views.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define s : string ! pure",
+"define len : (poly ((r region)) (subr pure ((strof r)) nat)) ! pure",
+"nat ! (read (globals len s))",
+"define w : str ! (read (globals s))",
+"str ! (read (globals w))",
+"nat ! (read (globals len w))",
+"char ! (read (globals w))",
+"str ! (read (globals w))",
+"(listof bool acyclic) ! (read (globals w))",
+"string ! (read (globals w))",
+"string ! (read (globals w))",
+"utf8 ! (read (globals w))",
+"define seen : (subr (maxeff (alloc @heap) (read @heap) (write @heap)) () char) ! pure",
+"char ! (maxeff (alloc @heap) (read (globals seen)) (read @heap) (write @heap))",
+"define bv : bytevector ! pure",
+"define bs : bytes ! (read (globals bv))",
+"bytes ! (read (globals bs))",
+"nat ! (read (globals bs))",
+"u8 ! (read (globals bs))",
+"bool ! (read (globals bs bv))",
+"(bytevectorof @r2.1) ! (maxeff (alloc @r2.1) (read (globals bs)))",
+"(bytevectorof @r2.1) ! (maxeff (alloc @r2.1) (read (globals bs)))",
+"utf8 ! pure",
+"define fb : bytevector ! pure",
+"define u : utf8 ! (read (globals fb))",
+"utf8 ! (read (globals u))",
+"(listof nat acyclic) ! (read (globals u))",
+"utf8 ! (read (globals u))",
+"int ! (read (globals fb))",
+"utf8 ! (read (globals fb))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

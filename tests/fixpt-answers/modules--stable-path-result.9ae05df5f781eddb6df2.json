@@ -1,0 +1,27 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"stable-path-result.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"make : (subr pure (bool) sig) ! pure",
+"both : (moduleof (val m1 sig) (val m2 sig)) ! (read (globals make))",
+"f2 : (subr pure ((moduleof (val m1 sig) (val m2 sig))) (select (with $1 m1) t)) ! pure",
+"other : (moduleof (val m1 sig) (val m2 sig)) ! (read (globals make))",
+""
+],
+"err": [
+"fixpt: <programs>/modules/stable-path-result.fx:17:30: argument 1 is a other.m1..t, where a both.m1..t is expected",
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

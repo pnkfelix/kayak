@@ -15,7 +15,7 @@
         (int->string (+ 0 (bytevector-length (bytevector-copy b 2 13)))) " "
         (char->string (string-ref s 3)) (char->string (string-ref s 4)) " "
         (int->string (string-length (substring "héllo, wörld" 1 10)))
-        (tagcase (utf8->string (string->utf8 "héllo, wörld"))
-          (text t (string-append " " t))
+        (tagcase (bytes->utf8 (utf8->bytes (string->utf8 "héllo, wörld")))
+          (text t-utf8 (let ((t (utf8->string t-utf8))) (string-append " " t)))
           (bad k " bad"))))))
 (main)

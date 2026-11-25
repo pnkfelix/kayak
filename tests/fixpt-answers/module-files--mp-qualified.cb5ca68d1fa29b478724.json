@@ -21,9 +21,10 @@
 ]
 },
 {
-"code": 1,
+"code": 0,
 "out": [
-"! <kayak>-snapshot/tests/fx26/programs/module-files/mp-qualified.fx:3:2: unbound variable `module-parameters`",
+"; <kayak>-snapshot/tests/fx26/programs/module-files/mp-qualified.fx, checked as a module file",
+"(subr pure ((moduleof (desc pt (productof (#:x int) (#:y int))) (val twice (subr pure (int) int)))) (moduleof (val four (subr pure () int)) (val six (subr pure () int)))) ! (read (globals %shared:input:<kayak>-snapshot/tests/fx26/programs/module-files/mp-qualified.fx))",
 "; both checkers agree",
 ""
 ],
@@ -31,7 +32,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

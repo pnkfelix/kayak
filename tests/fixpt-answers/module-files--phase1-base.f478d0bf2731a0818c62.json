@@ -1,0 +1,23 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"phase1-base.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"base : int ! pure",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

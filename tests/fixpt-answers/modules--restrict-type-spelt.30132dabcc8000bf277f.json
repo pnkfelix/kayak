@@ -1,0 +1,26 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"restrict-type-spelt.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"m : r ! pure",
+"r = (moduleof (desc t int) (val x int))",
+"n : r ! (read (globals m))",
+"1 : int ! (read (globals n))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

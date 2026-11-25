@@ -16738,3 +16738,151 @@ then, of finding more such recursions, "Go ahead").
   after: no site of kc's or kfx's deeper than 350 frames. kfx making
   itself 3 s, the same files.
 - **The full check**: all passed, its second run (8 min 22 s under `timed`, predicted 8 min 11 s; the pre-check 3 min 51 s, after a clippy fix; the first full run failed at the corpus, its `db` and `db-verify` programs compiling base.kfx and read.kfx, re-blessed); nextest 5648 passed, 1 skipped.
+
+## C525. The pin moved to Fixpt c5b5991; `utf8` in KFX (2026-11-24)
+
+The user, after hearing that kayak-rt's and kcrt's runtimes diverge
+(TODO §56): "Oh hold on, Fixpt just added utf8 support", then "move the
+pin to Fixpt's current origin/main as the first step"; of Fixpt's
+`string->utf8` now giving its new `utf8` (18 of kayak's own sources used
+the old meaning, so stage 0 would refuse kfx), "Carry utf8 now". 6f7bd73
+to c5b5991, 63 commits: `utf8` (TODO §306 there, kayak's request
+answered: `string` stays UTF-32, UTF-8 a type of its own), its slices,
+views `bytes` and `str`, `bytevector` as `(bytevectorof const)`,
+dependent module types, `with` opening each member apart, a phase-1
+form's directory, a redefinition of a module with abstract types, the
+cell verifier's gaps closed, the expander's kernel words in tables.
+Reviewed first: C474's pin move (the steps PLAN.md lists), C70 (a poly
+in a poly), C75 (unions KFX has not), C482 (kayak-rt's UTF-8 strings).
+
+Carried:
+- **`utf8` in KFX**: the type (`kfx/check.kfx`, a base type, its shape
+  `utf8`), and Fixpt's four conversions (`check-defs.kfx`): `string->utf8`
+  `(poly ((s region)) (subr (read s) ((stringof s)) utf8))`,
+  `utf8->string` `(subr pure (utf8) string)`, `bytes->utf8`, of bytes at a
+  region, `(sumof (text utf8) (bad int))`, `utf8->bytes`, allocating at
+  one (made at a place's region as `make-bytevector` is, C267). Each of
+  the whole buffer where Fixpt's takes its view: narrower, K1's way.
+  kayak's sources rewritten (kfx, kc, the engine, tier 1, the REPLs,
+  `lib/live.kfx`, the corpus's and kfx-io's tests): bytes of text
+  `(utf8->bytes (string->utf8 s))`, text of bytes `(bytes->utf8 b)` and
+  its `text` arm's `(utf8->string u)`.
+- **kayak-rt**: `Utf8`, for now its `string`'s object (kind 1, UTF-8
+  already, C482), its `Trace` a string's word, shown `#utf8"…"`;
+  `string_to_utf8`, `utf8_to_string` no copies (neither writes),
+  `utf8_to_bytes` (and `_in`), `bytes_to_utf8`. A gap of kind: Fixpt's
+  49/50 when kayak-rt's `string` is Fixpt's UTF-32 (TODO §56 step 1).
+- **Tier 1 and the engine**: Fixpt's object, kind 49 (50 all ASCII), no
+  fields, its suffix the bytes, the header's count of them exact
+  (`cells/cprims.kfx`'s `utf8-of-bv!`, `fx26/vwords.kfx`'s `utf8-made!`);
+  the four conversions (tier 1's ops 233, 234; the engine's primitives
+  278, 279, appended to `table.kfx`'s list, hand-written in
+  `vprims.kfx` as C285's are); printed `#utf8"…"` (`cells/show.kfx`).
+  The IR evaluator's (`prims.kfx`'s `apply-prim`, called by nothing) a
+  string's value. Reps: `utf8`'s shape, the views' generative types 22
+  and 23 (`kfx/reps.kfx`). kc's native back end: none.
+- **Bootstrapping it**: kfx's own sources use the new conversions, which
+  the kfx before has not: a worktree at HEAD, its kfx on the new checker
+  with `kfx/main.kfx` and `lib/live.kfx` as they were (generation 1),
+  built there, on the new sources (generation 2), then regen's fixed
+  point (the C478 way, by the old sources this time).
+- **The expander** re-ported (`macros-port.py`), its port taught three
+  things: Fixpt's `table.fx`, which the expander now loads for sets of
+  the kernel's words, stood in for by the shim's set of symbols
+  (`STOOD_IN`; Fixpt's is generic, its lookup's entry a union KFX's Rust
+  has not); parametric type abbreviations written out at each use
+  (kfx's checker binds none across a module maker's `include`); a poly
+  of a poly merged (C70); and a module's region parameter renamed in any
+  type position, not only under `read` and kin. The driver: a
+  `begin-for-syntax`'s forms given the program's directory, `""`
+  (Fixpt's 6851f807), the host taking each form's `LEN:DIR` off
+  (`macros-phase1.kfx`); a shape of a cell and of a product (bb5487ba)
+  made data and read back.
+- **Prompts at a region constant** (`run/prompt-delimits.fx`, new at the
+  pin): `mentions?` had no case for a region constant, so a prompt whose
+  body named another tag at `@p` was found to delimit `@p`, and the
+  emitter passed the abort over (`unreachable_unwind`): it fails in Rust
+  where Fixpt's gives 23. Now it sees one; kfx's Rust passes it on.
+- **A redefinition of a module with abstract types** (029bad8c,
+  `redefine/module-abstract.fx`): never at a type its uses can take
+  (`binds-abstract?`), so the `--check` driver reruns its users
+  (`rerun-needed?`) and the plain one refuses it, as any change of type.
+- **Convention texts**: Fixpt's kinds grew by five (49 to 53); kayak's
+  own conventions written in tests (`tests/kfx/made-*.kfx`,
+  `tests/fx26-kayak/made-code-x86_64/`) say them too.
+- **Drift**, each read against what was ported: `prim.rs`, `heap.rs`,
+  `layout.rs`, `print.rs` (tier 1: `utf8`'s object, conversions and
+  printing; not the slices, views, nor `utf8`'s other operations: TODO
+  §54's pin note); `object-model.md` (the kinds; kayak-jit's constants
+  need none yet); `text.rs`'s `heap.rs` (no string operation changed);
+  `parser-exps.fx` (`typecase`'s `utf8` shape: not KFX's yet),
+  `parser.fx` (a module in a cell: the expander's, ported); `check.rs`
+  (reps above; the module and region rules are the checker's own, kfx's
+  as they were where Fixpt accepts more). Built-in modules, the native
+  conventions and Fixpt's test programs copied again; 22 lang items.
+Not done here: TODO §56, the reason for the move.
+- **The full check**: with C526, one commit (its check below).
+
+## C526. The pin moved to Fixpt 06a3666; `#utf8"…"` in KFX (2026-11-24)
+
+The user, before C525 was committed: "Pull latest Fixpt; it adds utf8
+literals". c5b5991 to 06a3666, one commit: `#utf8"…"`, UTF-8 text
+written in a program, a string's escapes, a quote's constant of type
+`utf8`, made once and interned by its bytes, and in quoted data a datum
+of its own (`utf8` appended to `datum`'s union). Asked whether to carry
+it or refuse it, the user: "Why not implement support for both of these
+literals? rust supports such literals …; byte strings and utf8
+strings". Both, then, where Fixpt has them: Fixpt refuses `#u8(…)` in a
+program, bare or quoted ("not an expression in the FX-26 kernel", "a
+bytevector cannot be quoted yet", `parse.rs`'s `no_bytevector`), so it
+waits for Fixpt (K1); the emitter's half then `b"…"`. C525 and this are
+one commit: C525's check failed at kc (below), and the pin moved again
+before it passed.
+
+Carried:
+- **The reader** (`kfx/read.kfx`, kfx's, the engine's and kc's):
+  `#utf8"…"` as `(#utf8 "…")`, a head no KFX name is, as `#(…)` is read
+  `(#vector …)`; its three nodes at three offsets. `utf8-literal?`,
+  `utf8-literal-text`.
+- **The checker**: the form, and its quote, of type `utf8` (and the
+  check mode's forms, `check-by-synth`'s list, so a typed lambda's body
+  has it too). Within quoted data refused (`quotable?`), a stricter test
+  (`tests/kfx-stricter/utf8-in-quoted-data.kfx`): KFX's `datum` has no
+  `utf8`, as it has no `bytevector`, kayak-rt keeping a `utf8` as a
+  string, which a union could not tell from one (C525's gap of kind).
+- **KFX's Rust**: `kayak_rt::Utf8(str_lit!("…"))`, a static made once;
+  no kayak-rt change.
+- **The engine**: as Fixpt's quote rewrite, `(%quote (string->utf8
+  "…"))` (cg's `utf8-quoted`), interned; the IR's lowering a quote's
+  constant made once at loading (`table.kfx`'s `quoted-constant!`, by
+  `utf8-made!`, moved to `words.kfx` to precede it). Tier 1's interner
+  (`intern-datum!`) a whole `utf8` by its bytes, Fixpt's `intern_datum`'s
+  (hash 6 over the bytes). kc: "not yet", as for `utf8` at C525.
+- **The expander** re-ported: `syn-hash` and the syntax writer's `utf8?`
+  arms, the shim's `mx-utf8?` (none, KFX's datum having none) and
+  `mx-utf8->string`. And two of C525's, found by kc's native back end in
+  the check: the shim's table bucket by `modulo`, not `bitwise-and`, and
+  the table's sameness `mx-symbol=?` (a patch of `macros-syntax.fx`'s
+  `(make-table symbol-hash symbol=?)`), kc making no procedure of a
+  primitive.
+- **C525's phase-1 gap shown**: `procedural/for-syntax-load.fx` (Fixpt's
+  6851f807), a `begin-for-syntax` loading `../module-files/…`, is one of
+  `kc-expanded.py`'s KNOWN, the gap C525 noted (TODO §54).
+- **Tests**: `tests/fx26-kayak/datum/utf8-literals.fx` (the literal at
+  the top, in a procedure, quoted, escapes; the engine agrees with
+  Fixpt), Fixpt's `run/utf8-literals.fx` copied (refused: its quoted
+  data, and `utf8`'s operations kayak has not carried, TODO §54).
+- **Lists of programs that pass**, found in the check: `datum`'s rep
+  (`kfx/reps.kfx`'s `rx-datum`) Fixpt's, `utf8` its last member (21 reps
+  programs), though the checker's `datum` has none (and `ri-datum?`'s
+  count of its members, eleven); `rp-standard-generatives` given C525's
+  views, `bytesof` and `strof`, whose declarations C525 added but not
+  their names, so a program's generatives were numbered two short of
+  Fixpt's (their keys, ten programs); out of
+  `tests/cells-passing`, `macros/defn-export-given.fx` (Fixpt refuses its
+  old notation since 52f4294a, the engine too, alike) and, with
+  `tests/cellgen-passing` and `tests/reps-passing`, `run/bytevectors.fx` (Fixpt's now calls
+  `utf8-length`, of C525's gap).
+- **Drift**: `check.rs` (`DATUM`: in the reps, not the checker), `parser-exps.fx`,
+  `macros-syntax.fx`, `macros-fresh.fx`; built-in modules copied again.
+- **The full check**: `check: all passed`, 9 min 28 s (the mean of 81 runs 8 min 12 s); the pre-check 2 min 29 s.

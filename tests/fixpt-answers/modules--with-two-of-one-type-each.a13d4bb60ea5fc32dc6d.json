@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"with-two-of-one-type-each.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define make : (subr pure (bool) sig) ! pure",
+"define both : (moduleof (val m1 sig) (val m2 sig)) ! (read (globals make))",
+"int ! (read (globals both))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

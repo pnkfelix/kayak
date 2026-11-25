@@ -27,13 +27,14 @@
 "! <kayak>-snapshot/tests/fx26/programs/module-files/shared-twice.fx:3:45: `bump` is declared a (subr pure (shared-counter.fx..t) int): a (subr pure (shared-counter.fx..t) int) is expected here, and this is a (subr (read (globals c)) (shared-counter.fx..t) int)",
 "  beyond what is expected, it has (read (globals c))",
 "; both checkers agree",
+"; checked as a program, whose globals a later definition may change: `fixpt check --module <kayak>-snapshot/tests/fx26/programs/module-files/shared-twice.fx` checks it as a module file",
 ""
 ],
 "err": [
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

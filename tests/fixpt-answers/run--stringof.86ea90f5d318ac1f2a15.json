@@ -40,14 +40,14 @@
 "\"HELLO, WORLD\" : string ! (maxeff (read @s) (write @s) (alloc @s) spin (read (globals upcased!)))",
 "(#\\b #\\c #\\b) : (listof char acyclic) ! pure",
 "#t : bool ! pure",
-"#u8(195 169 33) : (bytevectorof @r.1) ! (maxeff (alloc @r.1) (read (globals joined)))",
+"#utf8\"é!\" : utf8 ! (read (globals joined))",
 ""
 ],
 "err": [
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

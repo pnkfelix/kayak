@@ -6,7 +6,7 @@ use super::*;
 // show.kfx: a value written as Fixpt's `write` writes it (C122), so that
 // tier 1's answers are compared with Fixpt's as text. Shared structure is
 // not labelled yet (Fixpt's `#n=`): a cyclic value would not end.
-// fixpt-source: crates/fixpt-runtime/src/print.rs@6f7bd73
+// fixpt-source: crates/fixpt-runtime/src/print.rs@c5b5991
 #[inline]
 pub fn hex_digit(d: i64) -> Str {
     char_to_string(string_ref_i64(str_lit!("0123456789abcdef"), d))
@@ -170,6 +170,41 @@ pub fn bytes_written(p: i64, i: i64, n: i64) -> Str {
     }
 }
 
+// UTF-8 text's characters from byte `i` of the raw words from `p`, `n`
+// bytes, valid (C525): each code point by its lead byte's width.
+pub fn utf8_text_from(mut p: i64, mut i: i64, mut n: i64, mut out: Str) -> Str {
+    loop {
+        if i64_gt_eq(i, n) {
+            return out;
+        } else {
+            let b0 = raw_byte_at(p, i);
+            let w = if i64_lt(b0, 128i64) {
+                the::<i64>(1i64)
+            } else if i64_lt(b0, 224i64) {
+                the::<i64>(2i64)
+            } else if i64_lt(b0, 240i64) {
+                the::<i64>(3i64)
+            } else {
+                the::<i64>(4i64)
+            };
+            let more = kayak_rt::closure1((p, i,), |(p, i,), k: Int| {
+                i64_and(raw_byte_at(p, i64_plus(i, int_to_i64(k))), 63i64)
+            });
+            let cp = if i64_eq(w, 1i64) {
+                b0
+            } else if i64_eq(w, 2i64) {
+                i64_or(i64_shl(i64_and(b0, 31i64), int_lit(6)), more.call(int_lit(1)))
+            } else if i64_eq(w, 3i64) {
+                i64_or(i64_shl(i64_and(b0, 15i64), int_lit(12)), i64_or(i64_shl(more.call(int_lit(1)), int_lit(6)), more.call(int_lit(2))))
+            } else {
+                i64_or(i64_shl(i64_and(b0, 7i64), int_lit(18)), i64_or(i64_shl(more.call(int_lit(1)), int_lit(12)), i64_or(i64_shl(more.call(int_lit(2)), int_lit(6)), more.call(int_lit(3)))))
+            };
+            (i, out) = (i64_plus(i, w), string_append(out, char_to_string(i64_to_char(cp))));
+            continue;
+        }
+    }
+}
+
 pub fn written(v: i64) -> Str {
     if is_fixnum_p(v) {
         i64_to_string(fix_val(v))
@@ -209,6 +244,8 @@ pub fn written(v: i64) -> Str {
         string_append(str_lit!("#("), string_append(elements_written(v, 0i64, obj_length(v)), str_lit!(")")))
     } else if is_kind_p(v, k_bytevector()) {
         string_append(str_lit!("#u8("), string_append(bytes_written(address(v), 0i64, word_at(address(v))), str_lit!(")")))
+    } else if (is_kind_p(v, k_utf8()) || is_kind_p(v, k_utf8_ascii())) {
+        string_append(str_lit!("#utf8\""), string_append(escaped(utf8_text_from(address(v), 0i64, suffix_bytes(v), str_lit!("")), 0i64, str_lit!("")), str_lit!("\"")))
     } else if is_kind_p(v, int_to_i64(lay::kind_closure())) {
         str_lit!("#<procedure>")
     } else if is_kind_p(v, int_to_i64(lay::kind_continuation())) {

@@ -1,0 +1,23 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"for-syntax-load-missing.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: read error: <programs>/procedural/for-syntax-load-missing.fx:3:29: `begin-for-syntax`: cannot read `no-such-file.fx`: No such file or directory (os error 2)",
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

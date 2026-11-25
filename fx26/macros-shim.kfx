@@ -18,6 +18,34 @@
 (define mx-symbol->keyword (subr pure (symbol) symbol)
   (lambda (n) (string->symbol (string-append "#:" (symbol->string n)))))
 (define mx-datum-int? (subr pure (datum) bool) (lambda (d) (int? d)))
+"`utf8?` of a datum, and its text (Fixpt 06a3666): KFX's `datum` has no
+ `utf8` (`#utf8\"…\"` in data is refused), so none is."
+(define mx-utf8? (subr pure (datum) bool) (lambda (d) #f))
+(define mx-utf8->string (subr pure (datum) string) (lambda (d) ""))
+"Fixpt's hash tables (`table.fx`, which its expander loads since
+ c5b5991), as the expander uses them: a table of symbols to `#t`, its
+ sets of the kernel's words, made once (`words-table`). A set of symbols
+ here, in buckets by the name's hash: Fixpt's table is generic in the key
+ and the value, its lookup's entry a `(oneof nil (pairof k v r))`, which
+ KFX's Rust has not (C75). `(table k v r)`, written `mx-table` at each use
+ by scripts/macros-port.py (`STOOD_IN`); a value but `#t` refused."
+(define-type mx-table (arrayof (listof symbol acyclic) mxp))
+(define mx-symbol-hash (subr pure (symbol) int) (lambda (s) (symbol-name-hash s)))
+(define mx-symbol=? (subr pure (symbol symbol) bool) (lambda (a b) (symbol=? a b)))
+(define mx-make-table (subr (alloc mxp) ((subr pure (symbol) int) (subr pure (symbol symbol) bool)) mx-table)
+  (lambda (hash same) (the mx-table (make-array 64 nil))))
+(define mx-table-bucket (subr pure (symbol) int)
+  (lambda (k) (modulo (symbol-name-hash k) 64)))
+(define mx-table-has? (subr pure ((listof symbol acyclic) symbol) bool)
+  (lambda (b k) (cond ((null? b) #f) ((symbol=? (car b) k) #t) (else (mx-table-has? (cdr b) k)))))
+(define mx-table-ref (subr (read mxp) (mx-table symbol bool) bool)
+  (lambda (t k d) (if (mx-table-has? (array-ref t (mx-table-bucket k)) k) #t d)))
+(define mx-table-set! (subr (maxeff (read mxp) (write mxp)) (mx-table symbol bool) unit)
+  (lambda (t k v)
+    (let ((i (mx-table-bucket k)))
+      (if v
+          (if (mx-table-has? (array-ref t i) k) #u (array-set! t i (cons k (array-ref t i))))
+          (error "the expander's table of symbols holds `#t` alone")))))
 "`eq?` of two booleans, as the expander compares a binder's namespace, an
  address's steps (KFX has no `eq?`: C75)."
 (define mx-eq? (subr pure (bool bool) bool) (lambda (a b) (if a b (not b))))

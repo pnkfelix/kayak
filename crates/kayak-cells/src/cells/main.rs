@@ -42,11 +42,11 @@ pub fn read_text(path: Str) -> Str {
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("data") } {
         let b: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
-        let tagcase_ = utf8_to_string(b);
+        let tagcase_ = bytes_to_utf8(b);
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("text") } {
-            let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-            s
+            let s_utf8: Utf8 = kayak_rt::sum_payload::<Utf8>(tagcase_);
+            utf8_to_string(s_utf8)
         } else if tag_ == const { kayak_rt::tag_hash("bad") } {
             let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
             match fail_with(string_append(path, str_lit!(": not UTF-8")), int_lit(1)) {}
@@ -396,10 +396,11 @@ pub fn profile_shown_x() -> () {
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("data") } {
             let b: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
-            let tagcase_ = utf8_to_string(b);
+            let tagcase_ = bytes_to_utf8(b);
             let tag_ = kayak_rt::sum_tag(tagcase_);
             if tag_ == const { kayak_rt::tag_hash("text") } {
-                let src: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+                let src_utf8: Utf8 = kayak_rt::sum_payload::<Utf8>(tagcase_);
+                let src = utf8_to_string(src_utf8);
                 let cs = string_chars(src);
                 let starts = starts_noted_x(cs, make_flatarray_i64(i64_plus(1i64, newlines(cs, 0i64)), 0i64), 0i64, 0i64);
                 let lines = lines_of(cs, nil::<char>(), nil::<List<char>>());

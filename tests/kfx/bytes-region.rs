@@ -12,7 +12,7 @@ use kayak_rt::*;
 // place given is named as its region is, so that what is made at the region
 // is made in it.)
 pub fn put_bytes<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P, buf: BytesAt<'p>, at: Int, s: Str) -> BytesAt<'p> {
-    let bs = the::<BytesAt<'p>>(string_to_utf8_in(p, s));
+    let bs = the::<BytesAt<'p>>(utf8_to_bytes_in(p, string_to_utf8(s)));
     let n = bytevector_length(bs);
     let big = if _lt_eq(_plus(at, n), bytevector_length(buf)) {
         buf
@@ -37,18 +37,18 @@ pub fn joined(ws: List<Str>) -> Str {
             let go = kayak_rt::closure3((r,), |(r,), mut buf: BytesAt<'r>, mut at: Int, mut xs: List<Str>| {
                 loop {
                     if null_p(xs) {
-                        let tagcase_ = utf8_to_string(the::<BytesAt<'r>>(bytevector_copy_in(r, buf, int_lit(0), at)));
+                        let tagcase_ = bytes_to_utf8(the::<BytesAt<'r>>(bytevector_copy_in(r, buf, int_lit(0), at)));
                         let tag_ = kayak_rt::sum_tag(tagcase_);
                         if tag_ == const { kayak_rt::tag_hash("text") } {
-                            let t: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-                            return t;
+                            let t_utf8: Utf8 = kayak_rt::sum_payload::<Utf8>(tagcase_);
+                            return utf8_to_string(t_utf8);
                         } else if tag_ == const { kayak_rt::tag_hash("bad") } {
                             let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
                             return str_lit!("?");
                         } else { unreachable!() }
                     } else {
                         let b = put_bytes(r, buf, at, car(xs));
-                        (buf, at, xs) = (put_bytes(r, b, _plus(at, bytevector_length(string_to_utf8(car(xs)))), str_lit!(" ")), _plus(at, _plus(int_lit(1), bytevector_length(string_to_utf8(car(xs))))), cdr(xs));
+                        (buf, at, xs) = (put_bytes(r, b, _plus(at, bytevector_length(utf8_to_bytes(string_to_utf8(car(xs))))), str_lit!(" ")), _plus(at, _plus(int_lit(1), bytevector_length(utf8_to_bytes(string_to_utf8(car(xs)))))), cdr(xs));
                         continue;
                     }
                 }

@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"defn-export-given.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: the FX-26 front end: <kayak>-snapshot/tests/fx26/programs/macros/defn-export-given.fx:6:20: what a use defines is said in what it makes, `(macro/addressed σ (defn (ℓ δ) …))`, not by `(export σ (rho (ℓ δ) …))` around its parts: the `rho`'s entries go in the `defn`",
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

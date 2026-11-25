@@ -93,6 +93,21 @@ impl std::fmt::Debug for Str {
     }
 }
 
+/// `utf8`, Fixpt's UTF-8 text (its 279c16cf; C525): frozen, made whole.
+/// Held as a string's object for now, which kayak-rt's is UTF-8 already
+/// (C482): a gap of the object's kind, 1 where Fixpt's is 49 (50 all
+/// ASCII), to close as kayak-rt's `string` takes Fixpt's UTF-32 layout
+/// and this its own (`TODO.md` §54's pin note). No KFX program tells the
+/// two apart: `utf8?` and a `utf8` in a union or a datum are refused.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct Utf8(pub Str);
+
+impl std::fmt::Debug for Utf8 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "#utf8{:?}", self.0.as_str())
+    }
+}
+
 /// `(ref T R)` in the heap (`RefAt`, `obj.rs`: one Fixpt word, to a box).
 pub type Ref<T> = RefAt<'static, T>;
 

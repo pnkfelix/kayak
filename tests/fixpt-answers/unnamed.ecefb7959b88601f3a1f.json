@@ -9,7 +9,7 @@
 {
 "code": 1,
 "out": [
-"! <kayak>-snapshot/tests/fx26/stage/unnamed.fx:4:21: `stage` takes a module by its name",
+"! <kayak>/tests/fx26/stage/unnamed.fx:4:21: `stage` takes a module by its name",
 "; both checkers agree",
 ""
 ],
@@ -17,7 +17,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

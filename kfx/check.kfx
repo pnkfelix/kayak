@@ -878,6 +878,20 @@
 (define mtype-items (subr kfx (ty) tys)
   (lambda (t) (tagcase t (ty-data (d args) (if (string=? d "%mtype") args nil)) (else other nil))))
 
+(define-rec
+  (binds-abstract? (subr kfx (ty) bool)
+    (lambda (t)
+      "Whether `t` is a module type that has abstract types, or holds a
+       module that has: a global of it names them for its binding (`m..t`,
+       `m.a..t`), so another module's are other types (Fixpt's 029bad8c,
+       `k-binds-abstract?`; C525)."
+      (and (mtype? t)
+           (any? (lambda ((x ty))
+                   (or (string=? (mitem-kind x) "%abs")
+                       (and (string=? (mitem-kind x) "%val")
+                            (tagcase x (ty-data (d args) (and (not (null? args)) (binds-abstract? (car args)))) (else other #f)))))
+                 (mtype-items t))))))
+
 (define mtype-find (subr kfx (ty string string) tys)
   (lambda (t kind n)
     "The item of module type `t` of `kind` (`%abs`, `%desc`, ...) named `n`."
@@ -1880,6 +1894,7 @@
               ((string=? d "%pairof") "pair")
               ((string=? d "symbol") "symbol")
               ((string=? d "keyword") "keyword")
+              ((string=? d "utf8") "utf8")
               ((string=? d "%array") "bloblet")
               ((string=? d "%bytes") "bytevector")
               ((string=? d "%stringof") "string")
@@ -2081,8 +2096,10 @@
 "`datum` (C77), FX-26's union of what a reader reads, `(union int f64
  char bool string symbol keyword nil (pairof datum datum acyclic)
  vector)`, its keywords C291's: a name, its members found when they are
- wanted, since it mentions itself. FX-26's has `bytevector` too, which
- KFX's has not yet."
+ wanted, since it mentions itself. FX-26's has `bytevector` and (since
+ Fixpt 06a3666) `utf8` too, which KFX's has not yet: KFX's Rust keeps a
+ `utf8` as a string, which a union could not tell from one, so
+ `#utf8\"…\"` within quoted data is refused."
 (define datum-members (subr kfx () tys)
   (lambda ()
     (list (ty-int) (ty-f64) (ty-char) (ty-bool) (ty-string) (ty-data "symbol" nil) (ty-data "keyword" nil) (ty-data "nil" nil)
@@ -2332,7 +2349,7 @@
         "define-convention"))
 (define logic-base-names strings
   (list "int" "nat" "i64" "u64" "i32" "u32" "i16" "u16" "i8" "u8" "f64" "f32" "bool" "char" "unit" "string"
-        "symbol" "keyword" "datum" "void" "false" "nil"))
+        "symbol" "keyword" "utf8" "datum" "void" "false" "nil"))
 
 (define param-name-written (subr kfx (cv strings sexp) string)
   (lambda (v tvars p)
@@ -3203,6 +3220,7 @@
                 ((string=? s "f32") (ty-data s nil))
                 ((string=? s "symbol") (ty-data s nil))
                 ((string=? s "keyword") (ty-data s nil))
+                ((string=? s "utf8") (ty-data s nil))
                 ((string=? s "false") (ty-data s nil))
                 ((string=? s "nil") (ty-data s nil))
                 ((or (string=? s "datum") (string=? s "vector")) (ty-data s nil))
@@ -6979,9 +6997,13 @@
 (define-rec
   (mentions? (subr kfx (st ty string) bool)
     (lambda (s t r)
-      "Whether type `t` mentions region `r`, latent effects included."
+      "Whether type `t` mentions region `r`, latent effects included; a
+       region constant too (`@p`, C525: a prompt whose body named another
+       tag at a constant region was found to delimit it, its abort passed
+       over in Rust; Fixpt's `run/prompt-delimits.fx`)."
       (tagcase (walk s t)
         (ty-var (n) (string=? n r))
+        (ty-rconst (n) (string=? n r))
         (ty-list (e x) (or (mentions? s e r) (mentions? s x r)))
         (ty-flat (e x) (or (mentions? s e r) (mentions? s x r)))
         (ty-shape (p ls ts) (any? (lambda ((x ty)) (mentions? s x r)) ts))

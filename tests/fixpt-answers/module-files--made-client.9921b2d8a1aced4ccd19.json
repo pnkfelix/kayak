@@ -346,13 +346,13 @@
 "",
 "word program (23 cells, cellular):",
 "     0: closure word lambda@1001:0 over 0",
-"     3: global! %shared:<kayak>-snapshot/tests/fx26/programs/module-files/made-core.fx",
+"     3: global! %shared:<programs>/module-files/made-core.fx",
 "     5: closure word input@1002:241 over 0",
 "     8: lit 37",
 "    10: slot 0",
 "    12: prim %make-frozen 2",
 "    15: slot! 0",
-"    17: global! %shared:input:<kayak>-snapshot/tests/fx26/programs/module-files/made-buffer.fx",
+"    17: global! %shared:input:<programs>/module-files/made-buffer.fx",
 "    19: closure word lambda@320 over 0",
 "    22: exit",
 "",
@@ -670,7 +670,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

@@ -133,8 +133,8 @@
 "    38: drop",
 "    39: drop",
 "    40: drop",
-"    41: global! %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/counter.fx",
-"    43: global %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/counter.fx",
+"    41: global! %shared:<programs>/modules/../module-files/counter.fx",
+"    43: global %shared:<programs>/modules/../module-files/counter.fx",
 "    45: global! c",
 "    47: global c",
 "    49: field 2",
@@ -206,7 +206,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

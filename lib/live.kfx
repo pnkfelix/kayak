@@ -23,9 +23,9 @@
           (clock x (sum time (clock)))
           (read-file p
             (tagcase (the (sumof (data (bytevectorof w)) (failed io-error)) (read-file p))
-              (data b (tagcase (utf8->string b) (text s (sum text s)) (bad k (sum failed "not UTF-8"))))
+              (data b (tagcase (bytes->utf8 b) (text s-utf8 (let ((s (utf8->string s-utf8))) (sum text s))) (bad k (sum failed "not UTF-8"))))
               (failed e (sum failed (extract e detail)))))
           (write-file f
-            (tagcase (write-file (extract f path) (the (bytevectorof w) (string->utf8 (extract f text))))
+            (tagcase (write-file (extract f path) (the (bytevectorof w) (utf8->bytes (string->utf8 (extract f text)))))
               (done u (sum done #u))
               (failed e (sum failed (extract e detail))))))))))

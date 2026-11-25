@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"stable-path-param.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <kayak>-snapshot/tests/fx26/programs/modules/stable-path-param.fx:16:40: argument 1 is a b.m2..t, where a b.m1..t is expected",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

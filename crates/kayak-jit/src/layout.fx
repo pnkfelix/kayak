@@ -70,6 +70,11 @@
 (define kind-icell int 46)
 (define kind-mailbox int 47)
 (define kind-keyword int 48)
+(define kind-utf8 int 49)
+(define kind-utf8-ascii int 50)
+(define kind-utf8-slice int 51)
+(define kind-bytes-slice int 52)
+(define kind-str-slice int 53)
 (define kind-extension int 255)
 
 ;;; A closure's fields, and an environment frame's, by negative offset.
@@ -77,6 +82,15 @@
 (define closure-extra0 int 4)
 (define frame-parent int 2)
 (define frame-slot0 int 3)
+
+;;; A `utf8` slice's fields, by negative offset. 1 is the trailer.
+(define utf8-slice-owner int 2)
+(define utf8-slice-start int 3)
+(define utf8-slice-end int 4)
+(define utf8-slice-count int 5)
+(define view-slice-owner int 2)
+(define view-slice-start int 3)
+(define view-slice-end int 4)
 
 ;;; A code bloblet's fields, by negative offset from its code. 1 is the trailer.
 (define code-entry int 2)

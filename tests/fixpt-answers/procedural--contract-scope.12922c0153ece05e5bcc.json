@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: read error: <kayak>-snapshot/tests/fx26/programs/procedural/contract-scope.fx:12:1: a use of `let1`: its expansion places `x` where its contract does not put it in `x`'s scope",
+"fixpt: read error: <programs>/procedural/contract-scope.fx:12:1: a use of `let1`: its expansion places `x` where its contract does not put it in `x`'s scope",
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

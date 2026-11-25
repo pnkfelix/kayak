@@ -1805,6 +1805,34 @@ over its 1664 definitions, 335 of them refused:
   **no item refused, no `not yet`**: kc compiles the whole expander, its
   9.4 MB of assembly accepted by GNU `as` (1583 procedures). Step 2's
   code generator's gaps closed; what is left of step 2 is below.
+- **The pin at c5b5991 (C525): what was carried as a gap.** Fixpt's
+  `utf8` (279c16cf, TODO §306/§310 there) in KFX: the type and the four
+  conversions alone (`string->utf8`, `utf8->string`, `bytes->utf8`,
+  `utf8->bytes`), each of the whole buffer where Fixpt's takes a view;
+  not yet `utf8?`, `utf8-length`, `-byte-length`, `-ref`, `-next`,
+  `-substring`, `-slice`, `utf8=?`, `bytes-as-utf8`, nor the views
+  `(bytesof r)`, `(strof r)` and their operations, nor a `utf8` in a
+  union, a datum or `typecase`. kayak-rt's `Utf8` its `string`'s
+  object (kind 1, UTF-8): Fixpt's kind 49/50 when `string` takes Fixpt's
+  UTF-32 layout (the runtimes' unification, the user's, 2026-11-24).
+  Tier 1's and the engine's `utf8` are Fixpt's object; the IR
+  evaluator's (`prims.kfx`, called by nothing) a string's value. kc's
+  native back end has none of it. In the expander's port
+  (`macros-port.py`): Fixpt's `table.fx`, generic hash tables of a
+  `(oneof nil (pairof k v r))` lookup (C75), stood in for by the shim's
+  set of symbols; its parametric abbreviations written out at each use,
+  as kfx's checker binds none across a module maker's `include` nor in
+  its items (`maker-items-found`); a poly of a poly merged, as C70 asks.
+  Phase 1's forms carry their file's directory now (Fixpt's 6851f807):
+  a load in a `begin-for-syntax` read from the engine's directory, not
+  the form's file's. The engine's plain driver refuses a redefinition of
+  a module global with abstract types (Fixpt's 029bad8c reruns its
+  users), as it refuses any change of type; its `--check` driver reruns.
+  At 06a3666 (C526): `#utf8"…"` carried but within quoted data, where
+  Fixpt makes it a datum (`datum`'s union has no `utf8` in KFX, as no
+  `bytevector`); kc's native back end has no `#utf8` form. `#u8(…)` in
+  a program, which the user wants (`b"…"` in KFX's Rust), is refused by
+  Fixpt itself (`no_bytevector`): Fixpt's first.
 - **kfx's reader has no `|…|` symbols** (found at C470): `kfx/read.kfx`,
   kc's and kfx's reader, reads `'||` as the symbol of two bars, Fixpt as
   the empty name (R7RS). The expander's source has none. To be fixed in
@@ -2181,9 +2209,11 @@ over its 1664 definitions, 335 of them refused:
         object's fields by its layout, as the collector finds them. Step
         (e) waits till something needs a shared heap that changes. Parts:
         (b1) fragments and the copier; (b2) sends; (b3) spawns; (b4)
-        I-cells; (b5) the immortal area. Done (C519), all five; left:
-        a value held as itself (`WHOLE`) not copied, shared as before;
-        the copier's test of its own fragment's pages a walk of them.
+        I-cells; (b5) the immortal area. Done (C519), all five; a value
+        held as itself (`WHOLE`) refused as rustc builds where it would
+        cross (C520), but `unsafe-par`'s constants, a blobref left in
+        place; left: the copier's test of its own fragment's pages a walk
+        of them.
      5. *Order*: (a) environment records at spawn sites (done, C517:
         `spawn_env`, the environment a tuple of what the body names, the
         body a function); (b) the shared
@@ -2466,3 +2496,39 @@ table the process shares now (which is right under any design: kcrt's
 symbols are outside kc's heap today), moved into the shared heap with
 2; 2 with §54's heap steps and to-discuss 16; 5, 6, 8, 9 and 10 with
 kc's processes.
+
+## 56. One runtime: kayak-rt's and kcrt's unified (the user, 2026-11-24)
+
+The user: "I didn't intend for us to end with two wildly diverging
+runtimes"; the KFX-to-Rust path "was intended as a way to get a near
+trivial bootstrap"; then "let's see how much of the runtime we can unify
+between kayak-rt and kcrt ... potentially via Rust's trait abstraction".
+Since C477 the collector grew in kayak-rt (C478 to C524: a heap per
+thread, generations, fragments, Bartlett's copy, ~7.5k lines) while
+kcrt's stayed C453's Cheney of one heap (287 lines): kc.md §1's native
+runtime, "our own async and parallel runtime and incremental GC", is
+the one meant to last. Shared today: Fixpt's tags and most kinds (each
+written out apart), kcrt-core linked into kayak-rt for kc's code run in
+process, kayak-jit's code area. Apart: strings (kayak-rt's UTF-8 after a
+trailer, kcrt's Fixpt's UTF-32), closures (kind 41 against kcrt's 8),
+printing, the string and number routines, symbol tables, the collectors.
+The design proposed (to confirm, step by step):
+1. **One layout crate**: every tag, kind and header, kayak-rt's, kcrt's
+   and kayak-jit's; the gaps closed Fixpt's way (kayak-rt's `string`
+   Fixpt's UTF-32, its UTF-8 machinery its `utf8`, kind 49/50: C525's
+   gap), not kept apart behind a trait (the user asked; a layout a
+   runtime chooses cannot be one heap's both runtimes share in process).
+2. **The collector over its roots**: `kayak-heap`, raw Fixpt words, a
+   `Roots` trait (exact roots rewritten, ambiguous ones pinning), so one
+   Bartlett's collector is kayak-rt's (conservative Rust stacks) and
+   kcrt's (exact stacks, nothing pinned: Cheney's behaviour).
+3. Pages, the heap per thread, fragments, the immortal area, generations
+   and the barrier in it; native allocation a bump to a page's end, its
+   context the `%r15` state block's, kayak-rt's a pointer to the same.
+4. The primitives over words (strings, numbers, printing, hashes) once.
+5. One scheduler over a `Task` trait: a future, or a native stack and
+   its state block.
+6. Incremental collection designed once, in `kayak-heap` (§54 step 6).
+First: a survey sizing `obj/`'s split and listing every format
+difference, before any code moves. Every step deepening kayak-rt rather
+than the shared runtime is said so when proposed.

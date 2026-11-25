@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"stable-path-alias.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"make : (subr pure (bool) sig) ! pure",
+"both : (moduleof (val m1 sig) (val m2 sig)) ! (read (globals make))",
+"8 : int ! (read (globals both))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

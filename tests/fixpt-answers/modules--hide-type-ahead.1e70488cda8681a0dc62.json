@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"hide-type-ahead.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define m : (moduleof (val one (mu %2 (listof (productof (#:v int) (#:next %2)) acyclic))) (val count (subr pure ((mu %3 (listof (productof (#:v int) (#:next %3)) acyclic))) int))) ! pure",
+"int ! (read (globals m))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

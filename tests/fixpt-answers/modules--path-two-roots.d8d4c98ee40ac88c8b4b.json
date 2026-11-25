@@ -1,0 +1,30 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"path-two-roots.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define make : (subr pure () (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int)))) ! pure",
+"define m1 : (moduleof (val a (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int))))) ! (read (globals make))",
+"define m2 : (moduleof (val a (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int))))) ! (read (globals make))",
+"define q : (moduleof (desc t m1.a..t) (val zero m1.a..t) (val inc (subr pure (m1.a..t) m1.a..t)) (val value (subr pure (m1.a..t) int))) ! (read (globals m1))",
+"define one : m1.a..t ! (read (globals m1))",
+"define two : m2.a..t ! (read (globals m2))",
+"(listof int acyclic) ! (read (globals m2 one q two))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

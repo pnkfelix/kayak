@@ -7,9 +7,10 @@
 ],
 "answers": [
 {
-"code": 1,
+"code": 0,
 "out": [
-"! <kayak>-snapshot/tests/fx26/programs/module-files/own-macros-params.fx:6:2: unbound variable `module-parameters`",
+"; <kayak>-snapshot/tests/fx26/programs/module-files/own-macros-params.fx, checked as a module file",
+"(subr pure ((moduleof (val one int))) (moduleof (val g (subr pure (int) int)) (val h (subr pure (int) int)) (val %frame:a3b7eb147cac5b96 (moduleof (val one int))))) ! (read (globals %shared:input:<kayak>-snapshot/tests/fx26/programs/module-files/own-macros-params.fx))",
 "; both checkers agree",
 ""
 ],
@@ -17,7 +18,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

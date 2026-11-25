@@ -27,13 +27,14 @@
 "! <kayak>-snapshot/tests/fx26/programs/terminate/rose-tree.fx:11:20: `each` is declared a (subr pure ((listof rose acyclic) int) int): a (subr pure ((listof rose acyclic) int) int) is expected here, and this is a (subr (maxeff (read (globals total)) spin) ((listof rose acyclic) int) int)",
 "  beyond what is expected, it has (maxeff (read (globals total)) spin)",
 "; both checkers agree",
+"; checked as a program, whose globals a later definition may change: `fixpt check --module <kayak>-snapshot/tests/fx26/programs/terminate/rose-tree.fx` checks it as a module file",
 ""
 ],
 "err": [
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

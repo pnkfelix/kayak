@@ -25,7 +25,7 @@
 (define read-text (subr (maxeff (read @globals) spin (io fs-read) (io stderr) (io exit) (alloc @io) (read @io)) (string) string)
   (lambda (path)
     (tagcase (the (sumof (data (bytevectorof @io)) (failed io-error)) (read-file path))
-      (data b (tagcase (utf8->string b) (text s s) (bad k (fail-with (string-append path ": not UTF-8") 1))))
+      (data b (tagcase (bytes->utf8 b) (text s-utf8 (utf8->string s-utf8)) (bad k (fail-with (string-append path ": not UTF-8") 1))))
       (failed e (fail-with (string-append "cannot read " (string-append path (string-append ": " (extract e detail)))) 1)))))
 
 (define default-steps i64 20000000)
@@ -216,9 +216,8 @@ and status 1.
                  "no line tables: the listing is not kayak's (`kayak-fx26 --cells`)\n"
                  (tagcase (the (sumof (data (bytevectorof @io)) (failed io-error)) (read-file file))
                    (data b
-                     (tagcase (utf8->string b)
-                       (text src
-                         (let* ((cs (string-chars src))
+                     (tagcase (bytes->utf8 b)
+                       (text src-utf8 (let ((src (utf8->string src-utf8)))                          (let* ((cs (string-chars src))
                                 (starts (starts-noted! cs (make-flatarray-i64 (i64+ 1 (newlines cs 0)) 0) 0 0))
                                 (lines (lines-of cs nil nil))
                                 (ls (lines-tallied! ts file starts #f (tally-made 256)))
@@ -232,7 +231,7 @@ and status 1.
                                          (lambda ((q i64))
                                            (let* ((p (i64- q 1)) (l (line-of starts p 0 (i64- (flatarray-length-i64 starts) 1))))
                                              (string-append (i64->string (i64+ l 1)) (string-append ":" (string-append (i64->string (i64- p (flatarray-ref-i64 starts l))) (string-append "  " (cut (chars-dropped cs p) 50 nil)))))))
-                                         "the expressions whose code ran the most (LINE:COLUMN, the column from 0):\n"))))
+                                         "the expressions whose code ran the most (LINE:COLUMN, the column from 0):\n")))))
                        (bad k (string-append file ": not UTF-8\n"))))
                    (failed e (string-append "cannot read " (string-append file "\n")))))))
       (tagcase (write-err (string-append head (string-append by-line by-word))) (done u #u) (failed e #u)))))

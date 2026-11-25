@@ -141,6 +141,18 @@ pub fn ob_bytes() -> i64 {
     4i64
 }
 
+// UTF-8 text (C525): Fixpt's `utf8`, no fields, its suffix the bytes, the
+// header's count of them exact; all ASCII, `utf8-ascii`.
+#[inline]
+pub fn ob_utf8() -> i64 {
+    49i64
+}
+
+#[inline]
+pub fn ob_utf8_ascii() -> i64 {
+    50i64
+}
+
 #[inline]
 pub fn ob_real() -> i64 {
     5i64

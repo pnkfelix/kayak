@@ -2927,6 +2927,12 @@ pub mod emitter {
         }
     }
 
+    /// `#utf8"…"` (`(#utf8 "…")`, read): its text, a static made once.
+    #[inline]
+    pub fn put_utf8_literal(e: kayak_rt::data::DataAt<'static, Sexp>, acc: Chars) -> Chars {
+        put(str_lit!("\"))"), put_escaped(string_chars(utf8_literal_text(e)), '"', put(str_lit!("kayak_rt::Utf8(str_lit!(\""), acc)))
+    }
+
     /// A wrapper's boxing of a value, its start (C82).
     pub fn put_box_open(how: Str, acc: Chars) -> Chars {
         if string_eq_p(how, str_lit!("-")) {
@@ -3823,6 +3829,8 @@ pub mod emitter {
                     return put(str_lit!("Void"), acc);
                 } else if string_eq_p(s, str_lit!("string")) {
                     return put(str_lit!("Str"), acc);
+                } else if string_eq_p(s, str_lit!("utf8")) {
+                    return put(str_lit!("Utf8"), acc);
                 } else if (string_eq_p(s, str_lit!("io-error")) && string_eq_p(opener(string_append(str_lit!("%type "), s), ctx_locals(c)), str_lit!("")) && null_p(desc_type(c, s, ctx_locals(c))) && not(string_member_p(s, ctx_datatypes(c)))) {
                     t = car(read_all(io_error_text(), str_lit!(""), 1i64));
                     continue;
@@ -6032,7 +6040,7 @@ pub mod emitter {
                 } else {
                     put_joined(c, xs, str_lit!(", "), n, put(str_lit!(", "), put(mangle(place), put(str_lit!("("), put(string_append(mangle(h), str_lit!("_in")), acc)))))
                 });
-            } else if (string_member_p(h, kayak_rt::heap_cons(str_lit!("make-bytevector"), kayak_rt::heap_cons(str_lit!("string->utf8"), kayak_rt::heap_cons(str_lit!("bytevector-copy"), kayak_rt::nil())))) && not(string_eq_p(fact_with(c, e, str_lit!("rbytes-in ")), str_lit!(""))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit!(""))) {
+            } else if (string_member_p(h, kayak_rt::heap_cons(str_lit!("make-bytevector"), kayak_rt::heap_cons(str_lit!("utf8->bytes"), kayak_rt::heap_cons(str_lit!("bytevector-copy"), kayak_rt::nil())))) && not(string_eq_p(fact_with(c, e, str_lit!("rbytes-in ")), str_lit!(""))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit!(""))) {
                 // Bytes made at a place's region, in it (C267): `NAME_in(place, ...)`.
                 return put(str_lit!(")"), put_joined(c, xs, str_lit!(", "), n, put(str_lit!(", "), put(mangle(fact_with(c, e, str_lit!("rbytes-in "))), put(str_lit!("("), put(string_append(mangle(h), str_lit!("_in")), acc))))));
             } else if (string_eq_p(h, str_lit!("rlambda")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit!(""))) {
@@ -6193,6 +6201,9 @@ pub mod emitter {
             } else if string_eq_p(h, str_lit!("quasiquote")) {
                 h = str_lit!("quote");
                 continue;
+            } else if string_eq_p(h, str_lit!("#utf8")) {
+                // `#utf8"…"`: its text, a static, made once (`str_lit!`).
+                return put_utf8_literal(e, acc);
             } else if string_eq_p(h, str_lit!("quote")) {
                 let tagcase_ = car(xs);
                 if Sexp::__is_Sym(tagcase_) {
@@ -6210,7 +6221,11 @@ pub mod emitter {
                     return put(str_lit!("\")"), put(text, put(str_lit!("int_text(\""), acc)));
                 } else if Sexp::__is_Lst(tagcase_) {
                     let (ys, f, l, p,) = Sexp::__Lst(tagcase_);
-                    return put_quoted(c, car(xs), acc);
+                    if utf8_literal_p(car(xs)) {
+                        return put_utf8_literal(car(xs), acc);
+                    } else {
+                        return put_quoted(c, car(xs), acc);
+                    }
                 } else {
                     let other = tagcase_;
                     return put_exp(c, car(xs), n, value(), acc);

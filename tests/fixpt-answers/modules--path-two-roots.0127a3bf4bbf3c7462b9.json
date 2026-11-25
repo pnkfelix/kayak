@@ -1,0 +1,29 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"path-two-roots.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"make : (subr pure () (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int)))) ! pure",
+"m1 : (moduleof (val a (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int))))) ! (read (globals make))",
+"m2 : (moduleof (val a (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int))))) ! (read (globals make))",
+"q : (moduleof (desc t m1.a..t) (val zero m1.a..t) (val inc (subr pure (m1.a..t) m1.a..t)) (val value (subr pure (m1.a..t) int))) ! (read (globals m1))",
+"one : m1.a..t ! (read (globals m1))",
+"two : m2.a..t ! (read (globals m2))",
+"(1 1) : (listof int acyclic) ! (read (globals m2 one q two))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

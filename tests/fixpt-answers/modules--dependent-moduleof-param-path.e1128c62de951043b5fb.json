@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"dependent-moduleof-param-path.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define e : (moduleof (val m-base (moduleof (abs t type) (val zero t) (val next (subr pure (t) t)) (val value (subr pure (t) int))))) ! (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/dm-base.fx %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/dm-penv.fx))",
+"define e2 : (moduleof (val m-frame (moduleof (val start e.m-base..t)))) ! (read (globals %shared:input:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/dm-penv2.fx %shared:input:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/dm-pframe.fx e))",
+"define u : (moduleof (val v int)) ! (read (globals %shared:input:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/dm-puser.fx e e2))",
+"int ! (read (globals u))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

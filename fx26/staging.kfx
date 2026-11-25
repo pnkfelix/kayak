@@ -502,7 +502,8 @@
 (define rerun-needed? (subr kfx (cv cv strings) bool)
   (lambda (old new names)
     "Whether a global of `names`, defined before, is now at a type its uses
-     may not take."
+     may not take: never one whose module has abstract types, which its
+     binding named for its uses (Fixpt's 029bad8c; C525)."
     (any? (lambda ((n string))
             (let ((a (scope-bind n old)) (b (scope-bind n new)))
               (and (not (null? a)) (not (null? b))
@@ -511,7 +512,8 @@
                        (and (or (string=? wa "global") (string=? wa "broken"))
                             (tagcase (car b)
                               (bind (n2 sb wb)
-                                (not (or (string=? (scheme-text sa) (scheme-text sb)) (narrower-effect? sb sa)))))))))))
+                                (or (tagcase sa (scheme (tv t) (binds-abstract? t)))
+                                    (not (or (string=? (scheme-text sa) (scheme-text sb)) (narrower-effect? sb sa))))))))))))
           names)))
 
 (define-rec

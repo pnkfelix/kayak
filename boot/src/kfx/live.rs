@@ -47,10 +47,11 @@ pub fn live() -> kayak_rt::Proc2<'static, i64, Op, kayak_rt::suspend::Body<Answe
             let tag_ = kayak_rt::sum_tag(tagcase_);
             if tag_ == const { kayak_rt::tag_hash("data") } {
                 let b: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
-                let tagcase_ = utf8_to_string(b);
+                let tagcase_ = bytes_to_utf8(b);
                 let tag_ = kayak_rt::sum_tag(tagcase_);
                 if tag_ == const { kayak_rt::tag_hash("text") } {
-                    let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+                    let s_utf8: Utf8 = kayak_rt::sum_payload::<Utf8>(tagcase_);
+                    let s = utf8_to_string(s_utf8);
                     Ok(kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("text"), s))
                 } else if tag_ == const { kayak_rt::tag_hash("bad") } {
                     let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
@@ -62,7 +63,7 @@ pub fn live() -> kayak_rt::Proc2<'static, i64, Op, kayak_rt::suspend::Body<Answe
             } else { unreachable!() }
         } else if tag_ == const { kayak_rt::tag_hash("write-file") } {
             let f: Product_4path_4text<Str, Str> = kayak_rt::sum_payload::<Product_4path_4text<Str, Str>>(tagcase_);
-            let tagcase_ = write_file(f.0, the::<Bytes>(string_to_utf8(f.1)));
+            let tagcase_ = write_file(f.0, the::<Bytes>(utf8_to_bytes(string_to_utf8(f.1))));
             let tag_ = kayak_rt::sum_tag(tagcase_);
             if tag_ == const { kayak_rt::tag_hash("done") } {
                 let u: () = kayak_rt::sum_payload::<()>(tagcase_);

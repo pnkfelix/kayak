@@ -20,16 +20,18 @@
 ]
 },
 {
-"code": 1,
+"code": 0,
 "out": [
+"; <kayak>-snapshot/tests/fx26/programs/module-files/mp-none.fx, checked as a module file",
+"(subr (alloc @heap) () (moduleof (val n (ref int @heap)))) ! (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/module-files/mp-none.fx))",
+"; both checkers agree",
 ""
 ],
 "err": [
-"fixpt: the FX-26 front end: <kayak>-snapshot/tests/fx26/programs/module-files/mp-none.fx:3:20: not an expression in the FX-26 kernel",
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

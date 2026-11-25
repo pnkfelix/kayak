@@ -1,0 +1,34 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"bytevector-frozen.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"n : (subr pure (bytevector) nat) ! pure",
+"first : (subr pure (bytevector) u8) ! pure",
+"made : bytevector ! pure",
+"#u8(7 7 7 7) : bytevector ! (read (globals made))",
+"4 : nat ! (read (globals made n))",
+"7 : u8 ! (read (globals first made))",
+"#u8(7 7 7 7) : bytevector ! (read (globals made))",
+"#t : bool ! (read (globals made))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"stable-path-result-unnamed.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <kayak>-snapshot/tests/fx26/programs/modules/stable-path-result-unnamed.fx:18:30: argument 1 is a module the procedure's types depend on: give it by name (bind it with `let` first)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

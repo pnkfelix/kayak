@@ -37,7 +37,7 @@
 "string ! (maxeff (alloc @s) (read (globals upcased!)) (read @s) (write @s) spin)",
 "(listof char acyclic) ! pure",
 "bool ! pure",
-"(bytevectorof @r.1) ! (maxeff (alloc @r.1) (read (globals joined)))",
+"utf8 ! (read (globals joined))",
 "; both checkers agree",
 ""
 ],
@@ -45,7 +45,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

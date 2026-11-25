@@ -6,7 +6,7 @@
  takes, at least and at most; Fixpt's own numbers, later, with the
  layout. What tier 1 does not do yet as Fixpt does is marked `(C122)`,
  and counted as not yet, never as an answer.
- fixpt-source: crates/fixpt-runtime/src/prim.rs@6f7bd73"
+ fixpt-source: crates/fixpt-runtime/src/prim.rs@c5b5991"
 
 "Each primitive: its name, how many arguments it takes, at least and at
  most (-1: any), and its operation."
@@ -259,6 +259,8 @@
 (define o-session-ready i64 230)
 (define o-rep-of-nodes i64 231)
 (define o-rep-nodes i64 232)
+(define o-bytes-utf8 i64 233)
+(define o-utf8-bytes i64 234)
 (define o-fixed i64 1000)
 (define o-f64 i64 1200)
 (define o-f32-ops i64 1300)
@@ -372,6 +374,7 @@
          (pdef "%fx26-string-set!" 3 3 o-string-set) (pdef "%fx26-string-fill!" 2 2 o-string-fill)
          (pdef "%fx26-string-copy" 3 3 o-string-copy) (pdef "%fx26-string-copy!" 5 5 o-string-copy-into)
          (pdef "%fx26-string->utf8" 1 1 o-string-utf8) (pdef "%fx26-utf8->string" 1 1 o-utf8-string)
+         (pdef "%fx26-bytes->utf8" 1 1 o-bytes-utf8) (pdef "%fx26-utf8->bytes" 1 1 o-utf8-bytes)
          (pdef "%fx26-bytevector" 1 1 o-bytevector-of) (pdef "%fx26-byte?" 1 1 o-byte) (pdef "%fx26-unit-cell" 0 0 o-unit-cell)
          (pdef "%fx26-nil-cell" 0 0 o-nil-cell) (pdef "%fx26-sum-cell" 2 2 o-sum-cell) (pdef "%fx26-pair-cell" 2 2 o-pair-cell)
          (pdef "%fx26-product-cell" 1 1 o-product-cell) (pdef "%fx26-list?" 1 1 o-list-p) (pdef "%fx26-convert" 2 2 o-convert) (pdef "%kayak-stage-run" 5 5 o-kayak-stage) (pdef "%kayak-reify" 3 3 o-kayak-reify) (pdef "%fx26-evidence-bound" 1 1 o-evidence-bound)
@@ -1062,6 +1065,14 @@
     (lambda (p q i n) (or (i64>= i n) (and (i64= (word-at (i64+ p i)) (word-at (i64+ q i))) (words-same? p q (i64+ i 1) n)))))
   (elements-same? (subr cm (i64 i64 i64 i64) bool)
     (lambda (a b i n) (or (i64>= i n) (and (i64= (elt-ref a i) (elt-ref b i)) (elements-same? a b (i64+ i 1) n))))))
+"Whether `v` is a whole `utf8` (C525)."
+(define utf8-text? (subr cm (i64) bool) (lambda (v) (or (is-kind? v k-utf8) (is-kind? v k-utf8-ascii))))
+"A whole `utf8`'s bytes (Fixpt 06a3666's `#utf8\"…\"`, interned by them)."
+(define-rec
+  (utf8-hash (subr cm (i64 i64 i64 i64) i64)
+    (lambda (u i n h) (if (i64>= i n) h (utf8-hash u (i64+ i 1) n (intern-mix h (byte-of (address u) i))))))
+  (utf8-bytes-same? (subr cm (i64 i64 i64 i64) bool)
+    (lambda (a b i n) (or (i64>= i n) (and (i64= (byte-of (address a) i) (byte-of (address b) i)) (utf8-bytes-same? a b (i64+ i 1) n))))))
 (define datum-hash (subr cm (i64) i64)
   (lambda (o)
     "An interned object's hash: of a pair's parts, a string's words, a
@@ -1071,6 +1082,7 @@
           ((is-kind? o k-flonum) (intern-mix 3 (word-at (address o))))
           ((is-kind? o k-vector) (elements-hash o 0 (eq-size o) 4))
           ((is-kind? o k-keyword) (intern-mix 5 (slot-of o 2)))
+          ((utf8-text? o) (utf8-hash o 0 (suffix-bytes o) 6))
           (else 0))))
 (define datum-same? (subr cm (i64 i64) bool)
   (lambda (o c)
@@ -1085,6 +1097,9 @@
            (and (i64= (eq-size o) (eq-size c)) (elements-same? o c 0 (eq-size o))))
           ((or (is-kind? o k-keyword) (is-kind? c k-keyword))
            (and (is-kind? o k-keyword) (is-kind? c k-keyword) (i64= (slot-of o 2) (slot-of c 2))))
+          ((or (utf8-text? o) (utf8-text? c))
+           (and (utf8-text? o) (utf8-text? c) (i64= (suffix-bytes o) (suffix-bytes c))
+                (utf8-bytes-same? o c 0 (suffix-bytes o))))
           (else #f))))
 (define-rec
   (interned-chain! (subr cm (i64 i64) unit)
@@ -1149,7 +1164,7 @@
       (let ((c (cond ((is-pair? v)
                       (let* ((a (pair-car v)) (d (pair-cdr v)) (ia (intern-datum! a)) (id (intern-datum! d)))
                         (if (and (i64= ia a) (i64= id d)) v (cons! ia id))))
-                     ((or (is-kind? v k-string) (is-kind? v k-flonum) (is-kind? v k-keyword)) v)
+                     ((or (is-kind? v k-string) (is-kind? v k-flonum) (is-kind? v k-keyword) (utf8-text? v)) v)
                      ((is-kind? v k-vector)
                       (let ((w (make-bloblet! k-vector (eq-size v) 0 #t #f)))
                         (if (vector-interned! v w 0 #t) v w)))
@@ -1419,6 +1434,28 @@
 (define-rec
   (bv-same? (subr cm (i64 i64 i64 i64) bool)
     (lambda (a b i n) (cond ((i64>= i n) #t) ((not (i64= (bv-ref a i) (bv-ref b i))) #f) (else (bv-same? a b (i64+ i 1) n))))))
+
+"UTF-8 text, Fixpt's `utf8` (`Heap::make_utf8`; C525): a frozen bloblet
+ of no fields, its suffix the bytes, the header's count of them exact;
+ all ASCII, of kind `utf8-ascii`."
+(define-rec
+  (bv-ascii? (subr cm (i64 i64 i64) bool)
+    (lambda (b i n) (cond ((i64>= i n) #t) ((i64>= (bv-ref b i) 128) #f) (else (bv-ascii? b (i64+ i 1) n)))))
+  (utf8-filled! (subr cm (i64 i64 i64 i64) unit)
+    (lambda (u b i n) (if (i64>= i n) #u (begin (byte-put! (address u) i (bv-ref b i)) (utf8-filled! u b (i64+ i 1) n)))))
+  (bv-filled-of-utf8! (subr cm (i64 i64 i64 i64) unit)
+    (lambda (b u i n) (if (i64>= i n) #u (begin (bv-set! b i (byte-of (address u) i)) (bv-filled-of-utf8! b u (i64+ i 1) n))))))
+"A `utf8` of bytevector `b`'s bytes, UTF-8 already: a copy."
+(define utf8-of-bv! (subr cm (i64) i64)
+  (lambda (b)
+    (let* ((n (bv-length b))
+           (u (make-bloblet! (if (bv-ascii? b 0 n) k-utf8-ascii k-utf8) 0 n #f #t)))
+      (begin (utf8-filled! u b 0 n) u))))
+"A bytevector of `utf8` `u`'s bytes: a copy."
+(define bv-of-utf8! (subr cm (i64) i64)
+  (lambda (u)
+    (let* ((n (suffix-bytes u)) (b (make-bv! n)))
+      (begin (bv-filled-of-utf8! b u 0 n) b))))
 
 "An index checked as Fixpt's `index` checks one: its trouble, or ``."
 (define index-trouble (subr cm (i64 i64 string) string)
@@ -2405,17 +2442,27 @@
          (cond ((not (bv? a)) (expected! "a bytevector"))
                ((not (bv? b)) (expected! "a bytevector"))
                (else (boolean (and (i64= (bv-length a) (bv-length b)) (bv-same? a b 0 (bv-length a)))))))
+        ;; UTF-8 text (Fixpt's 279c16cf; C525): `string->utf8` and
+        ;; `utf8->string` a `string`'s and a `utf8`'s; `bytes->utf8` and
+        ;; `utf8->bytes` what the first two were, of a `utf8`.
         ((i64= op o-string-utf8)
          (if (str? a)
-             (let ((b (make-bv! (utf8-length a 0 0)))) (begin (utf8-encoded! b 0 a 0) b))
+             (let ((b (make-bv! (utf8-length a 0 0)))) (begin (utf8-encoded! b 0 a 0) (utf8-of-bv! b)))
              (expected! "a string")))
         ((i64= op o-utf8-string)
+         (if (not (utf8-text? a))
+             (expected! "a utf8")
+             (let ((b (bv-of-utf8! a)))
+               (let ((v (string-made! (utf8-count b 0 (bv-length b) 0)))) (begin (utf8-decoded! v 0 b 0) v)))))
+        ((i64= op o-bytes-utf8)
          (if (not (bv? a))
              (expected! "a bytevector")
              (let ((k (utf8-valid-up-to a 0)))
                (if (i64= k (bv-length a))
-                   (fx26-sum! "text" (let ((v (string-made! (utf8-count a 0 k 0)))) (begin (utf8-decoded! v 0 a 0) v)))
+                   (fx26-sum! "text" (utf8-of-bv! a))
                    (fx26-sum! "bad" (fix k))))))
+        ((i64= op o-utf8-bytes)
+         (if (utf8-text? a) (bv-of-utf8! a) (expected! "a utf8")))
         ((i64= op o-bytevector-of)
          (cond ((i64< (proper-length a) 0) (expected! "a list"))
                ((not (string=? (not-bytes a) "")) (fail! (not-bytes a)))

@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/redefine/knot-held-precise.fx:5:1: `tbl` keeps a procedure that reads `tbl`, so it could reach itself through a global: it must say `spin`, and it is a (subr (read (globals tbl)) () int)",
+"fixpt: <programs>/redefine/knot-held-precise.fx:5:1: `tbl` keeps a procedure that reads `tbl`, so it could reach itself through a global: it must say `spin`, and it is a (subr (read (globals tbl)) () int)",
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

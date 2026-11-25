@@ -27,7 +27,7 @@
 
 "Names `expressions` tests against, made once (C264): a list written in place is
  made at each call."
-(define expressions-names-7 strings (list "make-bytevector" "string->utf8" "bytevector-copy"))
+(define expressions-names-7 strings (list "make-bytevector" "utf8->bytes" "bytevector-copy"))
 
 "Names `expressions` tests against, made once (C264): a list written in place is
  made at each call."
@@ -823,9 +823,9 @@
           (lambda (d)
             "Whether a quoted datum is one KFX builds (C77, C80): a `.` only
              before a dotted list's last item, a vector's `#vector` only at its
-             head."
+             head; no `#utf8\"…\"` within, which KFX's `datum` has not yet."
             (tagcase d
-              (sym (n f p) (and (not (string=? n ".")) (not (string=? n "#vector"))))
+              (sym (n f p) (and (not (string=? n ".")) (not (string=? n "#vector")) (not (string=? n "#utf8"))))
               (lst (xs f l p) (quotable-items? (if (head-is? d "#vector") (cdr xs) xs)))
               (else other #t))))
         (quotable-items? (subr kfx (sexps) bool)
@@ -3121,6 +3121,12 @@
                  (attempt-form v s xs))
                 ((string=? h "par") (par-form v s xs nil))
                 ((string=? h "pselect") (pselect-form v s xs nil))
+                ((string=? h "#utf8")
+                 "`#utf8\"…\"` (Fixpt 06a3666), read as `(#utf8 \"…\")`: a constant of
+                  type `utf8`, made once, as a quote's is."
+                 (if (and (i64= (size xs) 1) (tagcase (car xs) (str (x f p) #t) (else other #f)))
+                     (res (ty-data "utf8" nil) nil s)
+                     (refuse v "`#utf8` is UTF-8 text's, `#utf8\"…\"`")))
                 ((string=? h "quote")
                  "A quoted symbol (C56); a quoted datum of another kind is FX-26's
                   `datum`, which KFX has not yet."
@@ -3137,11 +3143,14 @@
                        (chr (c f p) (res (ty-char) nil s))
                        (lst (ys f l p)
                          "A quoted list (C77): a `datum`, built where it is written."
-                         (cond ((null? ys)
+                         (cond ((utf8-literal? (car xs))
+                                "`'#utf8\"…\"`, the text itself, as Fixpt's `quoted` has it."
+                                (res (ty-data "utf8" nil) nil s))
+                               ((null? ys)
                                 "A bare `'()` is `nil`, an empty list of any type, as Fixpt's
                                  `quoted` has it (C291)."
                                 (synth v s (sym "nil" f p)))
-                               ((not (quotable? (car xs))) (refuse v "a quoted datum KFX does not build: a `.` not before a dotted list's last item"))
+                               ((not (quotable? (car xs))) (refuse v "a quoted datum KFX does not build: a `.` not before a dotted list's last item, or `#utf8\"…\"` within, which KFX's `datum` has not yet"))
                                (else (res (ty-data "datum" nil) nil s))))
                        (else other (refuse v "a quoted datum KFX does not read")))))
                 ((string=? h "quasiquote")
@@ -3153,7 +3162,7 @@
                      (tagcase (car xs)
                        (lst (ys f l p)
                          (cond ((null? ys) (refuse v "a quasiquote of (), which FX-26 takes as a nil of any type: write nil"))
-                               ((not (quotable? (car xs))) (refuse v "a quasiquoted datum KFX does not build: a `.` not before a dotted list's last item"))
+                               ((not (quotable? (car xs))) (refuse v "a quasiquoted datum KFX does not build: a `.` not before a dotted list's last item, or `#utf8\"…\"` within, which KFX's `datum` has not yet"))
                                ((head-is? (car xs) "unquote") (check v s (second ys) (ty-data "datum" nil)))
                                (else (tagcase (quasi-items v s ys 1) (res (t es s) (res (ty-data "datum" nil) es s))))))
                        (else other (synth-form v s e "quote" xs)))))
@@ -3356,7 +3365,7 @@
                          (tagcase (region-of v s r)
                            (res (rr rn s) (res expected (effs-union (list (string-append "alloc:" (region-string s rr))) es) s))))))
                    (else other (check-by-synth v s e expected))) "list"))
-                ((or (string=? h "the") (string=? h "and") (string=? h "or") (string=? h "lambda") (string=? h "list") (string=? h "quote") (string=? h "quasiquote")
+                ((or (string=? h "the") (string=? h "and") (string=? h "or") (string=? h "lambda") (string=? h "list") (string=? h "quote") (string=? h "#utf8") (string=? h "quasiquote")
                      (string=? h "extract"))
                  (check-by-synth v s e expected))
                 (else (bytes-placed v (synth-call v s h xs (list expected)) h)))))
@@ -5283,7 +5292,7 @@
                 (else other r))))))
       (bytes-placed (subr kfx (cv res string) res)
         (lambda (v r h)
-          "A bytevector made by the standard `make-bytevector`, `string->utf8`
+          "A bytevector made by the standard `make-bytevector`, `utf8->bytes`
            or `bytevector-copy` at a place's region (C267): noted, `rheld-bytes`
            at the place's region, so that the place holds bytes, and
            `rbytes-in` the place's name, so that it is made there and freed with

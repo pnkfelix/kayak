@@ -18,22 +18,8 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-]
-},
-{
-"code": 1,
-"out": [
-"g : (subr pure ((x : int)) int (requires (< 0 x))) ! pure",
-""
-],
-"err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/specs/requires-more-than-nothing.fx:4:65: a (subr pure (int) int) is expected here, and this is a (subr pure ((x : int)) int (requires (< 0 x)))",
-"  it requires more, or ensures less, than is expected, as far as the prover can tell",
-""
-],
-"by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

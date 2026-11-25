@@ -14,7 +14,7 @@
 "code": 0,
 "out": [
 "b : (moduleof (val one int)) ! (read (globals %shared:<programs>/modules/../module-files/own-macros-base.fx))",
-"u : (moduleof (val g (subr pure (int) int)) (val h (subr pure (int) int))) ! (read (globals %shared:input:<programs>/modules/../module-files/own-macros-params.fx b))",
+"u : (moduleof (val g (subr pure (int) int)) (val h (subr pure (int) int)) (val %frame:a3b7eb147cac5b96 (moduleof (val one int)))) ! (read (globals %shared:input:<programs>/modules/../module-files/own-macros-params.fx b))",
 "g : (subr pure (int) int) ! (read (globals u))",
 "h : (subr pure (int) int) ! (read (globals u))",
 "511 : int ! (read (globals g h))",
@@ -24,7 +24,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

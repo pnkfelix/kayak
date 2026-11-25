@@ -1,0 +1,31 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"stable-path-result-unnamed.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"make : (subr pure (bool) sig) ! pure",
+"both : (moduleof (val m1 sig) (val m2 sig)) ! (read (globals make))",
+"f2 : (subr pure ((moduleof (val m1 sig) (val m2 sig))) (select (with $1 m1) t)) ! pure",
+"other : (moduleof (val m1 sig) (val m2 sig)) ! (read (globals make))",
+""
+],
+"err": [
+"fixpt: <programs>/modules/stable-path-result-unnamed.fx:18:30: argument 1 is a module the procedure's types depend on: give it by name (bind it with `let` first)",
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

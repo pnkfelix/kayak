@@ -18,22 +18,8 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-]
-},
-{
-"code": 1,
-"out": [
-"copy-in : (poly ((r region distinct)) (subr (maxeff (read @heap) (read r) (write r)) ((ref int r) (ref int @heap)) unit)) ! pure",
-"h : (ref int @heap) ! (alloc @heap)",
-""
-],
-"err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/regions/distinct-mentioned.fx:8:1: `r` is distinct, and @heap may be a region the procedure's type mentions",
-""
-],
-"by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

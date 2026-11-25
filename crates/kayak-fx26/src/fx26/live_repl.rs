@@ -1428,7 +1428,7 @@ pub mod session {
         if string_eq_p(get(history_path()), str_lit!("")) {
             ()
         } else {
-            let tagcase_ = write_file(get(history_path()), the::<Bytes>(string_to_utf8(rev_to_string(history_text(get(history()), 500i64, nil::<char>())))));
+            let tagcase_ = write_file(get(history_path()), the::<Bytes>(utf8_to_bytes(string_to_utf8(rev_to_string(history_text(get(history()), 500i64, nil::<char>()))))));
             let tag_ = kayak_rt::sum_tag(tagcase_);
             if tag_ == const { kayak_rt::tag_hash("done") } {
                 let u: () = kayak_rt::sum_payload::<()>(tagcase_);
@@ -1448,10 +1448,11 @@ pub mod session {
             let tag_ = kayak_rt::sum_tag(tagcase_);
             if tag_ == const { kayak_rt::tag_hash("data") } {
                 let b: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
-                let tagcase_ = utf8_to_string(b);
+                let tagcase_ = bytes_to_utf8(b);
                 let tag_ = kayak_rt::sum_tag(tagcase_);
                 if tag_ == const { kayak_rt::tag_hash("text") } {
-                    let t: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+                    let t_utf8: Utf8 = kayak_rt::sum_payload::<Utf8>(tagcase_);
+                    let t = utf8_to_string(t_utf8);
                     set(history(), oldest_first_strings(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), l: Str| {
                         rev_to_string(unescaped(string_chars(l), nil::<char>()))
                     })), lines_of(string_chars(t), nil::<char>(), nil::<Str>())), nil::<Str>()))
@@ -1687,10 +1688,11 @@ pub mod session {
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("data") } {
             let b: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
-            let tagcase_ = utf8_to_string(b);
+            let tagcase_ = bytes_to_utf8(b);
             let tag_ = kayak_rt::sum_tag(tagcase_);
             if tag_ == const { kayak_rt::tag_hash("text") } {
-                let t: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+                let t_utf8: Utf8 = kayak_rt::sum_payload::<Utf8>(tagcase_);
+                let t = utf8_to_string(t_utf8);
                 submit_x(t, path, false, now)
             } else if tag_ == const { kayak_rt::tag_hash("bad") } {
                 let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);

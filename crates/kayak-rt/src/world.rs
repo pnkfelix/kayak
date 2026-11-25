@@ -205,18 +205,32 @@ pub fn bytevector_eq_p(a: BytesAt<'_>, b: BytesAt<'_>) -> bool {
             .all(|(x, y)| x.get() == y.get())
 }
 
-pub fn string_to_utf8(s: Str) -> Bytes {
-    bytes_of(s.as_str().as_bytes().to_vec())
+/// `string->utf8` (Fixpt's, since its 279c16cf; C525): the text, as
+/// `utf8`. A copy in Fixpt; here the same object, which neither writes.
+pub fn string_to_utf8(s: Str) -> crate::Utf8 {
+    crate::Utf8(s)
+}
+
+/// `utf8->string`: the text, as a `string`.
+pub fn utf8_to_string(u: crate::Utf8) -> Str {
+    u.0
+}
+
+/// `utf8->bytes`: the text's bytes, a bytevector of the heap's.
+pub fn utf8_to_bytes(u: crate::Utf8) -> Bytes {
+    bytes_of(u.0.as_str().as_bytes().to_vec())
 }
 
 /// The same, in region `r` (C267).
-pub fn string_to_utf8_in<'r, R: Holds<BytesCells>>(r: &'r R, s: Str) -> BytesAt<'r> {
-    bytes_in(r, s.as_str().as_bytes().to_vec())
+pub fn utf8_to_bytes_in<'r, R: Holds<BytesCells>>(r: &'r R, u: crate::Utf8) -> BytesAt<'r> {
+    bytes_in(r, u.0.as_str().as_bytes().to_vec())
 }
 
-pub fn utf8_to_string(b: BytesAt<'_>) -> Sum {
+/// `bytes->utf8`: bytes that are UTF-8, as `utf8`; else `(sum bad k)`,
+/// `k` the offset they are valid up to.
+pub fn bytes_to_utf8(b: BytesAt<'_>) -> Sum {
     match String::from_utf8(to_vec(b)) {
-        Ok(s) => sum_of(crate::tag_lit!("text"), leak_string(s)),
+        Ok(s) => sum_of(crate::tag_lit!("text"), crate::Utf8(leak_string(s))),
         Err(e) => sum_of(
             crate::tag_lit!("bad"),
             i64_to_int(e.utf8_error().valid_up_to() as i64),
@@ -1472,14 +1486,14 @@ mod tests {
     fn bytes_made_read_and_copied() {
         let b = make_bytevector(int_lit(4), 7);
         bytevector_u8_set_x(b, int_lit(1), 250);
-        let hi = string_to_utf8(str_lit("héllo"));
+        let hi = utf8_to_bytes(string_to_utf8(str_lit("héllo")));
         bytevector_copy_x(b, int_lit(2), hi, int_lit(0), int_lit(2));
         assert_eq!(to_vec(b), vec![7, 250, 104, 195]);
         assert!(bytevector_eq_p(
             b,
             bytevector_copy(b, int_lit(0), int_lit(4))
         ));
-        let r = utf8_to_string(bytevector_copy(hi, int_lit(0), int_lit(2)));
+        let r = bytes_to_utf8(bytevector_copy(hi, int_lit(0), int_lit(2)));
         assert_eq!(crate::sum_name(r), "bad");
         assert_eq!(int_to_i64(crate::sum_payload::<Int>(r)), 1);
         let mut s = String::new();
@@ -1494,7 +1508,7 @@ mod tests {
         let p = leak_string(dir.join("a.txt").to_string_lossy().into_owned());
         use crate::{sum_name, sum_payload};
         assert_eq!(
-            sum_name(write_file(p, string_to_utf8(str_lit("ay")))),
+            sum_name(write_file(p, utf8_to_bytes(string_to_utf8(str_lit("ay"))))),
             "done"
         );
         let r = read_file(p);
@@ -1525,12 +1539,15 @@ mod tests {
         assert_eq!(
             sum_name(write_file_unflushed(
                 p,
-                string_to_utf8(str_lit("a longer text"))
+                utf8_to_bytes(string_to_utf8(str_lit("a longer text")))
             )),
             "done"
         );
         assert_eq!(
-            sum_name(write_file_unflushed(p, string_to_utf8(str_lit("short")))),
+            sum_name(write_file_unflushed(
+                p,
+                utf8_to_bytes(string_to_utf8(str_lit("short")))
+            )),
             "done"
         );
         let r = read_file(p);
@@ -1541,7 +1558,7 @@ mod tests {
             .collect();
         assert_eq!(names, vec!["v1".to_string()]);
         let missing = leak_string(dir.join("none").join("v2").to_string_lossy().into_owned());
-        let r = write_file_unflushed(missing, string_to_utf8(str_lit("x")));
+        let r = write_file_unflushed(missing, utf8_to_bytes(string_to_utf8(str_lit("x"))));
         assert_eq!(sum_name(r), "failed");
         assert_eq!(sum_name(sum_payload::<IoError>(r).0), "not-found");
         std::fs::remove_dir_all(&dir).unwrap();

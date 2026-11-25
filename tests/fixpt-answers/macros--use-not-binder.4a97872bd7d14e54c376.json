@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: read error: <kayak>-snapshot/tests/fx26/programs/macros/use-not-binder.fx:7:8: a use of `let1`: `(f 1)` is not a name that may be bound",
+"fixpt: read error: <programs>/macros/use-not-binder.fx:7:8: a use of `let1`: `(f 1)` is not a name that may be bound",
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

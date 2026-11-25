@@ -21,9 +21,10 @@
 ]
 },
 {
-"code": 1,
+"code": 0,
 "out": [
-"! <kayak>-snapshot/tests/fx26/programs/module-files/names-outer.fx:3:2: unbound variable `module-parameters`",
+"; <kayak>-snapshot/tests/fx26/programs/module-files/names-outer.fx, checked as a module file",
+"(poly ((r region)) (subr (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/module-files/names-inner.fx)) () (moduleof (desc s (mu %4 (sumof (#:sa (productof (1 int))) (#:sb (productof (1 %4) (2 %4)))))) (desc e (mu %4 (sumof (#:ev (productof (1 s))) (#:eapp (productof (1 %4) (2 %4)))))) (desc t (sumof (#:td (productof (1 e))) (#:tx (productof (1 int))))) (val a (moduleof (desc s (sumof (#:sa (productof (1 int))) (#:sb (productof (1 s) (2 s))))) (val sa (subr pure (int) s)) (val sb (subr pure (s s) s)))) (val ev (subr pure (s) e)) (val eapp (subr pure (e e) e)) (val td (subr pure (e) t)) (val tx (subr pure (int) t))))) ! (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/module-files/names-outer.fx))",
 "; both checkers agree",
 ""
 ],
@@ -31,7 +32,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

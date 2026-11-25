@@ -1,0 +1,46 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"utf8.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define t : utf8 ! pure",
+"define walk : (subr (maxeff (alloc @heap) (read (globals walk)) spin) (utf8 int) (listof char @heap)) ! pure",
+"nat ! (read (globals t))",
+"nat ! (read (globals t))",
+"(listof char @heap) ! (maxeff (alloc @heap) (read (globals t walk)) spin)",
+"utf8 ! (read (globals t))",
+"string ! (read (globals t))",
+"(listof bool acyclic) ! (read (globals t))",
+"bool ! (read (globals t))",
+"int ! (read (globals t))",
+"int ! (read (globals t))",
+"define count : (subr pure (utf8) nat) ! pure",
+"(listof nat acyclic) ! (read (globals count t))",
+"define s : utf8 ! (read (globals t))",
+"utf8 ! (read (globals s))",
+"(listof nat acyclic) ! (read (globals s))",
+"string ! (read (globals s))",
+"bool ! (read (globals s t))",
+"(listof char @heap) ! (maxeff (alloc @heap) (read (globals t walk)) spin)",
+"define w : utf8 ! pure",
+"utf8 ! (read (globals w))",
+"(listof nat acyclic) ! (read (globals count w))",
+"(listof char @heap) ! (maxeff (alloc @heap) (read (globals w walk)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

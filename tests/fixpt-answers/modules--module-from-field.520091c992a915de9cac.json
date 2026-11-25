@@ -1,0 +1,26 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"module-from-field.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"m : sig ! (alloc @heap)",
+"h : holder ! (maxeff (alloc @heap) (read (globals m)))",
+"h2 : (productof (#:th (ref (moduleof (abs st type) (val state st) (val peek (subr (read @heap) (st) int))) @r.h2.1))) ! (maxeff (alloc @r.h2.1) (read (globals m)))",
+"14 : int ! (maxeff (read @heap) (read @r.h2.1) (read (globals h h2)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

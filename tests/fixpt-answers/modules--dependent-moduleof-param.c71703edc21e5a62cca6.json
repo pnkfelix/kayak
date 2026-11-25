@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"dependent-moduleof-param.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define b : (moduleof (abs t type) (val zero t) (val next (subr pure (t) t)) (val value (subr pure (t) int))) ! (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/dm-base.fx))",
+"define u : (moduleof (val two (subr pure () b..t))) ! (read (globals %shared:input:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/dm-user.fx b))",
+"define e : env-t ! (read (globals b u))",
+"define use : (subr pure (env-t) int) ! pure",
+"define opened : (subr pure (env-t) int) ! pure",
+"int ! (read (globals e opened use))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

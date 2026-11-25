@@ -70,7 +70,17 @@ PRIMS = {"keyword?": "mx-keyword?", "keyword->symbol": "mx-keyword->symbol",
          "datum-dotted": "mx-datum-dotted", "parse-nat": "mx-parse-nat",
          "%macros:expand-procedural": "mx-expand-procedural", "%macros:call-procedural": "mx-call-procedural",
          "%macros:limit": "mx-limit", "parse-number": "mx-parse-number",
-         "datum-vector->list": "mx-datum-vector->list"}
+         "datum-vector->list": "mx-datum-vector->list",
+         "utf8?": "mx-utf8?", "utf8->string": "mx-utf8->string"}
+# Fixpt's files the shim stands in for: its hash tables (`table.fx`, which
+# the expander loads since c5b5991, for its sets of the kernel's words),
+# generic in the key and the value, a lookup's entry a `(oneof nil (pairof
+# k v r))`, which KFX's Rust has not (C75): the shim's a set of symbols,
+# its type `mx-table` (`STOOD_IN_TYPES`, written out at each use).
+STOOD_IN = {"table.fx", "table-types.fx"}
+PRIMS.update({"make-table": "mx-make-table", "table-ref": "mx-table-ref", "table-set!": "mx-table-set!",
+              "symbol-hash": "mx-symbol-hash"})
+STOOD_IN_TYPES = {"table": (["k", "v", "r"], "mx-table")}
 SHIM = os.path.join(ROOT, "fx26", "macros-shim.kfx")
 # The engine's driver of the expander, written by hand, read in last.
 DRIVER = os.path.join(ROOT, "fx26", "macros-driver.kfx")
@@ -93,6 +103,10 @@ WRITTEN = {("parser.fx", "mk-symbol"): "pure", ("macros-nodes.fx", "def-env-top"
 # it says: the file, the text, what it is made, and why. Each must be
 # found once (the pin's moving says so when it is not).
 PATCHES = {
+    # `symbol=?` given as a value, the table's sameness (c5b5991): kc
+    # calls the primitive but makes no procedure of it, so the shim's
+    # `mx-symbol=?`, a lambda, as `mx-symbol-hash` is (C525).
+    "macros-syntax.fx": [("(make-table symbol-hash symbol=?)", "(make-table symbol-hash mx-symbol=?)")],
     # The parse's prompt allows its delimited computations its host's
     # effect too (C449): an expansion calls the host's asker, of the file's
     # effect parameter `mxe`, where Fixpt's calls a primitive of its
@@ -326,9 +340,12 @@ class Program:
 
     def resolve(self, fname, name, ns="v", seen=()):
         """The (file, name, ns) definition `name` in file `fname` is, in
-        namespace `ns` if it is one there, else in the other; or None."""
+        namespace `ns` if it is one there, else in the other; or None. None
+        too of a file the shim stands in for (`STOOD_IN`): its names the
+        shim's (`PRIMS`)."""
         r = self.resolve_in(fname, name, ns, seen)
-        return r if r else self.resolve_in(fname, name, "t" if ns == "v" else "v", seen)
+        r = r if r else self.resolve_in(fname, name, "t" if ns == "v" else "v", seen)
+        return None if r and r[0] in STOOD_IN else r
 
     def resolve_in(self, fname, name, ns, seen=()):
         f = self.files.get(fname)
@@ -808,7 +825,7 @@ def form_text(prog, fname, form, names, regions):
                 out[i + 1] = '(string->symbol "%s")' % t[i + 1][1].strip("|")
                 continue
             if k == "atom" and i not in skip:
-                if s in regions and i in in_region:
+                if s in regions and (i in in_region or i in types):
                     s = regions[s]
                 else:
                     r = prog.resolve(fname, s, "t" if i in types else "v")
@@ -833,6 +850,85 @@ def form_text(prog, fname, form, names, regions):
         return (lead, "".join(text))
 
 
+def written_out(texts):
+    """Each type abbreviation of parameters, `(define-type (table (k type)
+    (v type) (r region)) T)` (Fixpt's `table-types.fx`, which the expander
+    reaches since c5b5991), taken out and written out at each of its uses,
+    its arguments for its parameters: kfx's checker binds no such
+    abbreviation across a module maker's `include` of a types file, nor in
+    its items (`maker-items-found`; TODO §54's pin note)."""
+    abbrevs = dict(STOOD_IN_TYPES)
+    out = []
+    for text in texts:
+        toks = tokens(text)
+        drop = set()
+        for n in tree(toks):
+            if (isinstance(n, Node) and len(n.items) == 3 and head(toks, n) == "define-type"
+                    and isinstance(n.items[1], Node)):
+                sig = n.items[1]
+                name = toks[sig.items[0]][1]
+                params = [toks[p.items[0]][1] for p in sig.items[1:]]
+                body = "".join(tok for _, tok in toks[n.items[2].start:n.items[2].end + 1]) \
+                    if isinstance(n.items[2], Node) else toks[n.items[2]][1]
+                abbrevs[name] = (params, body)
+                drop.update(range(n.start, n.end + 1))
+        out.append("".join(tok for i, (_, tok) in enumerate(toks) if i not in drop))
+
+    def expand(text, depth=0):
+        if depth > 16:
+            raise SystemExit("macros-port: abbreviations of parameters that name each other")
+        toks = tokens(text)
+        spans = {}
+        def walk(items):
+            for n in items:
+                if isinstance(n, Node):
+                    h = head(toks, n)
+                    if h in abbrevs and len(n.items) - 1 == len(abbrevs[h][0]):
+                        spans[n.start] = n
+                    else:
+                        walk(n.items)
+        walk(tree(toks))
+        res, i = [], 0
+        while i < len(toks):
+            if i in spans:
+                n = spans[i]
+                params, body = abbrevs[toks[n.items[0]][1]]
+                args = [expand("".join(tok for _, tok in toks[a.start:a.end + 1]) if isinstance(a, Node) else toks[a][1], depth + 1)
+                        for a in n.items[1:]]
+                sub = dict(zip(params, args))
+                res.append(expand("".join(sub.get(tok, tok) if k == "atom" else tok for k, tok in tokens(body)), depth + 1))
+                i = n.end + 1
+            else:
+                res.append(toks[i][1])
+                i += 1
+        return "".join(res)
+    return [merged_polys(expand(t)) for t in out] if abbrevs else [merged_polys(t) for t in out]
+
+
+def merged_polys(text):
+    """`(poly (A …) (poly (B …) T))` written `(poly (A … B …) T)`, and
+    `plambda`'s so (Fixpt's `table.fx`, since c5b5991): KFX's Rust writes a
+    poly in a poly as one, and its checker asks for it so (C70)."""
+    pat = re.compile(r"\((poly|plambda) \(((?:[^()]|\([^()]*\))*)\)\s*\(\1 \(((?:[^()]|\([^()]*\))*)\)")
+    while True:
+        m = pat.search(text)
+        if not m:
+            return text
+        inner = text.index("(", m.start() + 1 + len(m.group(1)) + 1 + len(m.group(2)) + 2)
+        depth, pos, close = 0, inner, None
+        for k, tok in tokens(text[inner:]):
+            if k == "open":
+                depth += 1
+            elif k == "close":
+                depth -= 1
+                if depth == 0:
+                    close = pos
+                    break
+            pos += len(tok)
+        text = (text[:m.start()] + "(" + m.group(1) + " (" + m.group(2) + " " + m.group(3) + ")"
+                + text[m.end():close] + text[close + 1:])
+
+
 def made():
     prog = Program()
     keep = kept(prog)
@@ -845,6 +941,8 @@ def made():
     marks = "\n".join(" fixpt-source: %s/%s@%s" % (SRC, n, rev) for n in files)
     shim = open(SHIM, encoding="utf-8").read()
     outside, inside = hoisted([translate(prog, n, keep, names) for n in files])
+    both = written_out(outside + inside)
+    outside, inside = both[:len(outside)], both[len(outside):]
     body = "\n".join(inside)
     header = ('"expander.fx: Fixpt\'s macro expander written in FX-26, its files made one\n'
               ' KFX module file by scripts/macros-port.py (C429): edit that, not this.\n'

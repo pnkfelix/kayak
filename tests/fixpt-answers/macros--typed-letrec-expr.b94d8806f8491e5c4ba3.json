@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: read error: <kayak>-snapshot/tests/fx26/programs/macros/typed-letrec-expr.fx:10:48: `e` is placed where a lambda is wanted: a typed hole there is a lambda, `(lambda #:type T)`",
+"fixpt: read error: <programs>/macros/typed-letrec-expr.fx:10:48: `e` is placed where a lambda is wanted: a typed hole there is a lambda, `(lambda #:type T)`",
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

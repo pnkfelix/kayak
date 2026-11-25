@@ -154,8 +154,8 @@
 "",
 "word program (50 cells, cellular):",
 "     0: closure word lambda@1001:0 over 0",
-"     3: global! %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/mp-none.fx",
-"     5: global %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/mp-none.fx",
+"     3: global! %shared:<programs>/modules/../module-files/mp-none.fx",
+"     5: global %shared:<programs>/modules/../module-files/mp-none.fx",
 "     7: tcall 0",
 "     9: global! m-a",
 "    11: closure word input@1002:63 over 0",
@@ -163,9 +163,9 @@
 "    16: slot 0",
 "    18: prim %make-frozen 2",
 "    21: slot! 0",
-"    23: global! %shared:input:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/mp-none-user.fx",
+"    23: global! %shared:input:<programs>/modules/../module-files/mp-none-user.fx",
 "    25: global m-a",
-"    27: global %shared:input:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/mp-none-user.fx",
+"    27: global %shared:input:<programs>/modules/../module-files/mp-none-user.fx",
 "    29: field 2",
 "    31: slot 1",
 "    33: slot! 1",
@@ -286,7 +286,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

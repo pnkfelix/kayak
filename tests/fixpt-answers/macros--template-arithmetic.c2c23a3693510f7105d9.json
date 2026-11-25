@@ -12,12 +12,12 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/macros/template-arithmetic.fx:9:10: a u8 is expected here, and this is a (nat 3)",
-"  in the expansion of `three` at <kayak>-snapshot/tests/fx26/programs/macros/template-arithmetic.fx:10:9",
+"fixpt: <programs>/macros/template-arithmetic.fx:9:10: a u8 is expected here, and this is a (nat 3)",
+"  in the expansion of `three` at <programs>/macros/template-arithmetic.fx:10:9",
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

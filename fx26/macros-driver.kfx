@@ -293,7 +293,7 @@
             ;; Phase 1's forms, in force for the transformers defined after
             ;; (C446): checked and run in their namespace, as the host
             ;; answers `%forms`; nothing of the program's.
-            ((for-syntax? s) (begin (for-syntax! pfail-at s) nil))
+            ((for-syntax? s) (begin (for-syntax! pfail-at s "") nil))
             ((imports-syntax? s) (drive-not-yet s "a file's macros, `import-with-syntax`"))
             ;; A `hide`: its forms', as if written there, a program exporting
             ;; nothing to hide them from (`tops-made`).
@@ -435,7 +435,10 @@
     (lambda (x)
       (tagcase x
         (sh-module (vs ds) (mx-datum-list (list (drive-sym "m") (drive-members-datum vs) (drive-members-datum ds))))
-        (sh-fun (ps r) (mx-datum-list (list (drive-sym "f") (mx-datum-list (drive-shapes-each ps)) (drive-shapes-datum r)))))))
+        (sh-fun (ps r) (mx-datum-list (list (drive-sym "f") (mx-datum-list (drive-shapes-each ps)) (drive-shapes-datum r))))
+        ;; A cell's and a product's (Fixpt's bb5487ba): what it holds, its fields.
+        (sh-cell (h) (mx-datum-list (list (drive-sym "c") (drive-shapes-datum h))))
+        (sh-product (fs) (mx-datum-list (list (drive-sym "p") (drive-members-datum fs)))))))
   (drive-shapes-datum (->* (mx-parser-types-shapes) datum)
     (lambda (ss) (mx-datum-list (drive-shape-items ss))))
   (drive-shape-items (->* (mx-parser-types-shapes) (listof datum acyclic))
@@ -455,9 +458,11 @@
 (define-rec
   (drive-datum-shape (->* (datum) mx-parser-types-shape)
     (lambda (d)
-      (if (loc-is-sym? (loc-nth d 0) "m")
-          (sh-module (drive-datum-members (loc-nth d 1)) (drive-datum-members (loc-nth d 2)))
-          (sh-fun (drive-datum-shapes-each (loc-nth d 1)) (drive-datum-shapes (loc-nth d 2))))))
+      (cond ((loc-is-sym? (loc-nth d 0) "m")
+             (sh-module (drive-datum-members (loc-nth d 1)) (drive-datum-members (loc-nth d 2))))
+            ((loc-is-sym? (loc-nth d 0) "c") (sh-cell (drive-datum-shapes (loc-nth d 1))))
+            ((loc-is-sym? (loc-nth d 0) "p") (sh-product (drive-datum-members (loc-nth d 1))))
+            (else (sh-fun (drive-datum-shapes-each (loc-nth d 1)) (drive-datum-shapes (loc-nth d 2)))))))
   (drive-datum-shapes (->* (datum) mx-parser-types-shapes)
     (lambda (d) (if (pair? d) (let ((x (car d))) (cons (drive-datum-shape x) (drive-datum-shapes (cdr d)))) nil)))
   (drive-datum-shapes-each (->* (datum) (listof mx-parser-types-shapes acyclic))

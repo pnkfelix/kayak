@@ -23,7 +23,8 @@
 {
 "code": 1,
 "out": [
-"! <kayak>-snapshot/tests/fx26/programs/module-files/mp-pure-item.fx:2:2: unbound variable `module-parameters`",
+"; <kayak>-snapshot/tests/fx26/programs/module-files/mp-pure-item.fx, checked as a module file",
+"! <kayak>-snapshot/tests/fx26/programs/module-files/mp-pure-item.fx:1:1: in `mp-pure-item.fx`, 3:1: an expression among a module's items is run for what it does as the module is made, and this one only reads: name its value with `define`",
 "; both checkers agree",
 ""
 ],
@@ -31,7 +32,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

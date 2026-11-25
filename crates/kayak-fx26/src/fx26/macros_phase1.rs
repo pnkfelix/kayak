@@ -44,7 +44,38 @@ pub fn phase1_words(mut cs: List<char>, mut w: List<char>, mut out: Strings) -> 
 }
 
 // A request's `n` forms from `i`, each its length on a line and its text:
-// them, and where the rest begins.
+// them, and where the rest begins. Each text is held as Fixpt's expander
+// holds a phase-1 form (Fixpt's 6851f807, `phase1-form`): its directory's
+// length, `:`, its directory, then the form; the form alone kept
+// (`phase1-form-text`). A load a phase-1 form makes is read from the
+// engine's directory, not its file's: a gap (TODO §54's pin note).
+pub fn phase1_colon_at(mut s: Str, mut i: i64) -> i64 {
+    loop {
+        if i64_gt_eq(i, string_length_i64(s)) {
+            return the::<i64>(-1i64);
+        } else if char_eq_p(string_ref_i64(s, i), ':') {
+            return i;
+        } else {
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+pub fn phase1_form_text(f: Str) -> Str {
+    let c = phase1_colon_at(f, 0i64);
+    if i64_lt(c, 1i64) {
+        f
+    } else {
+        let from = i64_plus(i64_plus(c, 1i64), string_to_i64(substring(f, int_lit(0), i64_to_int(c))));
+        if i64_gt(from, string_length_i64(f)) {
+            f
+        } else {
+            substring(f, i64_to_int(from), string_length(f))
+        }
+    }
+}
+
 pub fn phase1_forms_from(mut s: Str, mut i: i64, mut n: i64, mut out: Strings) -> Product_11_12<Strings, i64> {
     loop {
         if i64_lt_eq(n, 0i64) {
@@ -61,7 +92,7 @@ pub fn phase1_forms_from(mut s: Str, mut i: i64, mut n: i64, mut out: Strings) -
                     t
                 }
             };
-            (i, n, out) = (to, i64_minus(n, 1i64), kayak_rt::heap_cons(substring(s, i64_to_int(from), i64_to_int(to)), out));
+            (i, n, out) = (to, i64_minus(n, 1i64), kayak_rt::heap_cons(phase1_form_text(substring(s, i64_to_int(from), i64_to_int(to))), out));
             continue;
         }
     }

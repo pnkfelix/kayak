@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"bind-rib-not-nested.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: the FX-26 front end: <kayak>-snapshot/tests/fx26/programs/macros/bind-rib-not-nested.fx:5:53: `body` is placed in the scope of `a`, and inside that of `b`, but its signature says it is in the scope of `a` and `b`",
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

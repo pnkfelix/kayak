@@ -83,7 +83,9 @@
             (rxa (x b) (tagcase (rx-bases x (cdr ns)) (rxs (x bs) (rxs x (cons b bs))))))))))
 
 "`datum` (C346), as Fixpt's standard abbreviation of it is: the union of
- the base types a datum may be and an acyclic pair of datums, at `slot`."
+ the base types a datum may be and an acyclic pair of datums, at `slot`;
+ `utf8` its last since Fixpt 06a3666 (C526: the rep Fixpt's, though KFX's
+ checker's `datum` has no `utf8` yet)."
 (define rx-datum (subr kfx (rx i64) rx)
   (lambda (x slot)
     (tagcase (rx-bases x (list "int" "f64" "char" "bool" "string" "symbol" "keyword"))
@@ -92,7 +94,7 @@
           (rxa (x fr)
             (tagcase (rx-node x "pairof" #f (the rp-operands (list (the rp-operand (sum node (i64->int slot))) (the rp-operand (sum node (i64->int slot))) fr (the rp-operand (sum flag #t)))))
               (rxa (x p)
-                (tagcase (rx-bases x (list "vector" "bytevector"))
+                (tagcase (rx-bases x (list "vector" "bytevector" "utf8"))
                   (rxs (x as2) (rx-fill x slot "oneof" #f (the strings nil) (onto as1 (cons p as2)))))))))))))
 
 (define rx-hole (subr kfx (rx string) rxa)
@@ -194,7 +196,7 @@
       (or (and (nil? (car ms)) (pair? (car (cdr ms)))) (and (pair? (car ms)) (nil? (car (cdr ms))))))))
 
 (define base-type-names strings
-  (list "symbol" "keyword" "datum" "vector" "f32" "i8" "u8" "i16" "u16" "i32" "u32" "u64"))
+  (list "symbol" "keyword" "utf8" "datum" "vector" "f32" "i8" "u8" "i16" "u16" "i32" "u32" "u64"))
 
 (define-rec
   (binders-in (subr kfx (rpbinds strings i64 i64) rpbinds)
@@ -272,7 +274,7 @@
 (define rp-standard-generatives strings
   (list "vsubr" "flatlayout" "flatarrayof" "identity" "eqtable" "blobref" "flat-arrayof" "flat-keyed"
         "bytevectorof" "escape-tag" "addr" "inbox" "process" "event" "stringof" "sessionof" "pending"
-        "effectrep" "regionrep" "typerep" "effectbound" "typebound"))
+        "effectrep" "regionrep" "typerep" "effectbound" "typebound" "bytesof" "strof"))
 (define-rec
   (rp-index-of (subr kfx (strings string i64) i64)
     (lambda (xs n i) (cond ((null? xs) 0) ((string=? (car xs) n) i) (else (rp-index-of (cdr xs) n (i64+ i 1)))))))
@@ -343,7 +345,7 @@
  type; a program's from its checker's own: its parameters, its marks
  (`%variance NAME`) and the representation its `#:seal` takes (`%up NAME`, C428)."
 (define-datatype gdecl (gdecl strings strings strings ty))
-"fixpt-source: crates/fixpt-fx26/src/check.rs@6f7bd73"
+"fixpt-source: crates/fixpt-fx26/src/check.rs@06a3666"
 (define rp-generative-decls strings
   (list "(vsubr (e effect +) (t type -) (r type +)) (subr e ((listof t acyclic)) r)"
         "(flatlayout (t type)) int"
@@ -366,7 +368,11 @@
         "(regionrep (r region)) string"
         "(typerep (t type)) string"
         "(effectbound (e effect +)) string"
-        "(typebound (t type +)) string"))
+        "(typebound (t type +)) string"
+        ;; Views into bytes and into a string (Fixpt's e8613c90; C525): their
+        ;; numbers, 22 and 23, which kayak's checker has not yet as types.
+        "(bytesof (r region)) (arrayof u8 r)"
+        "(strof (r region)) (arrayof char r)"))
 
 (define-rec
   (rp-nth-string (subr kfx (strings i64) string)
@@ -429,7 +435,7 @@
  names (`Rel`), for specifications (C303)."
 (define rp-shapes strings
   (list "int" "f64" "f32" "char" "bool" "nil" "pair" "string" "symbol" "procedure" "bloblet" "box" "sum" "product"
-        "vector" "bytevector" "keyword"))
+        "vector" "bytevector" "keyword" "utf8"))
 (define rp-rels strings (list "lt" "le" "eq" "ne"))
 (define sexp-int (subr kfx (sexp) i64) (lambda (e) (tagcase e (num (k f p) k) (else other -1))))
 
@@ -834,7 +840,7 @@
 (define ri-datum? (subr kfx (rp-nodes int rp-operands) bool)
   (lambda (ns k args)
     "Whether union node `k` is `datum`'s (`rx-datum`)."
-    (and (i64= (size args) 10)
+    (and (i64= (size args) 11)
          (tagcase (car (drop-n args 7))
            (node j (let ((n (rp-node-at ns j)))
                      (and (not (null? n)) (string=? (symbol->string (extract (car n) 2)) "pairof")

@@ -49,6 +49,10 @@
 (define ob-symbol i64 2)
 (define ob-keyword i64 48)
 (define ob-bytes i64 4)
+"UTF-8 text (C525): Fixpt's `utf8`, no fields, its suffix the bytes, the
+ header's count of them exact; all ASCII, `utf8-ascii`."
+(define ob-utf8 i64 49)
+(define ob-utf8-ascii i64 50)
 (define ob-real i64 5)
 (define ob-big i64 6)
 (define raw-kind? (subr kfx (i64) bool)

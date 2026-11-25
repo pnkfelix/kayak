@@ -27,7 +27,7 @@
 (define read-text (subr (maxeff (read @globals) spin (io fs-read) (io stderr) (io exit) (alloc @io) (read @io)) (string) string)
   (lambda (path)
     (tagcase (the (sumof (data (bytevectorof @io)) (failed io-error)) (read-file path))
-      (data b (tagcase (utf8->string b) (text s s) (bad k (fail-with (string-append path ": not UTF-8") 1))))
+      (data b (tagcase (bytes->utf8 b) (text s-utf8 (utf8->string s-utf8)) (bad k (fail-with (string-append path ": not UTF-8") 1))))
       (failed e (fail-with (string-append "cannot read " (string-append path (string-append ": " (extract e detail)))) 1)))))
 
 "A failure as the engine says it (C273): the checker's and reader's, which

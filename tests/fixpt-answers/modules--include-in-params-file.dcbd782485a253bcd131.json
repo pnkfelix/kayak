@@ -147,10 +147,10 @@
 "",
 "word program (28 cells, cellular):",
 "     0: closure word lambda@1002:0 over 0",
-"     3: global! %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/include-cell.fx",
+"     3: global! %shared:<programs>/modules/../module-files/include-cell.fx",
 "     5: closure word lambda@1001:0 over 0",
-"     8: global! %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/include-in-params-file.fx",
-"    10: global %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/include-in-params-file.fx",
+"     8: global! %shared:<programs>/modules/../module-files/include-in-params-file.fx",
+"    10: global %shared:<programs>/modules/../module-files/include-in-params-file.fx",
 "    12: tcall 0",
 "    14: global! m",
 "    16: global m",
@@ -162,7 +162,7 @@
 "    27: exit",
 "",
 "word lambda@1001:0 (58 cells, cellular):",
-"     0: global %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/include-cell.fx",
+"     0: global %shared:<programs>/modules/../module-files/include-cell.fx",
 "     2: tcall 0",
 "     4: lit 37",
 "     6: slot 0",
@@ -193,7 +193,7 @@
 "  its register code (96 cells, not compiled):",
 "       0: args 0",
 "       2: save 4",
-"       4: global %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/include-cell.fx",
+"       4: global %shared:<programs>/modules/../module-files/include-cell.fx",
 "       6: setstk 3",
 "       8: stack 3",
 "      10: invoke 0 1",
@@ -272,7 +272,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

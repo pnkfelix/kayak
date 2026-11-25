@@ -8,7 +8,7 @@ use kayak_rt::*;
 // only that they are there, as they depend on the clock and the umask.
 #[inline]
 pub fn put(path: Str, text: Str) -> () {
-    let tagcase_ = write_file(path, the::<Bytes>(string_to_utf8(text)));
+    let tagcase_ = write_file(path, the::<Bytes>(utf8_to_bytes(string_to_utf8(text))));
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("done") } {
         let u: () = kayak_rt::sum_payload::<()>(tagcase_);

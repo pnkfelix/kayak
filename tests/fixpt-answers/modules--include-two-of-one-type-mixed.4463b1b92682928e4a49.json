@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"include-two-of-one-type-mixed.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"make : (subr pure (int) sig) ! pure",
+"make2 : (subr (read (globals make)) () (moduleof (val p sig) (val q sig))) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/modules/include-two-of-one-type-mixed.fx:14:43: argument 1 is a q..t, where a p..t is expected",
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

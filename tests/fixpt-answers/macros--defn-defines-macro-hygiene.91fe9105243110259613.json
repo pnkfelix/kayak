@@ -10,9 +10,9 @@
 "code": 0,
 "out": [
 "define count : int ! pure",
-"define %count:206236080.1 : (ref int @r.1) ! (alloc @r.1)",
-"int ! (maxeff (read (globals %count:206236080.1)) (read @r.1) (write @r.1))",
-"(listof int acyclic) ! (maxeff (read (globals %count:206236080.1 count)) (read @r.1) (write @r.1))",
+"define %count:206236080.1 : (ref int @r.%count:206236080.1.1) ! (alloc @r.%count:206236080.1.1)",
+"int ! (maxeff (read (globals %count:206236080.1)) (read @r.%count:206236080.1.1) (write @r.%count:206236080.1.1))",
+"(listof int acyclic) ! (maxeff (read (globals %count:206236080.1 count)) (read @r.%count:206236080.1.1) (write @r.%count:206236080.1.1))",
 "; both checkers agree",
 ""
 ],
@@ -20,7 +20,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

@@ -1276,7 +1276,8 @@ pub fn defined_names_of(f: kayak_rt::data::DataAt<'static, Sexp>) -> Strings {
 }
 
 /// Whether a global of `names`, defined before, is now at a type its uses
-/// may not take.
+/// may not take: never one whose module has abstract types, which its
+/// binding named for its uses (Fixpt's 029bad8c; C525).
 pub fn rerun_needed_p(old: kayak_rt::data::DataAt<'static, Cv>, new: kayak_rt::data::DataAt<'static, Cv>, names: Strings) -> bool {
     any_p(kayak_rt::as_proc(kayak_rt::closure1s((old, new,), |(old, new,), n: Str| {
         let (a, b) = (scope_bind(n, old), scope_bind(n, new));
@@ -1288,7 +1289,13 @@ pub fn rerun_needed_p(old: kayak_rt::data::DataAt<'static, Cv>, new: kayak_rt::d
                     let tagcase_ = car(b);
                     if Bind::__is_Bind(tagcase_) {
                         let (n2, sb, wb,) = Bind::__Bind(tagcase_);
-                        not((string_eq_p(scheme_text(sa), scheme_text(sb)) || narrower_effect_p(sb, sa)))
+                        ({
+                            let tagcase_ = sa;
+                            if Scheme::__is_Scheme(tagcase_) {
+                                let (tv, t,) = Scheme::__Scheme(tagcase_);
+                                binds_abstract_p(t)
+                            } else { kayak_rt::data::no_variant() }
+                        } || not((string_eq_p(scheme_text(sa), scheme_text(sb)) || narrower_effect_p(sb, sa))))
                     } else { kayak_rt::data::no_variant() }
                 })
             } else { kayak_rt::data::no_variant() }

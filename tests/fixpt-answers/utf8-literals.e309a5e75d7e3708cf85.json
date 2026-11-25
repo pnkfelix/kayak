@@ -1,0 +1,68 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"utf8-literals.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (70 cells, cellular):",
+"     0: lit #bloblet(utf8 () #u8(97 195 169 240 159 152 128 122))",
+"     2: global! t",
+"     4: global t",
+"     6: drop",
+"     7: global t",
+"     9: prim %fx26-utf8->string 1",
+"    12: drop",
+"    13: global t",
+"    15: prim %fx26-utf8->bytes 1",
+"    18: prim bytevector-length 1",
+"    21: drop",
+"    22: global t",
+"    24: prim %fx26-utf8->string 1",
+"    27: lit \"a\\xe9;\\x1f600;z\"",
+"    29: prim %fx26-string->utf8 1",
+"    32: prim %fx26-utf8->string 1",
+"    35: prim string=? 2",
+"    38: drop",
+"    39: lit #bloblet(utf8-ascii () #u8(113 117 111 116 101 100))",
+"    41: drop",
+"    42: closure word once over 0",
+"    45: global! once",
+"    47: global once",
+"    49: tcall 0",
+"    51: prim %fx26-utf8->string 1",
+"    54: drop",
+"    55: lit #bloblet(utf8-ascii () #u8())",
+"    57: drop",
+"    58: lit #bloblet(utf8 () #u8(206 187 113 9))",
+"    60: prim %fx26-utf8->string 1",
+"    63: drop",
+"    64: lit #bloblet(utf8-ascii () #u8(98 97 99 107 32 34 113 117 111 116 101 100 34))",
+"    66: prim %fx26-utf8->string 1",
+"    69: exit",
+"",
+"word once (3 cells, cellular):",
+"     0: lit #0=#bloblet(utf8-ascii () #u8(111 110 99 101))",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 0",
+"       2: const #0#",
+"       4: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

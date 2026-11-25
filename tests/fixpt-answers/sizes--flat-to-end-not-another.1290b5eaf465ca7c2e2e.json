@@ -17,21 +17,8 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-]
-},
-{
-"code": 1,
-"out": [
-"f : (poly ((n size)) (subr pure ((blobref blob (flat-arrayof i64 n)) (blobref blob (flat-arrayof i64 n))) (nat n))) ! pure",
-""
-],
-"err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/sizes/flat-to-end-not-another.fx:10:17: the size `n` cannot be `finite` here: `n` is the size of more than one argument, or of something inside one, and `finite` would not keep them the same",
-""
-],
-"by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

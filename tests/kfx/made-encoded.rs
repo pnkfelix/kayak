@@ -72,6 +72,7 @@ pub mod made__load__0__fx26_arm64 {
         fn arm_asrv() -> ArmOp3;
         fn arm_msub() -> ArmOp4;
         fn arm_lsl_imm() -> ArmOp3;
+        fn arm_ldurb() -> ArmOp3;
         fn arm_nop() -> Int;
     }
 

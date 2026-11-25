@@ -71,7 +71,7 @@ pub fn expressions_names_6() -> Strings {
 pub fn expressions_names_7() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit!("make-bytevector"), kayak_rt::heap_cons(str_lit!("string->utf8"), kayak_rt::heap_cons(str_lit!("bytevector-copy"), kayak_rt::nil())))
+        kayak_rt::heap_cons(str_lit!("make-bytevector"), kayak_rt::heap_cons(str_lit!("utf8->bytes"), kayak_rt::heap_cons(str_lit!("bytevector-copy"), kayak_rt::nil())))
     })
 }
 
@@ -1844,12 +1844,12 @@ pub mod expressions {
 
     /// Whether a quoted datum is one KFX builds (C77, C80): a `.` only
     /// before a dotted list's last item, a vector's `#vector` only at its
-    /// head.
+    /// head; no `#utf8"…"` within, which KFX's `datum` has not yet.
     pub fn quotable_p(d: kayak_rt::data::DataAt<'static, Sexp>) -> bool {
         let tagcase_ = d;
         if Sexp::__is_Sym(tagcase_) {
             let (n, f, p,) = Sexp::__Sym(tagcase_);
-            (not(string_eq_p(n, str_lit!("."))) && not(string_eq_p(n, str_lit!("#vector"))))
+            (not(string_eq_p(n, str_lit!("."))) && not(string_eq_p(n, str_lit!("#vector"))) && not(string_eq_p(n, str_lit!("#utf8"))))
         } else if Sexp::__is_Lst(tagcase_) {
             let (xs, f, l, p,) = Sexp::__Lst(tagcase_);
             quotable_items_p(if head_is_p(d, str_lit!("#vector")) {
@@ -6512,6 +6512,23 @@ pub mod expressions {
                 return par_form(v, s, xs, nil::<kayak_rt::data::DataAt<'static, Ty>>());
             } else if string_eq_p(h, str_lit!("pselect")) {
                 return pselect_form(v, s, xs, nil::<kayak_rt::data::DataAt<'static, Ty>>());
+            } else if string_eq_p(h, str_lit!("#utf8")) {
+                // `#utf8"…"` (Fixpt 06a3666), read as `(#utf8 "…")`: a constant of
+                // type `utf8`, made once, as a quote's is.
+                if (i64_eq(size(xs), 1i64) && {
+                    let tagcase_ = car(xs);
+                    if Sexp::__is_Str(tagcase_) {
+                        let (x, f, p,) = Sexp::__Str(tagcase_);
+                        true
+                    } else {
+                        let other = tagcase_;
+                        false
+                    }
+                }) {
+                    return res(ty_data(str_lit!("utf8"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), nil::<Str>(), s);
+                } else {
+                    return match refuse(v, str_lit!("`#utf8` is UTF-8 text's, `#utf8\"…\"`")) {};
+                }
             } else if string_eq_p(h, str_lit!("quote")) {
                 // A quoted symbol (C56); a quoted datum of another kind is FX-26's
                 // `datum`, which KFX has not yet.
@@ -6546,12 +6563,15 @@ pub mod expressions {
                     } else if Sexp::__is_Lst(tagcase_) {
                         let (ys, f, l, p,) = Sexp::__Lst(tagcase_);
                         // A quoted list (C77): a `datum`, built where it is written.
-                        if null_p(ys) {
+                        if utf8_literal_p(car(xs)) {
+                            // `'#utf8"…"`, the text itself, as Fixpt's `quoted` has it.
+                            return res(ty_data(str_lit!("utf8"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), nil::<Str>(), s);
+                        } else if null_p(ys) {
                             // A bare `'()` is `nil`, an empty list of any type, as Fixpt's
                             // `quoted` has it (C291).
                             return synth(v, s, sym(str_lit!("nil"), f, p));
                         } else if not(quotable_p(car(xs))) {
-                            return match refuse(v, str_lit!("a quoted datum KFX does not build: a `.` not before a dotted list's last item")) {};
+                            return match refuse(v, str_lit!("a quoted datum KFX does not build: a `.` not before a dotted list's last item, or `#utf8\"…\"` within, which KFX's `datum` has not yet")) {};
                         } else {
                             return res(ty_data(str_lit!("datum"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), nil::<Str>(), s);
                         }
@@ -6573,7 +6593,7 @@ pub mod expressions {
                         if null_p(ys) {
                             return match refuse(v, str_lit!("a quasiquote of (), which FX-26 takes as a nil of any type: write nil")) {};
                         } else if not(quotable_p(car(xs))) {
-                            return match refuse(v, str_lit!("a quasiquoted datum KFX does not build: a `.` not before a dotted list's last item")) {};
+                            return match refuse(v, str_lit!("a quasiquoted datum KFX does not build: a `.` not before a dotted list's last item, or `#utf8\"…\"` within, which KFX's `datum` has not yet")) {};
                         } else if head_is_p(car(xs), str_lit!("unquote")) {
                             return check(v, s, second(ys), ty_data(str_lit!("datum"), nil::<kayak_rt::data::DataAt<'static, Ty>>()));
                         } else {
@@ -7017,7 +7037,7 @@ pub mod expressions {
                     check_by_synth(v, s, e, expected)
                 }
             }, str_lit!("list"))
-        } else if (string_eq_p(h, str_lit!("the")) || string_eq_p(h, str_lit!("and")) || string_eq_p(h, str_lit!("or")) || string_eq_p(h, str_lit!("lambda")) || string_eq_p(h, str_lit!("list")) || string_eq_p(h, str_lit!("quote")) || string_eq_p(h, str_lit!("quasiquote")) || string_eq_p(h, str_lit!("extract"))) {
+        } else if (string_eq_p(h, str_lit!("the")) || string_eq_p(h, str_lit!("and")) || string_eq_p(h, str_lit!("or")) || string_eq_p(h, str_lit!("lambda")) || string_eq_p(h, str_lit!("list")) || string_eq_p(h, str_lit!("quote")) || string_eq_p(h, str_lit!("#utf8")) || string_eq_p(h, str_lit!("quasiquote")) || string_eq_p(h, str_lit!("extract"))) {
             check_by_synth(v, s, e, expected)
         } else {
             bytes_placed(v, synth_call(v, s, h, xs, kayak_rt::heap_cons(expected, kayak_rt::nil())), h)
@@ -11046,7 +11066,7 @@ pub mod expressions {
         } else { kayak_rt::data::no_variant() }
     }
 
-    /// A bytevector made by the standard `make-bytevector`, `string->utf8`
+    /// A bytevector made by the standard `make-bytevector`, `utf8->bytes`
     /// or `bytevector-copy` at a place's region (C267): noted, `rheld-bytes`
     /// at the place's region, so that the place holds bytes, and
     /// `rbytes-in` the place's name, so that it is made there and freed with

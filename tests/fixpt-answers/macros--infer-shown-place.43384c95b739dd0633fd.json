@@ -12,13 +12,13 @@
 ""
 ],
 "err": [
-"fixpt: read error: <kayak>-snapshot/tests/fx26/programs/macros/infer-shown-place.fx:5:40: `with-arena` is refused: no signature is written, and the one inferred from its clauses does not fit them: `body` is placed in the scope of other bindings than its signature says it is",
+"fixpt: read error: <kayak>-snapshot/tests/fx26/programs/macros/infer-shown-place.fx:5:40: `with-arena` is refused: no signature is written, and the one inferred from its clauses does not fit them: `body` is placed in no scope of the pattern's binders, but its signature says it is in the scope of `p` and `p`, a description",
 "  inferred: (macro (_ p @ place body @ (many expr)) expr (bind p in body))",
 "  write one: (define-syntax with-arena SIGNATURE (syntax-rules …))",
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

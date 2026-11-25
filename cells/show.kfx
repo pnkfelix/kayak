@@ -1,7 +1,7 @@
 "show.kfx: a value written as Fixpt's `write` writes it (C122), so that
  tier 1's answers are compared with Fixpt's as text. Shared structure is
  not labelled yet (Fixpt's `#n=`): a cyclic value would not end.
- fixpt-source: crates/fixpt-runtime/src/print.rs@6f7bd73"
+ fixpt-source: crates/fixpt-runtime/src/print.rs@c5b5991"
 
 (define hex-digit (subr kfx (i64) string)
   (lambda (d) (char->string (string-ref-i64 "0123456789abcdef" d))))
@@ -86,6 +86,22 @@
             ((i64= i 0) (string-append (i64->string (raw-byte-at (i64+ p 1) 0)) (bytes-written p 1 n)))
             (else (string-append " " (string-append (i64->string (raw-byte-at (i64+ p 1) i)) (bytes-written p (i64+ i 1) n))))))))
 
+"UTF-8 text's characters from byte `i` of the raw words from `p`, `n`
+ bytes, valid (C525): each code point by its lead byte's width."
+(define-rec
+  (utf8-text-from (subr cread (i64 i64 i64 string) string)
+    (lambda (p i n out)
+      (if (i64>= i n)
+          out
+          (let* ((b0 (raw-byte-at p i))
+                 (w (cond ((i64< b0 128) (the i64 1)) ((i64< b0 224) (the i64 2)) ((i64< b0 240) (the i64 3)) (else (the i64 4))))
+                 (more (lambda ((k int)) (i64-and (raw-byte-at p (i64+ i (int->i64 k))) 63)))
+                 (cp (cond ((i64= w 1) b0)
+                           ((i64= w 2) (i64-or (i64-shl (i64-and b0 31) 6) (more 1)))
+                           ((i64= w 3) (i64-or (i64-shl (i64-and b0 15) 12) (i64-or (i64-shl (more 1) 6) (more 2))))
+                           (else (i64-or (i64-shl (i64-and b0 7) 18) (i64-or (i64-shl (more 1) 12) (i64-or (i64-shl (more 2) 6) (more 3))))))))
+            (utf8-text-from p (i64+ i w) n (string-append out (char->string (i64->char cp)))))))))
+
 (define-rec
   (written (subr cread (i64) string)
     (lambda (v)
@@ -109,6 +125,9 @@
             ((is-kind? v k-vector) (string-append "#(" (string-append (elements-written v 0 (obj-length v)) ")")))
             ((is-kind? v k-bytevector)
              (string-append "#u8(" (string-append (bytes-written (address v) 0 (word-at (address v))) ")")))
+            ;; UTF-8 text, as Fixpt's `print.rs` writes it (C525): `#utf8"…"`.
+            ((or (is-kind? v k-utf8) (is-kind? v k-utf8-ascii))
+             (string-append "#utf8\"" (string-append (escaped (utf8-text-from (address v) 0 (suffix-bytes v) "") 0 "") "\"")))
             ;; Fixpt's closure and continuation (`print.rs`'s `Closure`,
             ;; `Continuation`): the engine's procedures and continuations (C333).
             ((is-kind? v (int->i64 (with lay kind-closure))) "#<procedure>")

@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"include-two-of-one-type-mixed.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <kayak>-snapshot/tests/fx26/programs/modules/include-two-of-one-type-mixed.fx:14:43: argument 1 is a q..t, where a p..t is expected",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"tagcase-label-else.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/macros/tagcase-label-else.fx:8:7: a use of `want`: `else` is a reserved word, not a tag or label",
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

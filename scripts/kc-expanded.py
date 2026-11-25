@@ -34,6 +34,8 @@ SHAPED = "a later form names a global a use of a macro defines, its shape known 
 PATHED = "a path `m::x` (Fixpt's TODO §296, at the pin since C474): kc's expansion a form at a time knows not `m`'s shape where the path's `with` asks it (`#:relied #f`), the engine's of the whole program does; kc refuses, not yet (TODO §54)"
 WORDS = "kc's own native code runs the transformer (C447) and says Fixpt's words, `car or cdr of a non-pair`; the engine says its own, `car of nil`"
 # Programs whose expansion by kc differs from the engine's, each with why.
+PHASE1_DIR = ("a `begin-for-syntax`'s load read from its file's directory (Fixpt 6851f807): "
+              "kayak's phase-1 host reads it from the engine's, a gap (C525, TODO §54)")
 KNOWN = {
     "macros/defn-defines-macro-ellipsis.fx": MADE,
     "macros/defn-defines-macro-hygiene.fx": MADE,
@@ -47,6 +49,7 @@ KNOWN = {
     "macros/desc-subr-named.fx": SHAPED,
     "procedural/transformer-fails.fx": WORDS,
     "modules/colons-macro.fx": PATHED,
+    "procedural/for-syntax-load.fx": PHASE1_DIR,
 }
 
 

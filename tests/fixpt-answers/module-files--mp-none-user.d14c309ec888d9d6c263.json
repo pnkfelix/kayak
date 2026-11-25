@@ -21,9 +21,10 @@
 ]
 },
 {
-"code": 1,
+"code": 0,
 "out": [
-"! <kayak>-snapshot/tests/fx26/programs/module-files/mp-none-user.fx:2:2: unbound variable `module-parameters`",
+"; <kayak>-snapshot/tests/fx26/programs/module-files/mp-none-user.fx, checked as a module file",
+"(subr pure ((moduleof (val n (ref int @heap)))) (moduleof (val get-n (subr (read @heap) () int)))) ! (read (globals %shared:input:<kayak>-snapshot/tests/fx26/programs/module-files/mp-none-user.fx))",
 "; both checkers agree",
 ""
 ],
@@ -31,7 +32,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

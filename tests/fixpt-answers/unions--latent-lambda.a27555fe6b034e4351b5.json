@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/unions/latent-lambda.fx:5:15: what a test proves, (then (shape 0 int)) (else), a `lambda` is not checked to prove",
+"fixpt: <programs>/unions/latent-lambda.fx:5:15: what a test proves, (then (shape 0 int)) (else), a `lambda` is not checked to prove",
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

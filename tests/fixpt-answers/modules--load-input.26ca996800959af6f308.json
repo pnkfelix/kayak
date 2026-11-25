@@ -89,13 +89,13 @@
 "     5: slot 0",
 "     7: prim %make-frozen 2",
 "    10: slot! 0",
-"    12: global! %shared:input:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/maker.fx",
-"    14: global %shared:input:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/maker.fx",
+"    12: global! %shared:input:<programs>/modules/../module-files/maker.fx",
+"    14: global %shared:input:<programs>/modules/../module-files/maker.fx",
 "    16: field 2",
 "    18: slot 0",
 "    20: slot! 0",
 "    22: global! make",
-"    24: global %shared:input:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/maker.fx",
+"    24: global %shared:input:<programs>/modules/../module-files/maker.fx",
 "    26: field 2",
 "    28: slot 0",
 "    30: slot! 0",
@@ -148,7 +148,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

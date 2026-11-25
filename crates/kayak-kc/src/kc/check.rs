@@ -2806,6 +2806,25 @@ pub fn mtype_items(t: kayak_rt::data::DataAt<'static, Ty>) -> Tys {
     }
 }
 
+/// Whether `t` is a module type that has abstract types, or holds a
+/// module that has: a global of it names them for its binding (`m..t`,
+/// `m.a..t`), so another module's are other types (Fixpt's 029bad8c,
+/// `k-binds-abstract?`; C525).
+pub fn binds_abstract_p(t: kayak_rt::data::DataAt<'static, Ty>) -> bool {
+    (mtype_p(t) && any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::data::DataAt<'static, Ty>| {
+        (string_eq_p(mitem_kind(x), str_lit!("%abs")) || (string_eq_p(mitem_kind(x), str_lit!("%val")) && {
+            let tagcase_ = x;
+            if Ty::__is_TyData(tagcase_) {
+                let (d, args,) = Ty::__TyData(tagcase_);
+                (not(null_p(args)) && binds_abstract_p(car(args)))
+            } else {
+                let other = tagcase_;
+                false
+            }
+        }))
+    })), mtype_items(t)))
+}
+
 /// The item of module type `t` of `kind` (`%abs`, `%desc`, ...) named `n`.
 pub fn mtype_find(t: kayak_rt::data::DataAt<'static, Ty>, kind: Str, n: Str) -> Tys {
     filter(kayak_rt::as_proc(kayak_rt::closure1s((kind, n,), |(kind, n,), x: kayak_rt::data::DataAt<'static, Ty>| {
@@ -5168,6 +5187,8 @@ pub fn shape_of(mut t: kayak_rt::data::DataAt<'static, Ty>) -> Str {
                 return str_lit!("symbol");
             } else if string_eq_p(d, str_lit!("keyword")) {
                 return str_lit!("keyword");
+            } else if string_eq_p(d, str_lit!("utf8")) {
+                return str_lit!("utf8");
             } else if string_eq_p(d, str_lit!("%array")) {
                 return str_lit!("bloblet");
             } else if string_eq_p(d, str_lit!("%bytes")) {
@@ -5789,8 +5810,10 @@ pub fn sums_merged(ms: Tys) -> Tys {
 // `datum` (C77), FX-26's union of what a reader reads, `(union int f64
 // char bool string symbol keyword nil (pairof datum datum acyclic)
 // vector)`, its keywords C291's: a name, its members found when they are
-// wanted, since it mentions itself. FX-26's has `bytevector` too, which
-// KFX's has not yet.
+// wanted, since it mentions itself. FX-26's has `bytevector` and (since
+// Fixpt 06a3666) `utf8` too, which KFX's has not yet: KFX's Rust keeps a
+// `utf8` as a string, which a union could not tell from one, so
+// `#utf8"…"` within quoted data is refused.
 pub fn datum_members() -> Tys {
     kayak_rt::heap_cons(ty_int(), kayak_rt::heap_cons(ty_f64(), kayak_rt::heap_cons(ty_char(), kayak_rt::heap_cons(ty_bool(), kayak_rt::heap_cons(ty_string(), kayak_rt::heap_cons(ty_data(str_lit!("symbol"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::heap_cons(ty_data(str_lit!("keyword"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::heap_cons(ty_data(str_lit!("nil"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::heap_cons(ty_data(str_lit!("%pairof"), kayak_rt::heap_cons(ty_data(str_lit!("datum"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::heap_cons(ty_data(str_lit!("datum"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::heap_cons(ty_rconst(str_lit!("acyclic")), kayak_rt::nil())))), kayak_rt::heap_cons(ty_data(str_lit!("vector"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::nil()))))))))))
 }
@@ -6496,11 +6519,10 @@ pub fn logic_keywords() -> Strings {
     })
 }
 
-#[inline]
 pub fn logic_base_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit!("int"), kayak_rt::heap_cons(str_lit!("nat"), kayak_rt::heap_cons(str_lit!("i64"), kayak_rt::heap_cons(str_lit!("u64"), kayak_rt::heap_cons(str_lit!("i32"), kayak_rt::heap_cons(str_lit!("u32"), kayak_rt::heap_cons(str_lit!("i16"), kayak_rt::heap_cons(str_lit!("u16"), kayak_rt::heap_cons(str_lit!("i8"), kayak_rt::heap_cons(str_lit!("u8"), kayak_rt::heap_cons(str_lit!("f64"), kayak_rt::heap_cons(str_lit!("f32"), kayak_rt::heap_cons(str_lit!("bool"), kayak_rt::heap_cons(str_lit!("char"), kayak_rt::heap_cons(str_lit!("unit"), kayak_rt::heap_cons(str_lit!("string"), kayak_rt::heap_cons(str_lit!("symbol"), kayak_rt::heap_cons(str_lit!("keyword"), kayak_rt::heap_cons(str_lit!("datum"), kayak_rt::heap_cons(str_lit!("void"), kayak_rt::heap_cons(str_lit!("false"), kayak_rt::heap_cons(str_lit!("nil"), kayak_rt::nil()))))))))))))))))))))))
+        kayak_rt::heap_cons(str_lit!("int"), kayak_rt::heap_cons(str_lit!("nat"), kayak_rt::heap_cons(str_lit!("i64"), kayak_rt::heap_cons(str_lit!("u64"), kayak_rt::heap_cons(str_lit!("i32"), kayak_rt::heap_cons(str_lit!("u32"), kayak_rt::heap_cons(str_lit!("i16"), kayak_rt::heap_cons(str_lit!("u16"), kayak_rt::heap_cons(str_lit!("i8"), kayak_rt::heap_cons(str_lit!("u8"), kayak_rt::heap_cons(str_lit!("f64"), kayak_rt::heap_cons(str_lit!("f32"), kayak_rt::heap_cons(str_lit!("bool"), kayak_rt::heap_cons(str_lit!("char"), kayak_rt::heap_cons(str_lit!("unit"), kayak_rt::heap_cons(str_lit!("string"), kayak_rt::heap_cons(str_lit!("symbol"), kayak_rt::heap_cons(str_lit!("keyword"), kayak_rt::heap_cons(str_lit!("utf8"), kayak_rt::heap_cons(str_lit!("datum"), kayak_rt::heap_cons(str_lit!("void"), kayak_rt::heap_cons(str_lit!("false"), kayak_rt::heap_cons(str_lit!("nil"), kayak_rt::nil())))))))))))))))))))))))
     })
 }
 
@@ -8512,6 +8534,8 @@ pub fn parse_type(mut v: kayak_rt::data::DataAt<'static, Cv>, mut tvars: Strings
             } else if string_eq_p(s, str_lit!("symbol")) {
                 return ty_data(s, nil::<kayak_rt::data::DataAt<'static, Ty>>());
             } else if string_eq_p(s, str_lit!("keyword")) {
+                return ty_data(s, nil::<kayak_rt::data::DataAt<'static, Ty>>());
+            } else if string_eq_p(s, str_lit!("utf8")) {
                 return ty_data(s, nil::<kayak_rt::data::DataAt<'static, Ty>>());
             } else if string_eq_p(s, str_lit!("false")) {
                 return ty_data(s, nil::<kayak_rt::data::DataAt<'static, Ty>>());
@@ -17526,12 +17550,18 @@ pub fn masked_waiting(es: Strings, r: Str) -> Strings {
     waits_dropped(es, masked(es, r))
 }
 
-/// Whether type `t` mentions region `r`, latent effects included.
+/// Whether type `t` mentions region `r`, latent effects included; a
+/// region constant too (`@p`, C525: a prompt whose body named another
+/// tag at a constant region was found to delimit it, its abort passed
+/// over in Rust; Fixpt's `run/prompt-delimits.fx`).
 pub fn mentions_p(mut s: kayak_rt::data::DataAt<'static, St>, mut t: kayak_rt::data::DataAt<'static, Ty>, mut r: Str) -> bool {
     loop {
         let tagcase_ = walk(s, t);
         if Ty::__is_TyVar(tagcase_) {
             let (n,) = Ty::__TyVar(tagcase_);
+            return string_eq_p(n, r);
+        } else if Ty::__is_TyRconst(tagcase_) {
+            let (n,) = Ty::__TyRconst(tagcase_);
             return string_eq_p(n, r);
         } else if Ty::__is_TyList(tagcase_) {
             let (e, x,) = Ty::__TyList(tagcase_);

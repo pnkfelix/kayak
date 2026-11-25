@@ -268,7 +268,7 @@ pub fn standard_written(n: Str) -> Str {
         str_lit!("(lambda ((d datum)) (letrec ((on-path (lambda ((x datum) (path datum)) (if (null? path) #f (if (eq? x (car path)) #t (on-path x (cdr path)))))) (walk (lambda ((x datum) (path datum)) (if (pair? x) (if (on-path x path) #f (if (walk (car x) (cons x path)) (walk (cdr x) (cons x path)) #f)) #t)))) (walk d nil)))")
     } else if string_eq_p(n, str_lit!("symbol-name-hash")) {
         // Fixpt's (`symbol_hash_of`): FNV-1a of the name's UTF-8, wrapped to a fixnum of 61 bits.
-        str_lit!("(lambda ((sym symbol)) (let ((b (string->utf8 (symbol->string sym)))) (letrec ((go (lambda ((i int) (h i64)) (if (>= i (bytevector-length b)) (i64->int (i64-shr (i64-shl (i64-and h (int->i64 9223372036854775807)) 3) 3)) (go (+ i 1) (i64* (i64-xor h (int->i64 (bytevector-u8-ref b i))) (int->i64 1099511628211))))))) (go 0 (int->i64 -3750763034362895579)))))")
+        str_lit!("(lambda ((sym symbol)) (let ((b (utf8->bytes (string->utf8 (symbol->string sym))))) (letrec ((go (lambda ((i int) (h i64)) (if (>= i (bytevector-length b)) (i64->int (i64-shr (i64-shl (i64-and h (int->i64 9223372036854775807)) 3) 3)) (go (+ i 1) (i64* (i64-xor h (int->i64 (bytevector-u8-ref b i))) (int->i64 1099511628211))))))) (go 0 (int->i64 -3750763034362895579)))))")
     } else {
         str_lit!("")
     }
@@ -1299,6 +1299,8 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: kayak_rt::data::DataAt<'stat
         } else if (string_eq_p(h, str_lit!("convention")) && i64_eq(size(xs), 2i64)) {
             // `(convention C e)`: `e`, the engine's procedures one convention (C181).
             return lower(second(xs), sc, gs);
+        } else if string_eq_p(h, str_lit!("#utf8")) {
+            return lower_quoted(e, sc, gs);
         } else if string_eq_p(h, str_lit!("quote")) {
             return lower_quoted(car(xs), sc, gs);
         } else if string_eq_p(h, str_lit!("quasiquote")) {

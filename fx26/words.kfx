@@ -224,3 +224,23 @@
 (define list-array! (subr hp (i64 i64) i64)
   (lambda (kind xs) (let ((p (alloc! kind (list-count xs 0)))) (begin (from-list! p 0 xs) p))))
 
+
+"UTF-8 text (Fixpt's `utf8`, its 279c16cf; C525): made of a KFX
+ bytevector's bytes, UTF-8 already (room made sure of); its bytes as one;
+ its text; and `bytes->utf8` of a heap bytevector's, validated."
+(define-rec
+  (utf8-bytes-set! (subr hp (i64 (bytevectorof @c) i64 i64) unit)
+    (lambda (u bv i n)
+      (if (i64>= i n) #u (begin (suffix-byte-set! u i (int->i64 (u8->int (bytevector-u8-ref bv (i64->int i))))) (utf8-bytes-set! u bv (i64+ i 1) n)))))
+  (bytes-ascii? (subr (maxeff (read @globals) spin (read @c)) ((bytevectorof @c) i64 i64) bool)
+    (lambda (bv i n) (cond ((i64>= i n) #t) ((>= (u8->int (bytevector-u8-ref bv (i64->int i))) 128) #f) (else (bytes-ascii? bv (i64+ i 1) n)))))
+  (utf8-kfx-set! (subr hp ((bytevectorof @c) i64 i64 i64) unit)
+    (lambda (bv u i n) (if (i64>= i n) #u (begin (bytevector-u8-set! bv (i64->int i) (int->u8 (i64->int (suffix-byte u i)))) (utf8-kfx-set! bv u (i64+ i 1) n))))))
+(define utf8-made! (subr hp ((bytevectorof @c)) i64)
+  (lambda (bv)
+    (let* ((n (int->i64 (bytevector-length bv)))
+           (w (i64-quotient (i64+ n 7) 8))
+           (at (bump! (i64+ w 1))))
+      (begin (mem-set! at (header (if (bytes-ascii? bv 0 n) ob-utf8-ascii ob-utf8) 0 n))
+             (words-zeroed! (i64+ at 1) w)
+             (let ((u (bloblet-at (i64+ at 1)))) (begin (utf8-bytes-set! u bv 0 n) u))))))

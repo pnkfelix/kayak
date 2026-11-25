@@ -162,7 +162,7 @@
            "(lambda ((d datum)) (letrec ((on-path (lambda ((x datum) (path datum)) (if (null? path) #f (if (eq? x (car path)) #t (on-path x (cdr path)))))) (walk (lambda ((x datum) (path datum)) (if (pair? x) (if (on-path x path) #f (if (walk (car x) (cons x path)) (walk (cdr x) (cons x path)) #f)) #t)))) (walk d nil)))")
           ((string=? n "symbol-name-hash")
            "Fixpt's (`symbol_hash_of`): FNV-1a of the name's UTF-8, wrapped to a fixnum of 61 bits."
-           "(lambda ((sym symbol)) (let ((b (string->utf8 (symbol->string sym)))) (letrec ((go (lambda ((i int) (h i64)) (if (>= i (bytevector-length b)) (i64->int (i64-shr (i64-shl (i64-and h (int->i64 9223372036854775807)) 3) 3)) (go (+ i 1) (i64* (i64-xor h (int->i64 (bytevector-u8-ref b i))) (int->i64 1099511628211))))))) (go 0 (int->i64 -3750763034362895579)))))")
+           "(lambda ((sym symbol)) (let ((b (utf8->bytes (string->utf8 (symbol->string sym))))) (letrec ((go (lambda ((i int) (h i64)) (if (>= i (bytevector-length b)) (i64->int (i64-shr (i64-shl (i64-and h (int->i64 9223372036854775807)) 3) 3)) (go (+ i 1) (i64* (i64-xor h (int->i64 (bytevector-u8-ref b i))) (int->i64 1099511628211))))))) (go 0 (int->i64 -3750763034362895579)))))")
           (else ""))))
 
 (define shape-test (subr kfx (string) string)
@@ -721,6 +721,8 @@
             ((and (string=? h "convention") (i64= (size xs) 2))
              "`(convention C e)`: `e`, the engine's procedures one convention (C181)."
              (lower (second xs) sc gs))
+            ;; `#utf8"…"` (Fixpt 06a3666): a quote's constant, made once.
+            ((string=? h "#utf8") (lower-quoted e sc gs))
             ((string=? h "quote") (lower-quoted (car xs) sc gs))
             ((string=? h "quasiquote") (lower-quasi (car xs) 1 sc gs))
             ((or (string=? h "plambda") (string=? h "proj")) (if (string=? h "proj") (lower (car xs) sc gs) (lower (second xs) sc gs)))

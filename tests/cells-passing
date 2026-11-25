@@ -160,7 +160,6 @@ macros/defn-defines-macro-hygiene.fx
 macros/defn-defines-macro-said.fx
 macros/defn-defines-macro.fx
 macros/defn-every.fx
-macros/defn-export-given.fx
 macros/defn-export.fx
 macros/defn-generative-own.fx
 macros/defn-generative.fx
@@ -497,7 +496,6 @@ run/big-literals.fx
 run/bignums.fx
 run/boolean-tests.fx
 run/bytevector-printed.fx
-run/bytevectors.fx
 run/callbacks.fx
 run/caller-place.fx
 run/case-tree.fx

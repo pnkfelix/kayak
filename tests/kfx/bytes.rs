@@ -44,12 +44,12 @@ pub fn doubled_x(mut bv: Bytes, mut i: Int) -> () {
     }
 }
 
-#[inline]
 pub fn text_length(bv: Bytes) -> Int {
-    let tagcase_ = utf8_to_string(bv);
+    let tagcase_ = bytes_to_utf8(bv);
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("text") } {
-        let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+        let s_utf8: Utf8 = kayak_rt::sum_payload::<Utf8>(tagcase_);
+        let s = utf8_to_string(s_utf8);
         string_length(s)
     } else if tag_ == const { kayak_rt::tag_hash("bad") } {
         let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
@@ -71,7 +71,7 @@ pub fn small() -> Str {
 }
 
 pub fn main() -> Str {
-    let (bv, hi, none) = (the::<Bytes>(make_bytevector(int_lit(4), 7u8)), the::<Bytes>(string_to_utf8(str_lit!("héllo, wörld"))), the::<Bytes>(make_bytevector(int_lit(0), 0u8)));
+    let (bv, hi, none) = (the::<Bytes>(make_bytevector(int_lit(4), 7u8)), the::<Bytes>(utf8_to_bytes(string_to_utf8(str_lit!("héllo, wörld")))), the::<Bytes>(make_bytevector(int_lit(0), 0u8)));
     bytevector_u8_set_x(bv, int_lit(1), 250u8);
     bytevector_copy_x(bv, int_lit(2), hi, int_lit(0), int_lit(2));
     let before = sum_bytes(bv, int_lit(0), int_lit(0));

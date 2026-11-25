@@ -17,21 +17,8 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-]
-},
-{
-"code": 1,
-"out": [
-"x : int ! pure",
-""
-],
-"err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/modules/define-star-value-reads.fx:4:61: `define*` `f` is a value another item uses as the module is made, at its type as written, and it reads (read (globals x)): write that in its type",
-""
-],
-"by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

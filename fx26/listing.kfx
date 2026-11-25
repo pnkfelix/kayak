@@ -30,7 +30,7 @@
 "The string `s`'s bytes, by way of the place."
 (define w-str! (poly ((p place)) (subr (maxeff gen (alloc p) (read p) (write p)) ((place p) (ref (bytevectorof p) p) (ref i64 p) string) unit))
   (lambda (p b n s)
-    (let* ((bs (the (bytevectorof p) (string->utf8 s))) (k (int->i64 (bytevector-length bs))))
+    (let* ((bs (the (bytevectorof p) (utf8->bytes (string->utf8 s)))) (k (int->i64 (bytevector-length bs))))
       (begin (w-room! p b n k)
              (bytevector-copy! (get b) (i64->int (get n)) bs 0 (i64->int k))
              (set n (i64+ (get n) k))))))
@@ -228,8 +228,8 @@
             (n (the (ref i64 r) (rnew r 0))))
         (begin
           (w-word! r b n name xs)
-          (tagcase (utf8->string (the (bytevectorof r) (bytevector-copy (get b) 0 (i64->int (get n)))))
-            (text t t)
+          (tagcase (bytes->utf8 (the (bytevectorof r) (bytevector-copy (get b) 0 (i64->int (get n)))))
+            (text t-utf8 (utf8->string t-utf8))
             (bad k "")))))))
 
 ;;; ------------------------------------------------------------ the walk

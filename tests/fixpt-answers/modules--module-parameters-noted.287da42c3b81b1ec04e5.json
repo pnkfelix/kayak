@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"module-parameters-noted.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define m-base : (moduleof (desc pt (productof (#:x int) (#:y int))) (val twice (subr pure (int) int))) ! (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/mp-base.fx))",
+"define m-noted : (moduleof (val both (subr pure () int))) ! (read (globals %shared:input:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/mp-noted.fx m-base))",
+"int ! (read (globals m-noted))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

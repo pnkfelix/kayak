@@ -431,7 +431,9 @@ pub fn rx_bases(x: kayak_rt::data::DataAt<'static, Rx>, ns: Strings) -> kayak_rt
 }
 
 // `datum` (C346), as Fixpt's standard abbreviation of it is: the union of
-// the base types a datum may be and an acyclic pair of datums, at `slot`.
+// the base types a datum may be and an acyclic pair of datums, at `slot`;
+// `utf8` its last since Fixpt 06a3666 (C526: the rep Fixpt's, though KFX's
+// checker's `datum` has no `utf8` yet).
 pub fn rx_datum(x: kayak_rt::data::DataAt<'static, Rx>, slot: i64) -> kayak_rt::data::DataAt<'static, Rx> {
     let tagcase_ = rx_bases(x, kayak_rt::heap_cons(str_lit!("int"), kayak_rt::heap_cons(str_lit!("f64"), kayak_rt::heap_cons(str_lit!("char"), kayak_rt::heap_cons(str_lit!("bool"), kayak_rt::heap_cons(str_lit!("string"), kayak_rt::heap_cons(str_lit!("symbol"), kayak_rt::heap_cons(str_lit!("keyword"), kayak_rt::nil()))))))));
     if Rxs::__is_Rxs(tagcase_) {
@@ -442,7 +444,7 @@ pub fn rx_datum(x: kayak_rt::data::DataAt<'static, Rx>, slot: i64) -> kayak_rt::
             let tagcase_ = rx_node(x, str_lit!("pairof"), false, the::<RpOperands>(kayak_rt::heap_cons(the::<RpOperand>(kayak_rt::sum_tagged::<Int>(kayak_rt::tag_lit!("node"), i64_to_int(slot))), kayak_rt::heap_cons(the::<RpOperand>(kayak_rt::sum_tagged::<Int>(kayak_rt::tag_lit!("node"), i64_to_int(slot))), kayak_rt::heap_cons(fr, kayak_rt::heap_cons(the::<RpOperand>(kayak_rt::sum_tagged::<bool>(kayak_rt::tag_lit!("flag"), true)), kayak_rt::nil()))))));
             if Rxa::__is_Rxa(tagcase_) {
                 let (x, p,) = Rxa::__Rxa(tagcase_);
-                let tagcase_ = rx_bases(x, kayak_rt::heap_cons(str_lit!("vector"), kayak_rt::heap_cons(str_lit!("bytevector"), kayak_rt::nil())));
+                let tagcase_ = rx_bases(x, kayak_rt::heap_cons(str_lit!("vector"), kayak_rt::heap_cons(str_lit!("bytevector"), kayak_rt::heap_cons(str_lit!("utf8"), kayak_rt::nil()))));
                 if Rxs::__is_Rxs(tagcase_) {
                     let (x, as2,) = Rxs::__Rxs(tagcase_);
                     rx_fill(x, slot, str_lit!("oneof"), false, the::<Strings>(nil::<Str>()), onto(as1, kayak_rt::heap_cons(p, as2)))
@@ -648,7 +650,7 @@ pub fn rp_nil_or_pair(s: kayak_rt::data::DataAt<'static, St>, ms: Tys) -> bool {
 pub fn base_type_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit!("symbol"), kayak_rt::heap_cons(str_lit!("keyword"), kayak_rt::heap_cons(str_lit!("datum"), kayak_rt::heap_cons(str_lit!("vector"), kayak_rt::heap_cons(str_lit!("f32"), kayak_rt::heap_cons(str_lit!("i8"), kayak_rt::heap_cons(str_lit!("u8"), kayak_rt::heap_cons(str_lit!("i16"), kayak_rt::heap_cons(str_lit!("u16"), kayak_rt::heap_cons(str_lit!("i32"), kayak_rt::heap_cons(str_lit!("u32"), kayak_rt::heap_cons(str_lit!("u64"), kayak_rt::nil()))))))))))))
+        kayak_rt::heap_cons(str_lit!("symbol"), kayak_rt::heap_cons(str_lit!("keyword"), kayak_rt::heap_cons(str_lit!("utf8"), kayak_rt::heap_cons(str_lit!("datum"), kayak_rt::heap_cons(str_lit!("vector"), kayak_rt::heap_cons(str_lit!("f32"), kayak_rt::heap_cons(str_lit!("i8"), kayak_rt::heap_cons(str_lit!("u8"), kayak_rt::heap_cons(str_lit!("i16"), kayak_rt::heap_cons(str_lit!("u16"), kayak_rt::heap_cons(str_lit!("i32"), kayak_rt::heap_cons(str_lit!("u32"), kayak_rt::heap_cons(str_lit!("u64"), kayak_rt::nil())))))))))))))
     })
 }
 
@@ -824,11 +826,10 @@ pub fn rp_generative_heads() -> Strings {
 
 // Fixpt's standard generative types, in its numbering (`check.rs`): a
 // constant's key is made of its name and its number there (C303).
-#[inline]
 pub fn rp_standard_generatives() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit!("vsubr"), kayak_rt::heap_cons(str_lit!("flatlayout"), kayak_rt::heap_cons(str_lit!("flatarrayof"), kayak_rt::heap_cons(str_lit!("identity"), kayak_rt::heap_cons(str_lit!("eqtable"), kayak_rt::heap_cons(str_lit!("blobref"), kayak_rt::heap_cons(str_lit!("flat-arrayof"), kayak_rt::heap_cons(str_lit!("flat-keyed"), kayak_rt::heap_cons(str_lit!("bytevectorof"), kayak_rt::heap_cons(str_lit!("escape-tag"), kayak_rt::heap_cons(str_lit!("addr"), kayak_rt::heap_cons(str_lit!("inbox"), kayak_rt::heap_cons(str_lit!("process"), kayak_rt::heap_cons(str_lit!("event"), kayak_rt::heap_cons(str_lit!("stringof"), kayak_rt::heap_cons(str_lit!("sessionof"), kayak_rt::heap_cons(str_lit!("pending"), kayak_rt::heap_cons(str_lit!("effectrep"), kayak_rt::heap_cons(str_lit!("regionrep"), kayak_rt::heap_cons(str_lit!("typerep"), kayak_rt::heap_cons(str_lit!("effectbound"), kayak_rt::heap_cons(str_lit!("typebound"), kayak_rt::nil()))))))))))))))))))))))
+        kayak_rt::heap_cons(str_lit!("vsubr"), kayak_rt::heap_cons(str_lit!("flatlayout"), kayak_rt::heap_cons(str_lit!("flatarrayof"), kayak_rt::heap_cons(str_lit!("identity"), kayak_rt::heap_cons(str_lit!("eqtable"), kayak_rt::heap_cons(str_lit!("blobref"), kayak_rt::heap_cons(str_lit!("flat-arrayof"), kayak_rt::heap_cons(str_lit!("flat-keyed"), kayak_rt::heap_cons(str_lit!("bytevectorof"), kayak_rt::heap_cons(str_lit!("escape-tag"), kayak_rt::heap_cons(str_lit!("addr"), kayak_rt::heap_cons(str_lit!("inbox"), kayak_rt::heap_cons(str_lit!("process"), kayak_rt::heap_cons(str_lit!("event"), kayak_rt::heap_cons(str_lit!("stringof"), kayak_rt::heap_cons(str_lit!("sessionof"), kayak_rt::heap_cons(str_lit!("pending"), kayak_rt::heap_cons(str_lit!("effectrep"), kayak_rt::heap_cons(str_lit!("regionrep"), kayak_rt::heap_cons(str_lit!("typerep"), kayak_rt::heap_cons(str_lit!("effectbound"), kayak_rt::heap_cons(str_lit!("typebound"), kayak_rt::heap_cons(str_lit!("bytesof"), kayak_rt::heap_cons(str_lit!("strof"), kayak_rt::nil()))))))))))))))))))))))))
     })
 }
 
@@ -1061,12 +1062,11 @@ pub fn gdecl(f0: Strings, f1: Strings, f2: Strings, f3: kayak_rt::data::DataAt<'
     kayak_rt::data::data_heap::<Gdecl, 0>((f0, f1, f2, f3,))
 }
 
-// fixpt-source: crates/fixpt-fx26/src/check.rs@6f7bd73
-#[inline]
+// fixpt-source: crates/fixpt-fx26/src/check.rs@06a3666
 pub fn rp_generative_decls() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit!("(vsubr (e effect +) (t type -) (r type +)) (subr e ((listof t acyclic)) r)"), kayak_rt::heap_cons(str_lit!("(flatlayout (t type)) int"), kayak_rt::heap_cons(str_lit!("(flatarrayof (t type) (r region)) (arrayof t r)"), kayak_rt::heap_cons(str_lit!("(identity (k type) (r region)) int"), kayak_rt::heap_cons(str_lit!("(eqtable (k type) (v type) (kr region) (r region)) (arrayof (pairof k v r) r)"), kayak_rt::heap_cons(str_lit!("(blobref (b type +) (f flat)) b"), kayak_rt::heap_cons(str_lit!("(flat-arrayof (f flat) (n size)) int"), kayak_rt::heap_cons(str_lit!("(flat-keyed (w size) (s flat)) int"), kayak_rt::heap_cons(str_lit!("(bytevectorof (r region)) (arrayof u8 r)"), kayak_rt::heap_cons(str_lit!("(escape-tag (a type) (h type) (r region)) (prompt-tag a h pure r)"), kayak_rt::heap_cons(str_lit!("(addr (m type) (r region)) (ref m r)"), kayak_rt::heap_cons(str_lit!("(inbox (m type) (r region)) (ref m r)"), kayak_rt::heap_cons(str_lit!("(process (m type) (e effect +)) (poly ((r place)) (subr e ((inbox m r) (place r)) unit))"), kayak_rt::heap_cons(str_lit!("(event (e effect +)) (subr e () bool)"), kayak_rt::heap_cons(str_lit!("(stringof (r region)) (arrayof char r)"), kayak_rt::heap_cons(str_lit!("(sessionof (m type) (r region)) (ref m r)"), kayak_rt::heap_cons(str_lit!("(pending (e effect +) (r region)) (subr (maxeff e (read r)) () unit)"), kayak_rt::heap_cons(str_lit!("(effectrep (e effect)) string"), kayak_rt::heap_cons(str_lit!("(regionrep (r region)) string"), kayak_rt::heap_cons(str_lit!("(typerep (t type)) string"), kayak_rt::heap_cons(str_lit!("(effectbound (e effect +)) string"), kayak_rt::heap_cons(str_lit!("(typebound (t type +)) string"), kayak_rt::nil()))))))))))))))))))))))
+        kayak_rt::heap_cons(str_lit!("(vsubr (e effect +) (t type -) (r type +)) (subr e ((listof t acyclic)) r)"), kayak_rt::heap_cons(str_lit!("(flatlayout (t type)) int"), kayak_rt::heap_cons(str_lit!("(flatarrayof (t type) (r region)) (arrayof t r)"), kayak_rt::heap_cons(str_lit!("(identity (k type) (r region)) int"), kayak_rt::heap_cons(str_lit!("(eqtable (k type) (v type) (kr region) (r region)) (arrayof (pairof k v r) r)"), kayak_rt::heap_cons(str_lit!("(blobref (b type +) (f flat)) b"), kayak_rt::heap_cons(str_lit!("(flat-arrayof (f flat) (n size)) int"), kayak_rt::heap_cons(str_lit!("(flat-keyed (w size) (s flat)) int"), kayak_rt::heap_cons(str_lit!("(bytevectorof (r region)) (arrayof u8 r)"), kayak_rt::heap_cons(str_lit!("(escape-tag (a type) (h type) (r region)) (prompt-tag a h pure r)"), kayak_rt::heap_cons(str_lit!("(addr (m type) (r region)) (ref m r)"), kayak_rt::heap_cons(str_lit!("(inbox (m type) (r region)) (ref m r)"), kayak_rt::heap_cons(str_lit!("(process (m type) (e effect +)) (poly ((r place)) (subr e ((inbox m r) (place r)) unit))"), kayak_rt::heap_cons(str_lit!("(event (e effect +)) (subr e () bool)"), kayak_rt::heap_cons(str_lit!("(stringof (r region)) (arrayof char r)"), kayak_rt::heap_cons(str_lit!("(sessionof (m type) (r region)) (ref m r)"), kayak_rt::heap_cons(str_lit!("(pending (e effect +) (r region)) (subr (maxeff e (read r)) () unit)"), kayak_rt::heap_cons(str_lit!("(effectrep (e effect)) string"), kayak_rt::heap_cons(str_lit!("(regionrep (r region)) string"), kayak_rt::heap_cons(str_lit!("(typerep (t type)) string"), kayak_rt::heap_cons(str_lit!("(effectbound (e effect +)) string"), kayak_rt::heap_cons(str_lit!("(typebound (t type +)) string"), kayak_rt::heap_cons(str_lit!("(bytesof (r region)) (arrayof u8 r)"), kayak_rt::heap_cons(str_lit!("(strof (r region)) (arrayof char r)"), kayak_rt::nil()))))))))))))))))))))))))
     })
 }
 
@@ -1221,7 +1221,7 @@ pub fn rp_const_at(name: Str, index: i64, arity: i64) -> RpOperand {
 pub fn rp_shapes() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit!("int"), kayak_rt::heap_cons(str_lit!("f64"), kayak_rt::heap_cons(str_lit!("f32"), kayak_rt::heap_cons(str_lit!("char"), kayak_rt::heap_cons(str_lit!("bool"), kayak_rt::heap_cons(str_lit!("nil"), kayak_rt::heap_cons(str_lit!("pair"), kayak_rt::heap_cons(str_lit!("string"), kayak_rt::heap_cons(str_lit!("symbol"), kayak_rt::heap_cons(str_lit!("procedure"), kayak_rt::heap_cons(str_lit!("bloblet"), kayak_rt::heap_cons(str_lit!("box"), kayak_rt::heap_cons(str_lit!("sum"), kayak_rt::heap_cons(str_lit!("product"), kayak_rt::heap_cons(str_lit!("vector"), kayak_rt::heap_cons(str_lit!("bytevector"), kayak_rt::heap_cons(str_lit!("keyword"), kayak_rt::nil())))))))))))))))))
+        kayak_rt::heap_cons(str_lit!("int"), kayak_rt::heap_cons(str_lit!("f64"), kayak_rt::heap_cons(str_lit!("f32"), kayak_rt::heap_cons(str_lit!("char"), kayak_rt::heap_cons(str_lit!("bool"), kayak_rt::heap_cons(str_lit!("nil"), kayak_rt::heap_cons(str_lit!("pair"), kayak_rt::heap_cons(str_lit!("string"), kayak_rt::heap_cons(str_lit!("symbol"), kayak_rt::heap_cons(str_lit!("procedure"), kayak_rt::heap_cons(str_lit!("bloblet"), kayak_rt::heap_cons(str_lit!("box"), kayak_rt::heap_cons(str_lit!("sum"), kayak_rt::heap_cons(str_lit!("product"), kayak_rt::heap_cons(str_lit!("vector"), kayak_rt::heap_cons(str_lit!("bytevector"), kayak_rt::heap_cons(str_lit!("keyword"), kayak_rt::heap_cons(str_lit!("utf8"), kayak_rt::nil()))))))))))))))))))
     })
 }
 
@@ -2542,7 +2542,7 @@ pub fn ri_binder_names(mut bs: List<Product_11_12<Int, List<Symbol>>>, mut slot:
 
 /// Whether union node `k` is `datum`'s (`rx-datum`).
 pub fn ri_datum_p(ns: RpNodes, k: Int, args: RpOperands) -> bool {
-    (i64_eq(size(args), 10i64) && {
+    (i64_eq(size(args), 11i64) && {
         let tagcase_ = car(drop_n(args, 7i64));
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("node") } {

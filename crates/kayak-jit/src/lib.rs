@@ -38,7 +38,7 @@
 //! Ported from Fixpt's object model (C121; `scripts/fixpt-drift.py`); its
 //! constants are tested against Fixpt's own (`tests/layout.rs`,
 //! `tests/declaration.rs`):
-//! fixpt-source: docs/object-model.md@19b31f1
+//! fixpt-source: docs/object-model.md@c5b5991
 
 use std::cell::Cell;
 use std::sync::{Mutex, OnceLock};

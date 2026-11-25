@@ -9,8 +9,8 @@
 {
 "code": 1,
 "out": [
-"FX-26: ! <kayak>-snapshot/tests/fx26/stage/evidence-bound-reify.fx:5:75: `reify-effect` makes exact evidence, so it is given exact evidence, and this is a bound of `e`",
-"Rust:  ! <kayak>-snapshot/tests/fx26/stage/evidence-bound-reify.fx:5:38: `reify-effect` makes exact evidence, so it is given exact evidence, and this is a bound of `e`",
+"FX-26: ! <kayak>/tests/fx26/stage/evidence-bound-reify.fx:5:75: `reify-effect` makes exact evidence, so it is given exact evidence, and this is a bound of `e`",
+"Rust:  ! <kayak>/tests/fx26/stage/evidence-bound-reify.fx:5:38: `reify-effect` makes exact evidence, so it is given exact evidence, and this is a bound of `e`",
 "; the checkers disagree",
 ""
 ],
@@ -18,7 +18,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

@@ -73,15 +73,16 @@ pub fn reverse_log(mut xs: Log<'static>, mut acc: Log<'static>) -> Log<'static> 
 pub async fn main() -> Result<Int, Unwind> {
     let log = the::<Ref<Log<'static>>>(kayak_rt::heap_new(nil::<Product_4step_2op_6answer<i64, kayak_rt::Sum, kayak_rt::Sum>>()));
     let n = kayak_rt::suspend::body(run_both(recording(live(), log))).await?;
-    write_file(str_lit!("run.log"), the::<Bytes>(string_to_utf8(log_text(reverse_log(get(log), nil::<Product_4step_2op_6answer<i64, kayak_rt::Sum, kayak_rt::Sum>>())))));
+    write_file(str_lit!("run.log"), the::<Bytes>(utf8_to_bytes(string_to_utf8(log_text(reverse_log(get(log), nil::<Product_4step_2op_6answer<i64, kayak_rt::Sum, kayak_rt::Sum>>()))))));
     let tagcase_ = the::<kayak_rt::Sum>(read_file(str_lit!("run.log")));
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("data") } {
         let b: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
-        let tagcase_ = utf8_to_string(b);
+        let tagcase_ = bytes_to_utf8(b);
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("text") } {
-            let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+            let s_utf8: Utf8 = kayak_rt::sum_payload::<Utf8>(tagcase_);
+            let s = utf8_to_string(s_utf8);
             let replayed = the::<Ref<Log<'static>>>(kayak_rt::heap_new(log_of_text(s)));
             let m = kayak_rt::suspend::body(run_both(replaying(replayed))).await?;
             write_out(string_append(str_lit!("replayed "), string_append(i64_to_string(m), string_append(str_lit!(" of "), string_append(i64_to_string(n), str_lit!(" lines\n"))))));

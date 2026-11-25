@@ -72,15 +72,15 @@ kayak_rt::trace_product!(Product_11_12_13_14_15_16_17_18, A0 0, A1 1, A2 2, A3 3
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
-pub struct Product_11_12_13_14_15_16<A0, A1, A2, A3, A4, A5>(pub A0, pub A1, pub A2, pub A3, pub A4, pub A5);
-
-kayak_rt::trace_product!(Product_11_12_13_14_15_16, A0 0, A1 1, A2 2, A3 3, A4 4, A5 5);
-
-#[allow(non_camel_case_types)]
-#[derive(Clone, Copy)]
 pub struct Product_11_12_13_14_15_16_17<A0, A1, A2, A3, A4, A5, A6>(pub A0, pub A1, pub A2, pub A3, pub A4, pub A5, pub A6);
 
 kayak_rt::trace_product!(Product_11_12_13_14_15_16_17, A0 0, A1 1, A2 2, A3 3, A4 4, A5 5, A6 6);
+
+#[allow(non_camel_case_types)]
+#[derive(Clone, Copy)]
+pub struct Product_11_12_13_14_15_16<A0, A1, A2, A3, A4, A5>(pub A0, pub A1, pub A2, pub A3, pub A4, pub A5);
+
+kayak_rt::trace_product!(Product_11_12_13_14_15_16, A0 0, A1 1, A2 2, A3 3, A4 4, A5 5);
 
 const _: () = kayak_rt::tags_apart_from_runtime(&["apart", "failed", "ok"]);
 

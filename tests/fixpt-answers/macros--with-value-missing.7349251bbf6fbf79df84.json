@@ -14,12 +14,12 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/macros/with-value-missing.fx:12:23: `int-order` gives no value `more`, which a template's `(with int-order more)` takes from it alone",
-"  in the expansion of `call-more` at <kayak>-snapshot/tests/fx26/programs/macros/with-value-missing.fx:13:1",
+"fixpt: <programs>/macros/with-value-missing.fx:12:23: `int-order` gives no value `more`, which a template's `(with int-order more)` takes from it alone",
+"  in the expansion of `call-more` at <programs>/macros/with-value-missing.fx:13:1",
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

@@ -12,12 +12,12 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/terminate/not-smaller.fx:4:3: `f` is declared a (subr pure (tree tree) int): a (subr pure (tree tree) int) is expected here, and this is a (subr (maxeff spin (read (globals f))) (tree tree) int)",
+"fixpt: <programs>/terminate/not-smaller.fx:4:3: `f` is declared a (subr pure (tree tree) int): a (subr pure (tree tree) int) is expected here, and this is a (subr (maxeff spin (read (globals f))) (tree tree) int)",
 "  beyond what is expected, it has (maxeff spin (read (globals f))); it may not end: no argument keeps shrinking around every loop of calls",
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

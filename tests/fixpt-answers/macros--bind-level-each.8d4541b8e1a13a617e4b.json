@@ -1,0 +1,23 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"bind-level-each.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: read error: <kayak>-snapshot/tests/fx26/programs/macros/bind-level-each.fx:5:48: a level is a label, `(x ...)` (every repetition's, together), or a list of them: for each repetition inside the one before, a `letrec-shape` whose node says `export*`, as `my-let*`'s does",
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

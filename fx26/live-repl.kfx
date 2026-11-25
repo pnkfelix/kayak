@@ -593,7 +593,7 @@
         (lambda ()
           (if (string=? (get history-path) "")
               #u
-              (tagcase (write-file (get history-path) (the (bytevectorof @io) (string->utf8 (rev->string (history-text (get history) 500 nil)))))
+              (tagcase (write-file (get history-path) (the (bytevectorof @io) (utf8->bytes (string->utf8 (rev->string (history-text (get history) 500 nil))))))
                 (done u #u)
                 (failed e #u)))))
 
@@ -602,10 +602,10 @@
           (if (string=? (get history-path) "")
               #u
               (tagcase (the (sumof (data (bytevectorof @io)) (failed io-error)) (read-file (get history-path)))
-                (data b (tagcase (utf8->string b)
-                          (text t (set history (oldest-first-strings (map (lambda ((l string)) (rev->string (unescaped (string-chars l) nil)))
+                (data b (tagcase (bytes->utf8 b)
+                          (text t-utf8 (let ((t (utf8->string t-utf8))) (set history (oldest-first-strings (map (lambda ((l string)) (rev->string (unescaped (string-chars l) nil)))
                                                                           (lines-of (string-chars t) nil nil))
-                                                                     nil)))
+                                                                     nil))))
                           (bad k #u)))
                 (failed e #u)))))
 
@@ -745,8 +745,8 @@ an entry naming one that has not ended waits for it.")
         (lambda (path now)
           "`,load FILE`: the file's forms, one entry."
           (tagcase (the (sumof (data (bytevectorof @io)) (failed io-error)) (read-file path))
-            (data b (tagcase (utf8->string b)
-                      (text t (submit! t path #f now))
+            (data b (tagcase (bytes->utf8 b)
+                      (text t-utf8 (let ((t (utf8->string t-utf8))) (submit! t path #f now)))
                       (bad k (said! (string-append path ": not UTF-8") now))))
             (failed e (said! (string-append "cannot read " (string-append path (string-append ": " (extract e detail)))) now)))))
 

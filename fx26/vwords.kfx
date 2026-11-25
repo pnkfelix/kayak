@@ -287,10 +287,20 @@
 (define sum-word! (subr (maxeff hp (alloc @c)) (string i64) i64)
   (lambda (tag w) (sum-made! (symbol-word (intern! tag)) w)))
 
+"UTF-8 text (C525): its making, `utf8-made!`, in words.kfx, which
+ table.kfx's quoted `#utf8\"…\"` needs first; its count and text here."
+(define utf8-byte-count (subr (maxeff (read @globals) spin (read @c)) (i64) i64)
+  (lambda (u) (header-bytes (mem-at (header-at u)))))
+(define utf8-kfx-bytes (subr (maxeff hp (alloc @c)) (i64) (bytevectorof @c))
+  (lambda (u)
+    (let ((bv (the (bytevectorof @c) (make-bytevector (i64->int (utf8-byte-count u)) (int->u8 0)))))
+      (begin (utf8-kfx-set! bv u 0 (utf8-byte-count u)) bv))))
+(define utf8-kfx-text (subr (maxeff hp (alloc @c)) (i64) string)
+  (lambda (u) (tagcase (bytes->utf8 (utf8-kfx-bytes u)) (text t (utf8->string t)) (bad k ""))))
 (define utf8-word! (subr (maxeff hp (alloc @c)) (i64) i64)
   (lambda (p)
-    (tagcase (utf8->string (word-kfx-bytes p))
-      (text s (sum-word! "text" (string-word! s)))
+    (tagcase (bytes->utf8 (word-kfx-bytes p))
+      (text t (sum-word! "text" (utf8-made! (the (bytevectorof @c) (utf8->bytes t)))))
       (bad k (sum-word! "bad" (int-value! k))))))
 
 

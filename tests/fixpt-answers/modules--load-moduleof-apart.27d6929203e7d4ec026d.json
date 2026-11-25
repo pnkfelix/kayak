@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/modules/load-moduleof-apart.fx:7:84: argument 2 is a (moduleof (desc buffer (productof (#:owner (select c1 counter)) (#:t c1..ticket))) (val make (subr (maxeff (read @heap) (write @heap) (alloc @heap)) (int) buffer)) (val size (subr (read @heap) (buffer) int))), where a (moduleof (desc buffer (productof (#:owner (select c1 counter)) (#:t c2..ticket))) (val make (subr (maxeff (read @heap) (write @heap) (alloc @heap)) (int) buffer)) (val size (subr (read @heap) (buffer) int))) is expected",
+"fixpt: <programs>/modules/load-moduleof-apart.fx:7:84: argument 2 is a (moduleof (desc buffer (productof (#:owner (select c1 counter)) (#:t c1..ticket))) (val make (subr (maxeff (read @heap) (write @heap) (alloc @heap)) (int) buffer)) (val size (subr (read @heap) (buffer) int))), where a (moduleof (desc buffer (productof (#:owner (select c1 counter)) (#:t c2..ticket))) (val make (subr (maxeff (read @heap) (write @heap) (alloc @heap)) (int) buffer)) (val size (subr (read @heap) (buffer) int))) is expected",
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

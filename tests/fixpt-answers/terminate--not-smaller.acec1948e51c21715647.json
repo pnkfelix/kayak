@@ -12,13 +12,14 @@
 "! <kayak>-snapshot/tests/fx26/programs/terminate/not-smaller.fx:4:3: `f` is declared a (subr pure (tree tree) int): a (subr pure (tree tree) int) is expected here, and this is a (subr (maxeff (read (globals f)) spin) (tree tree) int)",
 "  beyond what is expected, it has (maxeff (read (globals f)) spin); it may not end: no argument keeps shrinking around every loop of calls",
 "; both checkers agree",
+"; checked as a program, whose globals a later definition may change: `fixpt check --module <kayak>-snapshot/tests/fx26/programs/terminate/not-smaller.fx` checks it as a module file",
 ""
 ],
 "err": [
 ""
 ],
 "by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"ellipsis-every-scope.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: the FX-26 front end: <kayak>-snapshot/tests/fx26/programs/macros/ellipsis-every-scope.fx:9:49: `e` is placed in the scope of `(v ...)`, but its signature says it is in the scope of `v`",
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

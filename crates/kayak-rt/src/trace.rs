@@ -1232,6 +1232,25 @@ impl Trace for Str {
     }
 }
 
+/// UTF-8 text (C525), its string's object.
+impl Trace for crate::Utf8 {
+    type Stored = crate::HeapWord;
+    #[inline(always)]
+    fn store(self) -> crate::HeapWord {
+        crate::HeapWord::of_str(self.0)
+    }
+    #[inline(always)]
+    fn load(w: crate::HeapWord) -> Self {
+        crate::Utf8(w.to_str())
+    }
+    fn trace<'a>(self, t: &mut Tracer<'a>)
+    where
+        Self: 'a,
+    {
+        t.string(self.0.as_str());
+    }
+}
+
 /// An integer (C488): a fixnum, nothing; a bignum, its object reached,
 /// nothing in it traced.
 impl Trace for Int {

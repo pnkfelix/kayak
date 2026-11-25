@@ -1,0 +1,32 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"module-abstract.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define make-int : (subr pure () (moduleof (abs t type) (val zero t) (val value (subr pure (t) int)))) ! pure",
+"define make-str : (subr pure () (moduleof (abs t type) (val zero t) (val value (subr pure (t) int)))) ! pure",
+"define a : (moduleof (abs t type) (val zero t) (val value (subr pure (t) int))) ! (read (globals make-int))",
+"define one : a..t ! (read (globals a))",
+"define use : (subr (read (globals a one)) () int) ! pure",
+"define a : (moduleof (abs t type) (val zero t) (val value (subr pure (t) int))) ! (read (globals make-str))",
+"define one : a..t ! (read (globals a))",
+"define use : (subr (read (globals a one)) () int) ! pure",
+"int ! (read (globals a one use))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

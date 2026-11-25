@@ -17,21 +17,8 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-]
-},
-{
-"code": 0,
-"out": [
-"m : (moduleof (desc cell (ref int @heap)) (val mk (subr (alloc @heap) () cell)) (val z (listof cell @heap))) ! (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/include-cell.fx %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/include-in-params-file.fx))",
-"0 : int ! (read (globals m))",
-""
-],
-"err": [
-""
-],
-"by": [
-"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
 ]
 }
 ]

@@ -1,0 +1,34 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"module-abstract-path.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"make-int : (subr pure () (moduleof (abs t type) (val zero t) (val value (subr pure (t) int)))) ! pure",
+"make-str : (subr pure () (moduleof (abs t type) (val zero t) (val value (subr pure (t) int)))) ! pure",
+"mid : (moduleof (val a (moduleof (abs t type) (val zero t) (val value (subr pure (t) int))))) ! (read (globals make-int))",
+"one : mid.a..t ! (read (globals mid))",
+"use : (subr (read (globals mid one)) () int) ! pure",
+"; `mid` redefined; run again, as they use it: `one`, `use`",
+"mid : (moduleof (val a (moduleof (abs t type) (val zero t) (val value (subr pure (t) int))))) ! (read (globals make-str))",
+"5 : int ! (read (globals mid one use))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

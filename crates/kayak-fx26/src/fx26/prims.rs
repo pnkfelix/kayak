@@ -128,7 +128,7 @@ pub fn prim_arity(n: Str) -> i64 {
         1i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("make-continuation-mark-key"), kayak_rt::nil())) {
         0i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("%identity"), kayak_rt::heap_cons(str_lit!("bytevector-length"), kayak_rt::heap_cons(str_lit!("string->utf8"), kayak_rt::heap_cons(str_lit!("utf8->string"), kayak_rt::heap_cons(str_lit!("flatarray-length-i64"), kayak_rt::nil())))))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("%identity"), kayak_rt::heap_cons(str_lit!("bytevector-length"), kayak_rt::heap_cons(str_lit!("string->utf8"), kayak_rt::heap_cons(str_lit!("utf8->string"), kayak_rt::heap_cons(str_lit!("bytes->utf8"), kayak_rt::heap_cons(str_lit!("utf8->bytes"), kayak_rt::heap_cons(str_lit!("flatarray-length-i64"), kayak_rt::nil())))))))) {
         1i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("append"), kayak_rt::heap_cons(str_lit!("make-bytevector"), kayak_rt::heap_cons(str_lit!("bytevector-u8-ref"), kayak_rt::heap_cons(str_lit!("bytevector=?"), kayak_rt::heap_cons(str_lit!("make-flatarray-i64"), kayak_rt::heap_cons(str_lit!("flatarray-ref-i64"), kayak_rt::nil()))))))) {
         2i64
@@ -1235,13 +1235,17 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::data::DataAt<'static, Val> {
     } else if string_eq_p(n, str_lit!("bytevector=?")) {
         flag(bytevector_eq_p(bytes_of(a), bytes_of(b)))
     } else if string_eq_p(n, str_lit!("string->utf8")) {
-        v_bytes(string_to_utf8(string_of(a)))
+        v_string(string_of(a))
     } else if string_eq_p(n, str_lit!("utf8->string")) {
-        let tagcase_ = utf8_to_string(bytes_of(a));
+        a
+    } else if string_eq_p(n, str_lit!("utf8->bytes")) {
+        v_bytes(utf8_to_bytes(string_to_utf8(string_of(a))))
+    } else if string_eq_p(n, str_lit!("bytes->utf8")) {
+        let tagcase_ = bytes_to_utf8(bytes_of(a));
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("text") } {
-            let t: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-            v_sum(str_lit!("text"), v_string(t))
+            let t: Utf8 = kayak_rt::sum_payload::<Utf8>(tagcase_);
+            v_sum(str_lit!("text"), v_string(utf8_to_string(t)))
         } else if tag_ == const { kayak_rt::tag_hash("bad") } {
             let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
             v_sum(str_lit!("bad"), v_int(k))

@@ -1,0 +1,37 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"utf8-literals.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define t : utf8 ! pure",
+"utf8 ! (read (globals t))",
+"(listof nat acyclic) ! (read (globals t))",
+"bool ! (read (globals t))",
+"char ! pure",
+"utf8 ! pure",
+"define d : datum ! pure",
+"int ! (read (globals d))",
+"(listof bool acyclic) ! (read (globals d))",
+"define once : (subr pure () utf8) ! pure",
+"bool ! (read (globals once))",
+"utf8 ! pure",
+"char ! pure",
+"nat ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

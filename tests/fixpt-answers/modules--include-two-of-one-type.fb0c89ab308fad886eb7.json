@@ -1,0 +1,30 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"include-two-of-one-type.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"make : (subr pure (int) sig) ! pure",
+"make2 : (subr (read (globals make)) () (moduleof (val p sig) (val q sig))) ! pure",
+"m : (moduleof (val p sig) (val q sig) (val x int) (val y int)) ! (read (globals make make2))",
+"3 : int ! (read (globals m))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+]
+}
+]
+}

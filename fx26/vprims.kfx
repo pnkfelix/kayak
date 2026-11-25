@@ -40,7 +40,10 @@
         ((i64= op 101) (i64+ (fixnum-value a) 1))
         ((i64= op 105) (i64+ (obj-size a) 1))
         ((i64= op 108) (i64+ (i64* 4 (string-length-w a)) 2))
-        ((i64= op 109) (i64+ (raw-length a) 8))
+        ((i64= op 109) (i64+ (utf8-byte-count a) 8))
+        ;; UTF-8 text's (C525), hand-written: `bytes->utf8`, `utf8->bytes`.
+        ((i64= op 278) (i64+ (raw-length a) 8))
+        ((i64= op 279) (i64+ (utf8-byte-count a) 8))
         ((i64= op 130) (args-room))
         ((i64= op 131) (line-room!))
         ((i64= op 244) (byte-room!))
@@ -512,8 +515,8 @@
         ((i64= op 105) (bytes-copy! a (fixnum-value b) (fixnum-value c)))
         ((i64= op 106) (begin (bytes-copy-into! a b c (fourth-arg args) (fifth-arg args)) w-unit))
         ((i64= op 107) (bool-word (raw-equal? a b 0)))
-        ((i64= op 108) (kfx-bytes-word! (string->utf8 (word-string a))))
-        ((i64= op 109) (utf8-word! a))
+        ((i64= op 108) (utf8-made! (the (bytevectorof @c) (utf8->bytes (string->utf8 (word-string a))))))
+        ((i64= op 109) (string-word! (utf8-kfx-text a)))
         ((i64= op 110) (begin (failed-with! (word-string a)) 0))
         ((i64= op 111) a)
         ((i64= op 112) (bool-word (same-atom-w? a b)))
@@ -691,6 +694,9 @@
          (let ((off (fixnum-value (pair-car (pair-cdr r2)))))
            (begin (bytes-written! (blobref-bytes a) (blob-at a) (fixnum-value b) (int-of c))
                   (blobref! (sref-owner a) (i64+ (blob-at a) off) 0))))
+        ;; UTF-8 text's (C525), hand-written (gen-vprims.py has them not).
+        ((i64= op 278) (utf8-word! a))
+        ((i64= op 279) (kfx-bytes-word! (utf8-kfx-bytes a)))
         ;; Strings at a region (C285), hand-written (gen-vprims.py has them not).
         ((i64= op 250) (string-made! (fixnum-value a) b))
         ((i64= op 255) (string-made! (fixnum-value b) c))
