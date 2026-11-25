@@ -5926,16 +5926,6 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn mx_utf8_p(d: kayak_rt::value::Value) -> bool {
-        false
-    }
-
-    #[inline]
-    pub fn mx_utf8_to_string(d: kayak_rt::value::Value) -> Str {
-        str_lit!("")
-    }
-
-    #[inline]
     pub fn mx_symbol_hash(s: Symbol) -> Int {
         symbol_name_hash(s)
     }
@@ -6762,8 +6752,8 @@ pub mod made__load__3__main {
             string_append(str_lit!("#:"), symbol_to_string(mx_keyword_to_symbol(d)))
         } else if string_p(d) {
             string_append(str_lit!("\""), string_append(kayak_rt::value::unbox::<Str>(d), str_lit!("\"")))
-        } else if mx_utf8_p(d) {
-            string_append(str_lit!("#utf8\""), string_append(mx_utf8_to_string(d), str_lit!("\"")))
+        } else if utf8_p(d) {
+            string_append(str_lit!("#utf8\""), string_append(utf8_to_string(kayak_rt::value::unbox_other::<Utf8>(d)), str_lit!("\"")))
         } else if bytevector_p(d) {
             string_append(str_lit!("#u8("), string_append(show_bytes(kayak_rt::value::unbox_other::<Bytes>(d), _minus(bytevector_length(kayak_rt::value::unbox_other::<Bytes>(d)), int_lit(1)), str_lit!("")), str_lit!(")")))
         } else if char_p(d) {
@@ -20926,8 +20916,8 @@ pub mod made__load__3__main {
                 })
             } else if mx_keyword_p(d) {
                 mix(mxp, maker_st, int_lit(11), text_hash(mxp, maker_st, symbol_to_string(mx_keyword_to_symbol(d))))
-            } else if mx_utf8_p(d) {
-                mix(mxp, maker_st, int_lit(13), text_hash(mxp, maker_st, mx_utf8_to_string(d)))
+            } else if utf8_p(d) {
+                mix(mxp, maker_st, int_lit(13), text_hash(mxp, maker_st, utf8_to_string(kayak_rt::value::unbox_other::<Utf8>(d))))
             } else if bytevector_p(d) {
                 bytes_hash(mxp, maker_st, kayak_rt::value::unbox_other::<Bytes>(d), int_lit(0), int_lit(12))
             } else {
@@ -31779,14 +31769,6 @@ impl<'mxp, Place_Mxp: kayak_rt::Visit> MadeLoad3MainFace<'mxp, Place_Mxp> {
 
     pub fn mx_datum_int_p(self, d: kayak_rt::value::Value) -> bool {
         made__load__3__main::mx_datum_int_p(d)
-    }
-
-    pub fn mx_utf8_p(self, d: kayak_rt::value::Value) -> bool {
-        made__load__3__main::mx_utf8_p(d)
-    }
-
-    pub fn mx_utf8_to_string(self, d: kayak_rt::value::Value) -> Str {
-        made__load__3__main::mx_utf8_to_string(d)
     }
 
     pub fn mx_symbol_hash(self, s: Symbol) -> Int {

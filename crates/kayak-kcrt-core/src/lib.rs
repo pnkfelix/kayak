@@ -408,6 +408,56 @@ extern "C" fn here_bytevector_u8_ref(v: u64, i: u64) -> u64 {
     bytevector_u8_ref(v, i).unwrap_or_else(failed_here)
 }
 
+const KIND_UTF8: u64 = layout::kind("utf8") as u64;
+const KIND_UTF8_ASCII: u64 = layout::kind("utf8-ascii") as u64;
+const KIND_UTF8_SLICE: u64 = layout::kind("utf8-slice") as u64;
+
+/// Whether `v` is a `utf8`, whole (either kind) or a slice, as Fixpt's
+/// `Heap::is_utf8` says.
+#[unsafe(no_mangle)]
+pub extern "C" fn kc_is_utf8(v: u64) -> u64 {
+    boolean(
+        v & TAG_MASK == TAG_BLOBLET
+            && matches!(kind(v), KIND_UTF8 | KIND_UTF8_ASCII | KIND_UTF8_SLICE),
+    )
+}
+
+/// A `utf8`'s text: a whole one's suffix, its header's count of bytes; a
+/// slice's piece of its owner's suffix (`layout::utf8_slice`, fields by
+/// negative offset from the slice's empty suffix).
+fn utf8_text(v: u64) -> String {
+    let (at, len) = if kind(v) == KIND_UTF8_SLICE {
+        let p = v - TAG_BLOBLET;
+        let field = |k: usize| word(p - 8 * k as u64);
+        let (owner, start, end) = (
+            field(layout::utf8_slice::OWNER),
+            field(layout::utf8_slice::START) >> 3,
+            field(layout::utf8_slice::END) >> 3,
+        );
+        (owner - TAG_BLOBLET + start, end - start)
+    } else {
+        (v - TAG_BLOBLET, layout::H_BYTES.get(header(v)))
+    };
+    // SAFETY: a utf8's bytes, `len` of them from `at`, within its object
+    // (or its owner's), alive for the run, valid UTF-8 as it was made.
+    let bytes = unsafe { std::slice::from_raw_parts(at as *const u8, len as usize) };
+    String::from_utf8_lossy(bytes).into_owned()
+}
+
+/// `(utf8->string u)`: its text, a string in kc's heap.
+fn utf8_string(args: *const u64, block: *mut u64) -> Result<u64, String> {
+    string_in(block, &utf8_text(arg(args, 0)))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn kcrt_utf8_to_string(args: *const u64, block: *mut u64) -> u64 {
+    utf8_string(args, block).unwrap_or_else(|m| failed(&m))
+}
+
+extern "C" fn here_utf8_to_string(args: *const u64, block: *mut u64) -> u64 {
+    utf8_string(args, block).unwrap_or_else(failed_here)
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn kc_is_string(v: u64) -> u64 {
     boolean(v & TAG_MASK == TAG_BLOBLET && kind(v) == KIND_STRING)
@@ -1130,6 +1180,8 @@ pub fn routine(name: &str) -> u64 {
         "kc_string_search" => kc_string_search as *const (),
         "kc_bytevector_length" => kc_bytevector_length as *const (),
         "kcrt_bytevector_u8_ref" => here_bytevector_u8_ref as *const (),
+        "kc_is_utf8" => kc_is_utf8 as *const (),
+        "kcrt_utf8_to_string" => here_utf8_to_string as *const (),
         "kc_array_index_fail" => here_array_index_fail as *const (),
         "kc_make_array_fail" => here_make_array_fail as *const (),
         "kc_string_index_fail" => here_string_index_fail as *const (),

@@ -18,10 +18,6 @@
 (define mx-symbol->keyword (subr pure (symbol) symbol)
   (lambda (n) (string->symbol (string-append "#:" (symbol->string n)))))
 (define mx-datum-int? (subr pure (datum) bool) (lambda (d) (int? d)))
-"`utf8?` of a datum, and its text (Fixpt 06a3666): KFX's `datum` has no
- `utf8` (`#utf8\"…\"` in data is refused), so none is."
-(define mx-utf8? (subr pure (datum) bool) (lambda (d) #f))
-(define mx-utf8->string (subr pure (datum) string) (lambda (d) ""))
 "Fixpt's hash tables (`table.fx`, which its expander loads since
  c5b5991), as the expander uses them: a table of symbols to `#t`, its
  sets of the kernel's words, made once (`words-table`). A set of symbols

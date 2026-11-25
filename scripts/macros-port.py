@@ -70,8 +70,7 @@ PRIMS = {"keyword?": "mx-keyword?", "keyword->symbol": "mx-keyword->symbol",
          "datum-dotted": "mx-datum-dotted", "parse-nat": "mx-parse-nat",
          "%macros:expand-procedural": "mx-expand-procedural", "%macros:call-procedural": "mx-call-procedural",
          "%macros:limit": "mx-limit", "parse-number": "mx-parse-number",
-         "datum-vector->list": "mx-datum-vector->list",
-         "utf8?": "mx-utf8?", "utf8->string": "mx-utf8->string"}
+         "datum-vector->list": "mx-datum-vector->list"}
 # Fixpt's files the shim stands in for: its hash tables (`table.fx`, which
 # the expander loads since c5b5991, for its sets of the kernel's words),
 # generic in the key and the value, a lookup's entry a `(oneof nil (pairof

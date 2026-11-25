@@ -67,10 +67,6 @@
 (define mx-symbol->keyword (subr pure (symbol) symbol)
   (lambda (n) (string->symbol (string-append "#:" (symbol->string n)))))
 (define mx-datum-int? (subr pure (datum) bool) (lambda (d) (int? d)))
-"`utf8?` of a datum, and its text (Fixpt 06a3666): KFX's `datum` has no
- `utf8` (`#utf8\"…\"` in data is refused), so none is."
-(define mx-utf8? (subr pure (datum) bool) (lambda (d) #f))
-(define mx-utf8->string (subr pure (datum) string) (lambda (d) ""))
 "Fixpt's hash tables (`table.fx`, which its expander loads since
  c5b5991), as the expander uses them: a table of symbols to `#t`, its
  sets of the kernel's words, made once (`words-table`). A set of symbols
@@ -784,7 +780,7 @@
           ((symbol? d) (symbol->string d))
           ((mx-keyword? d) (string-append "#:" (symbol->string (mx-keyword->symbol d))))
           ((string? d) (string-append "\"" (string-append d "\"")))
-          ((mx-utf8? d) (string-append "#utf8\"" (string-append (mx-utf8->string d) "\"")))
+          ((utf8? d) (string-append "#utf8\"" (string-append (utf8->string d) "\"")))
           ((bytevector? d)
            (string-append "#u8(" (string-append (show-bytes d (- (bytevector-length d) 1) "") ")")))
           ((char? d) (string-append "#\\" (char->string d)))
@@ -8327,7 +8323,7 @@
               ((char? d) (mix 9 (char->integer d)))
               ((bool? d) (mix 10 (if d 1 0)))
               ((mx-keyword? d) (mix 11 (text-hash (symbol->string (mx-keyword->symbol d)))))
-              ((mx-utf8? d) (mix 13 (text-hash (mx-utf8->string d))))
+              ((utf8? d) (mix 13 (text-hash (utf8->string d))))
               ((bytevector? d) (bytes-hash d 0 12))
               (else 3)))
       (mx-eager-reader-types-lst (xs d a b x) (syns-hash 4 xs))

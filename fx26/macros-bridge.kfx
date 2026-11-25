@@ -17,13 +17,30 @@
     (bridge-dotted (list (the datum k) (the datum f) (the datum (i64->int l)) (the datum (i64->int p)))
                (if (= k 0) (bridge-dotted (list d) (the datum nil)) d))))
 
+"A byte string's bytes as a datum's bytevector (C532): built in a region
+ of its own, frozen as it leaves, `const`."
+(define bridge-bytes (subr kfx ((listof i64 acyclic)) bytevector)
+  (lambda (bs)
+    (letfreeze r
+      (let ((b (the (bytevectorof r) (make-bytevector (i64->int (size bs)) (int->u8 0)))))
+        (letrec ((fill (subr (write r) ((listof i64 acyclic) int) unit)
+                   (lambda (xs i)
+                     (if (null? xs)
+                         #u
+                         (begin (bytevector-u8-set! b i (int->u8 (i64->int (car xs)))) (fill (cdr xs) (+ i 1)))))))
+          (begin (fill bs 0) b))))))
+
 (define-rec
   (sexp-located (subr kfx (sexp) datum)
     (lambda (e)
       "The reader's datum as a located one; `#t` and `#f`, as Fixpt's reader
        reads them, booleans (kfx's, names)."
       (tagcase e
-        (lst (xs f l p) (bridge-node 1 f l p (sexps-located xs)))
+        ;; `#utf8"…"` and `#u8(…)` (C532), which the reader reads as lists,
+        ;; the expander's atoms, as Fixpt's reader reads them.
+        (lst (xs f l p) (cond ((utf8-literal? e) (bridge-node 0 f 0 p (the datum (string->utf8 (utf8-literal-text e)))))
+                              ((bytes-literal? e) (bridge-node 0 f 0 p (the datum (bridge-bytes (bytes-literal-bytes e)))))
+                              (else (bridge-node 1 f l p (sexps-located xs)))))
         (sym (n f p) (bridge-node 0 f 0 p (cond ((string=? n "#t") (the datum #t)) ((string=? n "#f") (the datum #f)) (else (the datum (string->symbol n))))))
         (num (i f p) (bridge-node 0 f 0 p (the datum (i64->int i))))
         (str (x f p) (bridge-node 0 f 0 p (the datum x)))
@@ -39,6 +56,20 @@
 (define bridge-int (subr kfx (datum) i64) (lambda (d) (if (int? d) (int->i64 d) 0)))
 (define bridge-string (subr kfx (datum) string) (lambda (d) (if (string? d) d "")))
 
+"A bytevector's bytes from `i` on, as the reader's numbers."
+(define-rec
+  (bridge-byte-sexps (subr kfx (bytevector int string i64) sexps)
+    (lambda (b i f p)
+      (if (>= i (bytevector-length b))
+          nil
+          (cons (num (int->i64 (u8->int (bytevector-u8-ref b i))) f p) (bridge-byte-sexps b (+ i 1) f p))))))
+(define-rec
+  (bridge-byte-text (subr kfx (bytevector int) string)
+    (lambda (b k)
+      (cond ((>= k (bytevector-length b)) "")
+            ((= k 0) (string-append (int->string (u8->int (bytevector-u8-ref b k))) (bridge-byte-text b (+ k 1))))
+            (else (string-append " " (string-append (int->string (u8->int (bytevector-u8-ref b k))) (bridge-byte-text b (+ k 1)))))))))
+
 (define-rec
   (datum-sexp (subr kfx (datum string i64 i64) sexp)
     (lambda (d f l p)
@@ -50,6 +81,8 @@
             ((char? d) (chr d f p))
             ((bool? d) (sym (if d "#t" "#f") f p))
             ((pair? d) (lst (datum-sexps d f l p) f l p))
+            ((utf8? d) (lst (list (sym "#utf8" f p) (str (utf8->string d) f p)) f l p))
+            ((bytevector? d) (lst (cons (sym "#u8" f p) (bridge-byte-sexps d 0 f p)) f l p))
             (else (sym "#u" f p)))))
   (datum-sexps (subr kfx (datum string i64 i64) sexps)
     (lambda (d f l p)
@@ -81,6 +114,8 @@
             ((string? d) (string-append "\"" (string-append d "\"")))
             ((char? d) (string-append "#\\" (char->string d)))
             ((bool? d) (if d "#t" "#f"))
+            ((utf8? d) (string-append "#utf8\"" (string-append (utf8->string d) "\"")))
+            ((bytevector? d) (string-append "#u8(" (string-append (bridge-byte-text d 0) ")")))
             (else "#u"))))
   (located-texts (subr kfx (datum) string)
     (lambda (d)

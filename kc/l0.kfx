@@ -71,7 +71,9 @@
               "char->string" "char-whitespace?" "char-numeric?" "string-hash" "symbol-name-hash"
               "f64?" "f64->string" "datum-list->vector" "error"
               ;; A datum's bytevector (C529): its length, a byte a fixnum.
-              "bytevector-length" "u8->int"))
+              "bytevector-length" "u8->int"
+              ;; A datum's `utf8` (C532): whether one, its text.
+              "utf8?" "utf8->string"))
 
       (define binary-primitives (listof string acyclic)
         (list "cons" "+" "-" "*" "quotient" "remainder" "modulo" "max" "min" "=" "<" "<=" ">" ">="

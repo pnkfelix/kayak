@@ -17055,3 +17055,32 @@ string now. KFX's `datum` is Fixpt's union whole.
   Rust as Fixpt (`… 9 -1 yes`); the engine as Fixpt on quoted `utf8` data;
   `tests/kfx-stricter/utf8-in-quoted-data.kfx` gone.
 - **The full check**: `check: all passed`, 9 min 44 s (the mean of 86 runs 8 min 17 s); the pre-check passed first.
+
+## C532. kc's `utf8?` and `utf8->string`; the expander sees Fixpt's atoms (2026-11-25)
+
+What C531 left (`docs/research/one-runtime.md`, step 2(c)).
+- **kc**: `utf8?` and `utf8->string` unary primitives (`l0.kfx`); in
+  native code calls of `kc_is_utf8` and `kc_utf8_to_string`
+  (`x64-heap-routine`), appended to `x64-services`. kcrt-core's
+  `kc_is_utf8` takes kinds 49, 50 and 51 (Fixpt's slice, which kayak makes
+  not yet, as Fixpt's `is_utf8` does); `kcrt_utf8_to_string` reads a
+  whole one's suffix or a slice's piece of its owner's
+  (`layout::utf8_slice`). Shared runtime, not kayak-rt.
+- **The expander**: the shim's `mx-utf8?` and `mx-utf8->string` gone, and
+  their names in `macros-port.py`'s `PRIMS`: Fixpt's text calls the real
+  ones.
+- **The bridge** (`macros-bridge.kfx`): kayak's reader reads `#utf8"x"` as
+  the list `(#utf8 "x")`, so a pattern's `(a b ...)` matched it, where
+  Fixpt says it "is not a list as this part must be". Now a `#utf8` or
+  `#u8` list goes to the expander as an atom, a `utf8` or a frozen
+  bytevector (`bridge-bytes`, by `letfreeze`), and comes back as the
+  reader's list; `--expanded-located` writes them as Fixpt does. Not
+  vectors: they were done so already (`drive-syn`'s `#vector`).
+- **`bytevector?`**: Fixpt's type, `(shape 0 bytevector)` in its `then`,
+  so that `(if (bytevector? d) (bytevector-length d) …)` checks, as the
+  bridge and Fixpt's expander write it.
+- **Tests**: `tests/fx26-kayak/datum/macro-literals.fx`, the engine as
+  Fixpt on both through a macro; `tests/kfx/byte-literals.kfx` with
+  `bytevector?`'s narrowing (`… yes 2`). By hand, as Fixpt: the "is not a
+  list" refusal of `#utf8"x"`, `#u8(1 2)` and `#u8"ab"`.
+- **The full check**: `check: all passed`, 10 min 21 s (the mean of 88 runs 8 min 20 s); the pre-check passed first.

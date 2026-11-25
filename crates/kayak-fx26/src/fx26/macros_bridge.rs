@@ -33,13 +33,40 @@ pub fn bridge_node(k: Int, f: Str, l: i64, p: i64, d: kayak_rt::value::Value) ->
     })
 }
 
+// A byte string's bytes as a datum's bytevector (C532): built in a region
+// of its own, frozen as it leaves, `const`.
+pub fn bridge_bytes(bs: List<i64>) -> Bytes {
+    let b = the::<Bytes>(make_bytevector(i64_to_int(size(bs)), int_to_u8(int_lit(0))));
+    let fill__knot = knot::<kayak_rt::Proc2<'static, List<i64>, Int, ()>>();
+    let fill = kayak_rt::closure2((b,), |(b,), mut xs: List<i64>, mut i: Int| {
+        loop {
+            if null_p(xs) {
+                return ();
+            } else {
+                bytevector_u8_set_x(b, i, int_to_u8(i64_to_int(car(xs))));
+                (xs, i) = (cdr(xs), _plus(i, int_lit(1)));
+                continue;
+            }
+        }
+    });
+    fill__knot.set(fill);
+    fill.call(bs, int_lit(0));
+    b
+}
+
 /// The reader's datum as a located one; `#t` and `#f`, as Fixpt's reader
 /// reads them, booleans (kfx's, names).
 pub fn sexp_located(e: kayak_rt::data::DataAt<'static, Sexp>) -> kayak_rt::value::Value {
     let tagcase_ = e;
     if Sexp::__is_Lst(tagcase_) {
         let (xs, f, l, p,) = Sexp::__Lst(tagcase_);
-        bridge_node(int_lit(1), f, l, p, sexps_located(xs))
+        if utf8_literal_p(e) {
+            bridge_node(int_lit(0), f, 0i64, p, the::<kayak_rt::value::Value>(kayak_rt::value::other(string_to_utf8(utf8_literal_text(e)), kayak_rt::value::Shape::Utf8)))
+        } else if bytes_literal_p(e) {
+            bridge_node(int_lit(0), f, 0i64, p, the::<kayak_rt::value::Value>(kayak_rt::value::other(bridge_bytes(bytes_literal_bytes(e)), kayak_rt::value::Shape::Bytevector)))
+        } else {
+            bridge_node(int_lit(1), f, l, p, sexps_located(xs))
+        }
     } else if Sexp::__is_Sym(tagcase_) {
         let (n, f, p,) = Sexp::__Sym(tagcase_);
         bridge_node(int_lit(0), f, 0i64, p, if string_eq_p(n, str_lit!("#t")) {
@@ -118,6 +145,25 @@ pub fn bridge_string(d: kayak_rt::value::Value) -> Str {
     }
 }
 
+// A bytevector's bytes from `i` on, as the reader's numbers.
+pub fn bridge_byte_sexps(b: Bytes, i: Int, f: Str, p: i64) -> Sexps {
+    if _gt_eq(i, bytevector_length(b)) {
+        nil::<kayak_rt::data::DataAt<'static, Sexp>>()
+    } else {
+        kayak_rt::heap_cons(num(int_to_i64(u8_to_int(bytevector_u8_ref(b, i))), f, p), bridge_byte_sexps(b, _plus(i, int_lit(1)), f, p))
+    }
+}
+
+pub fn bridge_byte_text(b: Bytes, k: Int) -> Str {
+    if _gt_eq(k, bytevector_length(b)) {
+        str_lit!("")
+    } else if _eq(k, int_lit(0)) {
+        string_append(int_to_string(u8_to_int(bytevector_u8_ref(b, k))), bridge_byte_text(b, _plus(k, int_lit(1))))
+    } else {
+        string_append(str_lit!(" "), string_append(int_to_string(u8_to_int(bytevector_u8_ref(b, k))), bridge_byte_text(b, _plus(k, int_lit(1)))))
+    }
+}
+
 /// A datum, as the reader would have read it, at `f`, `l`, `p`.
 pub fn datum_sexp(d: kayak_rt::value::Value, f: Str, l: i64, p: i64) -> kayak_rt::data::DataAt<'static, Sexp> {
     if kayak_rt::value::null_p(d) {
@@ -138,6 +184,10 @@ pub fn datum_sexp(d: kayak_rt::value::Value, f: Str, l: i64, p: i64) -> kayak_rt
         }, f, p)
     } else if kayak_rt::value::pair_p(d) {
         lst(datum_sexps(d, f, l, p), f, l, p)
+    } else if utf8_p(d) {
+        lst(kayak_rt::heap_cons(sym(str_lit!("#utf8"), f, p), kayak_rt::heap_cons(str(utf8_to_string(kayak_rt::value::unbox_other::<Utf8>(d)), f, p), kayak_rt::nil())), f, l, p)
+    } else if bytevector_p(d) {
+        lst(kayak_rt::heap_cons(sym(str_lit!("#u8"), f, p), bridge_byte_sexps(kayak_rt::value::unbox_other::<Bytes>(d), int_lit(0), f, p)), f, l, p)
     } else {
         sym(str_lit!("#u"), f, p)
     }
@@ -195,6 +245,10 @@ pub fn located_text(d: kayak_rt::value::Value) -> Str {
         } else {
             str_lit!("#f")
         }
+    } else if utf8_p(d) {
+        string_append(str_lit!("#utf8\""), string_append(utf8_to_string(kayak_rt::value::unbox_other::<Utf8>(d)), str_lit!("\"")))
+    } else if bytevector_p(d) {
+        string_append(str_lit!("#u8("), string_append(bridge_byte_text(kayak_rt::value::unbox_other::<Bytes>(d), int_lit(0)), str_lit!(")")))
     } else {
         str_lit!("#u")
     }

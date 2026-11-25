@@ -113,3 +113,8 @@ kayak-rt and kcrt-core alone, recorded at each step here.
 - **Step 2(c), its `utf8` (C531)**: KFX's `datum` Fixpt's union whole;
   `utf8?` and `typecase`'s `utf8` arm in the checker, KFX's Rust, the
   engine and tier 1. Left: kc's `utf8?`, so the expander's shim stays.
+- **Step 2(c), the expander's (C532)**: kc's native code tests a `utf8`
+  (kinds 49, 50 and Fixpt's slice, 51) and makes its string (kcrt
+  routines), so the expander's shim is gone; the engine's bridge gives the
+  expander `#utf8"…"` and `#u8(…)` as Fixpt's reader does, atoms, not the
+  lists kayak's reader makes of them, and takes them back. Step 2(c) done.

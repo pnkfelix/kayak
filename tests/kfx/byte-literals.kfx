@@ -1,7 +1,8 @@
 "`#u8\"…\"` and `#u8(…)` (Fixpt 3569ce51; C527): bytevector constants, of
  type `bytevector`, `(bytevectorof const)`, frozen; in KFX's Rust a `b\"…\"`
  made once. Read, compared, measured and turned into text; a procedure's
- literal the same each call; within quoted data, a datum's (C529)."
+ literal the same each call; within quoted data, a datum's (C529), told
+ by `typecase` or `bytevector?` (C532)."
 
 "The sum of a frozen bytevector's bytes from `i`."
 (define* sum-bytes (subr spin (bytevector int int) int)
@@ -15,6 +16,11 @@
 "A datum's bytevector's length (C529), or -1."
 (define datum-bytes (subr pure (datum) int)
   (lambda (x) (typecase x (bytevector b (bytevector-length b)) (else y -1))))
+
+"The same by `bytevector?`, which tells a `datum`'s bytevector (C532,
+ Fixpt's type: the shape its `then`)."
+(define datum-bytes-p (subr pure (datum) int)
+  (lambda (x) (if (bytevector? x) (bytevector-length x) -1)))
 
 "`a`, a space, `b`."
 (define with-space (subr pure (string string) string)
@@ -32,4 +38,5 @@
            (d '(a #u8"in a list" #u8(1 2) 3)))
       (with-space s6 (with-space (int->string (datum-bytes (car (cdr d))))
                                  (with-space (int->string (datum-bytes (car d)))
-                                             (if (bytevector? (car (cdr (cdr d)))) "yes" "no")))))))
+                                             (with-space (if (bytevector? (car (cdr (cdr d)))) "yes" "no")
+                                                         (int->string (datum-bytes-p (car (cdr (cdr d))))))))))))

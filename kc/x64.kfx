@@ -899,6 +899,9 @@
                   ;; a `u8`, a fixnum already.
                   ((string=? n "bytevector-length") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_bytevector_length"))
                   ((string=? n "u8->int") c)
+                  ;; A datum's `utf8`: whether one, whole or a slice; its text.
+                  ((string=? n "utf8?") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_is_utf8"))
+                  ((string=? n "utf8->string") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_utf8_to_string"))
                   ;; A ref's value, its field 2 back (C424).
                   ((string=? n "get") (x64-emit c "movq -20(%rax), %rax"))
                   ;; Its fields less the trailer, from the trailer's distance (C422).
@@ -1311,6 +1314,7 @@
                   (x64-heap-routine "kc_append" "kcrt_append" 2)
                   (x64-heap-routine "kc_reverse" "kcrt_reverse" 1)
                   (x64-heap-routine "kc_int_to_string" "kcrt_int_to_string" 1)
+                  (x64-heap-routine "kc_utf8_to_string" "kcrt_utf8_to_string" 1)
                   (x64-heap-routine "kc_char_to_string" "kcrt_char_to_string" 1)
                   (x64-heap-routine "kc_f64_to_string" "kcrt_f64_to_string" 1)
                   (x64-heap-routine "kc_list_to_vector" "kcrt_list_to_vector" 1)
@@ -1335,14 +1339,14 @@
             "kcrt_reverse" "kcrt_int_to_string"
             "kcrt_char_to_string" "kc_char_whitespace" "kc_char_numeric" "kc_string_hash" "kc_symbol_hash"
             "kcrt_f64_to_string" "kcrt_list_to_vector" "kc_error" "kc_string_search"
-            "kc_bytevector_length" "kcrt_bytevector_u8_ref"))
+            "kc_bytevector_length" "kcrt_bytevector_u8_ref" "kc_is_utf8" "kcrt_utf8_to_string"))
 
     (hide
       "Routines that always fail, and those that may (C452): each called,
        not jumped to, so that its answer is seen."
       (define x64-failing strings (list "kc_fail" "kc_array_index_fail" "kc_make_array_fail" "kc_string_index_fail" "kc_error"))
       (define x64-may-fail strings (list "kcrt_string_append" "kcrt_substring" "kcrt_append" "kcrt_given" "kc_collect" "kcrt_capture" "kcrt_resume_copy" "kcrt_current_marks" "kcrt_marks_of" "kcrt_reverse" "kcrt_int_to_string"
-                                         "kcrt_char_to_string" "kcrt_f64_to_string" "kcrt_list_to_vector" "kcrt_bytevector_u8_ref"))
+                                         "kcrt_char_to_string" "kcrt_f64_to_string" "kcrt_list_to_vector" "kcrt_bytevector_u8_ref" "kcrt_utf8_to_string"))
 
       (define-rec
         (x64-routine-stubs (subr kfx (strings i64 (listof string acyclic)) string)
