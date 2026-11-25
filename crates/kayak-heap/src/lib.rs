@@ -8,9 +8,12 @@
 //! (`kayak-layout`), whose table says which kinds' fields are traced. No
 //! memory is read here: each function is given how to read a word, so the
 //! crate has no `unsafe`, and its caller's own rules for reading (a word
-//! of kayak-rt's space, of kc's stack) stay the caller's.
+//! of kayak-rt's space, of kc's stack) stay the caller's. Then (C536)
+//! strings' primitives over their code points ([`text`]).
 
 use kayak_layout as layout;
+
+pub mod text;
 
 const TAG_MASK: u64 = layout::TAG_MASK;
 const TAG_HEADER: u64 = layout::tag("header");

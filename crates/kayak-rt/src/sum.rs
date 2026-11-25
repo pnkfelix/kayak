@@ -395,24 +395,13 @@ impl crate::Trace for Sum {
     }
 }
 
-/// Fixpt's `symbol_hash_of`'s FNV-1a, its offset basis and prime.
-const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
-const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
-
 /// A tag's discriminant (C499): its symbol's hash, Fixpt's
 /// (`symbol_hash_of`), FNV-1a of its name's bytes, its sign bit cleared,
 /// kept to a fixnum's 61 bits. A `const fn`, so that kfx's code writes
 /// `const { tag_hash("circle") }` and rustc makes it as it builds.
 pub const fn tag_hash(name: &str) -> u64 {
-    let m = name.as_bytes();
-    let mut h = FNV_OFFSET;
-    let mut i = 0;
-    while i < m.len() {
-        h = (h ^ m[i] as u64).wrapping_mul(FNV_PRIME);
-        i += 1;
-    }
-    let n = (h as i64) & i64::MAX;
-    ((n << 3) >> 3) as u64
+    // kcrt's interning's too (`kayak_heap::text`, C536).
+    kayak_heap::text::symbol_hash(name) as u64
 }
 
 const fn same_str(a: &str, b: &str) -> bool {

@@ -77,18 +77,7 @@ pub fn string_compare(a: Str, b: Str) -> Int {
 /// characters; or -1.
 pub fn string_search(s: Str, sub: Str, from: Int) -> Int {
     let from = int_to_i64(from).max(0) as usize;
-    let (t, m) = (s.points(), sub.points());
-    if from > t.len() {
-        return i64_to_int(-1);
-    }
-    let found = if m.is_empty() {
-        Some(from)
-    } else {
-        t[from..]
-            .windows(m.len())
-            .position(|w| w == m)
-            .map(|k| from + k)
-    };
+    let found = kayak_heap::text::search(s.points(), sub.points(), from);
     i64_to_int(found.map_or(-1, |k| k as i64))
 }
 
@@ -127,10 +116,9 @@ pub fn symbol_to_string(s: Symbol) -> Str {
     s.name()
 }
 
-// Ported from Fixpt (C121; scripts/fixpt-drift.py):
+// Ported from Fixpt (C121; scripts/fixpt-drift.py), the hashes
+// themselves `kayak_heap::text`'s since C536:
 // fixpt-source: crates/fixpt-heap/src/heap.rs@c5b5991
-const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
-const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
 
 /// FX-26's `symbol-name-hash`, as Fixpt computes it (`symbol_hash_of`):
 /// FNV-1a of the name's bytes, its sign bit cleared, as a fixnum of 61
@@ -144,11 +132,7 @@ pub fn symbol_name_hash(s: Symbol) -> Int {
 /// FX-26's `string-hash`, as Fixpt computes it (`string_hash_of`): FNV-1a
 /// of the code points, shifted into a fixnum.
 pub fn string_hash(s: Str) -> Int {
-    let h = s
-        .points()
-        .iter()
-        .fold(FNV_OFFSET, |h, &c| (h ^ c as u64).wrapping_mul(FNV_PRIME));
-    i64_to_int((h >> 4) as i64)
+    i64_to_int(kayak_heap::text::string_hash(s.points()))
 }
 
 #[inline]

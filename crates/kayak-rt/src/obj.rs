@@ -31,10 +31,9 @@ compile_error!(
     "a string's code points are read as one `[u32]`: two to a word, the first in the low half, which is memory's order on a little-endian machine alone"
 );
 
-/// The words a string of `n` code points takes: header, count, points.
-pub const fn string_words(n: usize) -> usize {
-    2 + n.div_ceil(2)
-}
+/// The words a string of `n` code points takes: header, count, points
+/// (kcrt's too: `kayak_heap::text`, C536).
+pub use kayak_heap::text::string_words;
 
 /// The code points of `text`, counted as rustc builds (a literal's).
 pub const fn text_points(text: &str) -> usize {
@@ -149,13 +148,7 @@ impl Eq for Str {}
 /// A string's header, of `n` code points: its suffix's bytes, the count's
 /// word and the points'.
 const fn string_head(n: usize) -> u64 {
-    layout::header(
-        layout::KIND_STRING,
-        0,
-        8 * (string_words(n) - 1),
-        true,
-        true,
-    )
+    kayak_heap::text::string_header(n)
 }
 
 /// A string's words, made at compile time (a literal): `W` is

@@ -17176,3 +17176,25 @@ collectors read of an object, written once.
   change): its `moved > 0 && freed_pages > 0` rests on no stale stack word
   pinning the list's pages. Left as it is; noted in TODO §56.
 - **The full check**: `check: all passed`, 10 min 08 s (the mean of 94 runs 8 min 23 s); the pre-check passed first.
+
+## C536. Strings' primitives once: `kayak_heap::text` (2026-11-25)
+
+Step 4's first piece (`docs/research/one-runtime.md`), which C533's one
+format made a matter of moving code: both runtimes' strings are Fixpt's.
+- **`kayak_heap::text`**, over a string's code points, one `&[u32]`:
+  `string_words`, `string_header` and `fill_string` (the layout);
+  `string_hash` (Fixpt's `%string-hash`); `symbol_hash` (Fixpt's
+  `symbol_hash_of`, a `const fn`); `search` (Fixpt's `string_search`).
+  Its drift mark is `heap.rs@c5b5991`, the one kayak-rt's text had.
+- **kayak-rt**: `string_words`, `string_head`, `string-hash`,
+  `string-search` and `tag_hash` call it; its two copies of the FNV
+  constants gone.
+- **kcrt**: `string_points` reads a string's points in place (a
+  little-endian `[u32]`, as kayak-rt's `Str::points`); `string=?`,
+  `string<?`, `string-hash`, search, `string-append` and `substring`
+  over them, where each decoded its strings to Rust `String`s (`substring`
+  through a `Vec<char>`); interning's hash `symbol_hash`. A made string's
+  header now has kayak-rt's frozen bits (a string is never written).
+- **kc's identity** hashes `kayak-heap/src/text.rs` too.
+- **Tests**: kayak-heap's 8; kcrt-core's `strings_as_points`.
+- **The full check**: `check: all passed`, 10 min 27 s (the mean of 96 runs 8 min 25 s); the pre-check passed first.

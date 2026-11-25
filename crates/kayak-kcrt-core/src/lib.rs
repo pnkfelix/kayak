@@ -170,21 +170,37 @@ fn kind(v: u64) -> u64 {
     (header(v) >> 3) & 0xff
 }
 
-/// A string's code points.
-fn string_text(v: u64) -> String {
+#[cfg(not(target_endian = "little"))]
+compile_error!(
+    "a string's code points are read as one `[u32]`: memory's order on a little-endian machine alone"
+);
+
+/// A string's code points (C536): its suffix's count, then the points,
+/// two a word, the first in the low half, so one `[u32]` in memory.
+fn string_points(v: u64) -> &'static [u32] {
     let p = v - TAG_BLOBLET;
     let n = word(p) as usize;
-    (0..n)
-        .map(|i| {
-            let w = word(p + 8 + 8 * (i as u64 / 2));
-            let c = if i % 2 == 0 {
-                w as u32
-            } else {
-                (w >> 32) as u32
-            };
-            char::from_u32(c).unwrap_or('\u{fffd}')
-        })
+    // SAFETY: a string's suffix, its count then `n` points, within its
+    // object, which nothing writes and which lives while kc's code holds
+    // it (a collection moves it only where no routine is reading it).
+    unsafe { std::slice::from_raw_parts((p + 8) as *const u32, n) }
+}
+
+/// A string's text, for what Rust takes as text (a failure's message, a
+/// symbol's name).
+fn string_text(v: u64) -> String {
+    string_points(v)
+        .iter()
+        .map(|&c| char::from_u32(c).unwrap_or('\u{fffd}'))
         .collect()
+}
+
+/// String `ps`'s words written at `at`, room `gc::words` gave for them.
+fn write_string(at: u64, ps: &[u32]) -> u64 {
+    for (k, &x) in string_words(ps).iter().enumerate() {
+        set(at + 8 * k as u64, x);
+    }
+    at + 8 + TAG_BLOBLET
 }
 
 /// Words this runtime makes, as long as the run: a symbol and its name.
@@ -208,12 +224,23 @@ fn arg(args: *const u64, k: u64) -> u64 {
 
 /// A string of `s`, in this runtime's own memory: a symbol's name.
 fn make_string(s: &str) -> u64 {
-    made(string_words(s)) + 8 + TAG_BLOBLET
+    made(string_words(&points_of(s))) + 8 + TAG_BLOBLET
+}
+
+/// A Rust text's code points.
+fn points_of(s: &str) -> Vec<u32> {
+    s.chars().map(|c| c as u32).collect()
 }
 
 /// A string of `s` in kc's heap (C455), its block's.
 fn string_in(block: *mut u64, s: &str) -> Result<u64, String> {
-    let w = string_words(s);
+    points_in(block, &points_of(s))
+}
+
+/// A string of code points `ps` in kc's heap, its block's: written there
+/// whole, its words kayak-rt's strings' (`kayak_heap::text`, C536).
+fn points_in(block: *mut u64, ps: &[u32]) -> Result<u64, String> {
+    let w = string_words(ps);
     let at = gc::words(block, w.len() as u64)?;
     for (k, &x) in w.iter().enumerate() {
         set(at + 8 * k as u64, x);
@@ -221,25 +248,12 @@ fn string_in(block: *mut u64, s: &str) -> Result<u64, String> {
     Ok(at + 8 + TAG_BLOBLET)
 }
 
-/// A string's words, as Fixpt lays one out: a header of kind 1, its words
-/// all suffix; the length; the code points, two a word.
-fn string_words(s: &str) -> Vec<u64> {
-    let cs: Vec<u32> = s.chars().map(|c| c as u32).collect();
-    let n = cs.len();
-    let words = 1 + n.div_ceil(2);
-    let mut w = vec![
-        TAG_HEADER | (KIND_STRING << 3) | ((8 * words as u64) << 32),
-        n as u64,
-    ];
-    for k in 0..n.div_ceil(2) {
-        let lo = cs[2 * k] as u64;
-        let hi = if 2 * k + 1 < n {
-            (cs[2 * k + 1] as u64) << 32
-        } else {
-            0
-        };
-        w.push(lo | hi);
-    }
+/// A string's words, as Fixpt lays one out (`kayak_heap::text`): a header
+/// of kind 1, its words all suffix; the count; the code points, two a
+/// word.
+fn string_words(ps: &[u32]) -> Vec<u64> {
+    let mut w = vec![0; kayak_heap::text::string_words(ps.len())];
+    kayak_heap::text::fill_string(ps, &mut w);
     w
 }
 
@@ -268,12 +282,8 @@ pub extern "C" fn kc_intern(s: u64) -> u64 {
         if let Some(&v) = t.get(&name) {
             return v;
         }
-        let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-        for b in name.bytes() {
-            h ^= b as u64;
-            h = h.wrapping_mul(0x100_0000_01b3);
-        }
-        let hash = ((h as i64 & i64::MAX) << 3) as u64;
+        // kayak-rt's tags' too (`kayak_heap::text`, C536), a fixnum.
+        let hash = (kayak_heap::text::symbol_hash(&name) << 3) as u64;
         let name_v = make_string(&name);
         // Header (kind 2, four fields with the trailer), the fields, the
         // trailer four back to the header; the value past it.
@@ -332,19 +342,20 @@ fn boolean(b: bool) -> u64 {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn kc_string_eq(a: u64, b: u64) -> u64 {
-    boolean(string_text(a) == string_text(b))
+    boolean(string_points(a) == string_points(b))
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn kc_string_lt(a: u64, b: u64) -> u64 {
-    boolean(string_text(a) < string_text(b))
+    boolean(string_points(a) < string_points(b))
 }
 
 fn string_appended(args: *const u64, block: *mut u64) -> Result<u64, String> {
-    string_in(
-        block,
-        &(string_text(arg(args, 0)) + &string_text(arg(args, 1))),
-    )
+    // Room first, its arguments read after (the collector may move them).
+    let n = string_points(arg(args, 0)).len() + string_points(arg(args, 1)).len();
+    let at = gc::words(block, kayak_heap::text::string_words(n) as u64)?;
+    let ps: Vec<u32> = [string_points(arg(args, 0)), string_points(arg(args, 1))].concat();
+    Ok(write_string(at, &ps))
 }
 
 /// `string-append` of its two arguments, in kc's heap (C455), as each
@@ -356,15 +367,17 @@ pub extern "C" fn kcrt_string_append(args: *const u64, block: *mut u64) -> u64 {
 }
 
 fn substring_of(args: *const u64, block: *mut u64) -> Result<u64, String> {
-    let cs: Vec<char> = string_text(arg(args, 0)).chars().collect();
+    let n = string_points(arg(args, 0)).len();
     let (i, j) = ((arg(args, 1) as i64) >> 3, (arg(args, 2) as i64) >> 3);
-    if i < 0 || j < i || j as usize > cs.len() {
+    if i < 0 || j < i || j as usize > n {
         return Err("substring range out of bounds".to_string());
     }
-    string_in(
+    let at = gc::words(
         block,
-        &cs[i as usize..j as usize].iter().collect::<String>(),
-    )
+        kayak_heap::text::string_words((j - i) as usize) as u64,
+    )?;
+    let ps = string_points(arg(args, 0))[i as usize..j as usize].to_vec();
+    Ok(write_string(at, &ps))
 }
 
 #[unsafe(no_mangle)]
@@ -598,22 +611,12 @@ pub extern "C" fn kc_char_numeric(v: u64) -> u64 {
     boolean(char_of(v).is_numeric())
 }
 
-/// FNV-1a of `points`, 64 bits.
-fn fnv1a(points: impl Iterator<Item = u64>) -> u64 {
-    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-    for c in points {
-        h ^= c;
-        h = h.wrapping_mul(0x0000_0100_0000_01b3);
-    }
-    h
-}
-
 /// `(string-hash s)`, Fixpt's `%string-hash` (`Heap::string_fnv`): FNV-1a
 /// of the code points, each a `u64`, shifted right 4 into a fixnum. Of the
 /// contents alone, never the address (TODO §55: the heap may move).
 #[unsafe(no_mangle)]
 pub extern "C" fn kc_string_hash(v: u64) -> u64 {
-    fixnum((fnv1a(string_text(v).chars().map(|c| c as u64)) >> 4) as i64)
+    fixnum(kayak_heap::text::string_hash(string_points(v)))
 }
 
 /// `(symbol-name-hash s)`, Fixpt's `%symbol-hash`: the hash kept with the
@@ -717,14 +720,8 @@ pub extern "C" fn kcrt_list_to_vector(args: *const u64, block: *mut u64) -> u64 
 /// by code points, as a fixnum; -1 if it is not.
 #[unsafe(no_mangle)]
 pub extern "C" fn kc_string_search(s: u64, sub: u64, from: u64) -> u64 {
-    let s: Vec<char> = string_text(s).chars().collect();
-    let sub: Vec<char> = string_text(sub).chars().collect();
     let from = ((from as i64) >> 3).max(0) as usize;
-    let found = if from > s.len() || sub.len() > s.len() {
-        None
-    } else {
-        (from..=s.len() - sub.len()).find(|&i| s[i..i + sub.len()] == sub[..])
-    };
+    let found = kayak_heap::text::search(string_points(s), string_points(sub), from);
     fixnum(found.map_or(-1, |i| i as i64))
 }
 
@@ -1386,5 +1383,33 @@ mod layout_tests {
             ),
             (32, 32, 36, 37, 0x3_ffff)
         );
+    }
+}
+
+#[cfg(test)]
+mod strings_as_points {
+    use super::*;
+
+    /// kc's string routines over code points (C536): equal, ordered,
+    /// hashed and searched as kayak-rt's strings are (`kayak_heap::text`).
+    #[test]
+    fn compared_hashed_searched() {
+        let (a, b, c) = (
+            make_string("héllo"),
+            make_string("héllo"),
+            make_string("hëllo"),
+        );
+        assert_eq!(kc_string_eq(a, b), boolean(true));
+        assert_eq!(kc_string_eq(a, c), boolean(false));
+        assert_eq!(kc_string_lt(a, c), boolean(true));
+        assert_eq!(kc_string_lt(c, a), boolean(false));
+        assert_eq!(kc_string_hash(a), kc_string_hash(b));
+        assert_eq!(
+            kc_string_hash(a),
+            fixnum(kayak_heap::text::string_hash(&points_of("héllo")))
+        );
+        assert_eq!(kc_string_search(a, make_string("l"), fixnum(0)), fixnum(2));
+        assert_eq!(kc_string_search(a, make_string("l"), fixnum(4)), fixnum(-1));
+        assert_eq!(string_text(a), "héllo");
     }
 }

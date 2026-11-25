@@ -91,6 +91,7 @@ kayak-rt and kcrt-core alone, recorded at each step here.
 | 1 (C528) | + kayak-layout: Fixpt's `layout.rs` and `value.rs` (1.5k), every tag, immediate and kind of the three crates drawn from it | ~21k | 1.5k |
 | 2 (C529–C534) | formats: every object either makes is Fixpt's; kcrt reads kayak-rt's strings, `utf8`s and bytevectors as its own | ~21k | 1.5k |
 | 3, the walk (C535) | + kayak-heap: one object walk (an object's extent, its traced fields, its header from its suffix), both collectors' | ~21k | 1.5k |
+| 4, strings (C536) | + kayak-heap's `text`: a string's words, `string-hash`, a symbol's hash, search, both runtimes' | ~21k | 1.5k |
 
 ## Done
 
@@ -145,3 +146,17 @@ kayak-rt and kcrt-core alone, recorded at each step here.
   their own readings of a header (kayak-rt's untraced kinds written
   `1 | 4 | 5 | 6`) gone. Next in step 3: the space (pages, a thread's
   heap) and the roots behind a `Roots` trait.
+- **Step 4, strings (C536)**: `kayak_heap::text`, over a string's code
+  points as one `&[u32]`: its words (`string_words`, `string_header`,
+  `fill_string`), `string_hash`, `symbol_hash` (kayak-rt's tags' and
+  kcrt's interning's, the same word written two ways before), `search`.
+  kcrt's string routines read a string's points in place
+  (`string_points`) where they decoded each to a Rust `String`: `string=?`,
+  `string<?`, `string-hash`, search, `string-append`, `substring`.
+- **The barrier, step 3's next decision**: kayak-rt's generations
+  remember a written cell (C523); Fixpt's native code marks cards
+  (`fixpt-native`'s `x86_64::stored`: a generation table by 1 GiB, a card
+  table by 512 bytes, in line, a slow call to the heap). kc's code, to
+  allocate in kayak-rt's pages in process, needs one of them on its
+  stores; Fixpt's is the one to take (its convention, and native code's
+  in line), which means kayak-rt's remembered cells become Fixpt's cards.
