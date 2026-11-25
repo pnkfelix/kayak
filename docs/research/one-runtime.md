@@ -93,6 +93,7 @@ kayak-rt and kcrt-core alone, recorded at each step here.
 | 3, the walk (C535) | + kayak-heap: one object walk (an object's extent, its traced fields, its header from its suffix), both collectors' | ~21k | 1.5k |
 | 4, strings (C536) | + kayak-heap's `text`: a string's words, `string-hash`, a symbol's hash, search, both runtimes' | ~21k | 1.5k |
 | 3, kc in kayak-rt's heap (C538) | kc's code in process allocates in kayak-rt's thread pages, collected by its collector, its stores through its barrier; kcrt's Cheney a built program's alone | ~21k | 1.5k |
+| 3, the space (C539) | + kayak-heap's `space` (1.6k lines, kayak-rt's `obj/space.rs` moved whole): pages, a thread's heap, start bits, the bump, the store buffer | ~19.5k | 1.5k |
 
 ## Done
 
@@ -186,6 +187,17 @@ kayak-rt and kcrt-core alone, recorded at each step here.
   Measured right under stress (a collection every allocation, freed pages
   poisoned, every collection verified, the barrier's slots too); with the
   barrier off, the verifier stops the run.
+
+- **Step 3, the space (C539)**: kayak-rt's `obj/space.rs` moved whole
+  into `kayak_heap::space` (pages and chunks, a thread's bump, the start
+  bits, the store buffer, large objects, adoption, kc's room lent): the
+  shared heap's, and its one module with `unsafe`. The collection it
+  starts is a runtime's, given once (`set_collector`): kayak-rt's
+  `obj::space` re-exports the space and gives it its collector before its
+  first allocation. Its small functions `#[inline]`, as rustc inlined
+  them within kayak-rt; without, kfx's self-compile was 3.5% slower. Next:
+  the collector (`obj::collect`, its marking and copying) over the
+  `Roots` trait, leaving kayak-rt its roots and its types' traces.
 
 ## Step 3's rest: kc's code in kayak-rt's heap, in process (done, C538)
 

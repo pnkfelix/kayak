@@ -18,10 +18,10 @@ kayak-sync = { path = "../kayak-sync", optional = true }
 libc = "0.2.189"
 
 [features]
-heap-stats = []
+heap-stats = ["kayak-heap/heap-stats"]
 # `par`'s branches that share what is written, at once (C102), by kayak-sync's
 # `unsafe`; without it they run in turn.
-unsafe-par = ["dep:kayak-sync"]
+unsafe-par = ["dep:kayak-sync", "kayak-heap/unsafe-par"]
 
 [lints]
 workspace = true

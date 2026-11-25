@@ -11,10 +11,15 @@
 //! of kayak-rt's space, of kc's stack) stay the caller's. Then (C536)
 //! strings' primitives over their code points ([`text`]). Then (C537) a
 //! collection's roots, the trait each runtime finds them by ([`roots`]).
+//! Then (C539) the space ([`space`]): pages, a thread's heap, its start
+//! bits, its bump, its store buffer, kayak-rt's before; the crate's one
+//! module with `unsafe`, the heap's own memory.
 
 use kayak_layout as layout;
 
 pub mod roots;
+#[allow(unsafe_code)]
+pub mod space;
 pub mod text;
 
 const TAG_MASK: u64 = layout::TAG_MASK;

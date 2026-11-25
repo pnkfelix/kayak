@@ -17270,3 +17270,30 @@ they were kcrt's semispaces and Cheney's copy. A built program keeps those.
   notes the user's question of `utf8` for compactness, measured: live
   strings under 17 MB, the peak the collector's sizing over what survives.
 - **The full check**: `check: all passed`, 8 min 03 s (the mean of 100 runs 8 min 27 s); the pre-check passed first.
+
+## C539. The heap's space moves to `kayak-heap` (2026-11-25)
+
+Step 3 (`docs/research/one-runtime.md`): kayak-rt's collector into the
+shared crate, its first and most separable part.
+- **`kayak_heap::space`**: kayak-rt's `obj/space.rs`, moved whole
+  (`git mv`): pages and chunks, a thread's bump, start bits, the store
+  buffer, large objects, adoption of an ended thread's pages, the room
+  lent kc's code (C538). It used nothing of kayak-rt's but the collection
+  it starts, which is a hook now (`Collector`, `set_collector`): the
+  collector stays the runtime's. Its `pub(crate)` items `pub`; the four
+  helpers kayak-rt's collector tests read, `cfg(test)` before, plain now.
+  kayak-heap gains the features it reads (`heap-stats`, `unsafe-par`),
+  which kayak-rt passes on. The space's own tests move with it.
+- **`unsafe` in kayak-heap**: its `space` module alone, the heap's own
+  memory, moved from kayak-rt's `obj/` (where the user's rule allows it),
+  not new. Flagged for the user: the rule's place is now this module too.
+- **kayak-rt's `obj::space`**: a re-export, with `words`, `words_slice`,
+  `put` and `lend`, the ways into the space's `refill`, giving it the
+  collector once first (`ready`).
+- **Inlining**: kfx's self-compile was 3.5% slower with the space in a
+  crate of its own (3.12 s against 3.01 s, side by side), `word_mut` and
+  its kin no longer inlined into the collector's loops; each `pub fn`
+  `#[inline]` now: 2.98 s against 3.01 s, peak 248 MB against 302 MB
+  (the second not explained yet; stack words that pin may differ).
+- **gc-stress** runs kayak-heap's tests under stress with kayak-rt's.
+- **The full check**: `check: all passed`, 9 min 48 s (the mean of 102 runs 8 min 29 s); the pre-check passed first.
