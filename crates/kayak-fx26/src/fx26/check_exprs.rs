@@ -1844,7 +1844,8 @@ pub mod expressions {
 
     /// Whether a quoted datum is one KFX builds (C77, C80): a `.` only
     /// before a dotted list's last item, a vector's `#vector` only at its
-    /// head; no `#utf8"…"` nor `#u8(…)` within, which KFX's `datum` has not yet.
+    /// head; a bytevector's `#u8` only at its own (C529); no `#utf8"…"` within,
+    /// which KFX's `datum` has not yet.
     pub fn quotable_p(d: kayak_rt::data::DataAt<'static, Sexp>) -> bool {
         let tagcase_ = d;
         if Sexp::__is_Sym(tagcase_) {
@@ -1852,11 +1853,11 @@ pub mod expressions {
             (not(string_eq_p(n, str_lit!("."))) && not(string_eq_p(n, str_lit!("#vector"))) && not(string_eq_p(n, str_lit!("#utf8"))) && not(string_eq_p(n, str_lit!("#u8"))))
         } else if Sexp::__is_Lst(tagcase_) {
             let (xs, f, l, p,) = Sexp::__Lst(tagcase_);
-            quotable_items_p(if head_is_p(d, str_lit!("#vector")) {
+            (bytes_literal_p(d) || quotable_items_p(if head_is_p(d, str_lit!("#vector")) {
                 cdr(xs)
             } else {
                 xs
-            })
+            }))
         } else {
             let other = tagcase_;
             true
@@ -6579,7 +6580,7 @@ pub mod expressions {
                             // `quoted` has it (C291).
                             return synth(v, s, sym(str_lit!("nil"), f, p));
                         } else if not(quotable_p(car(xs))) {
-                            return match refuse(v, str_lit!("a quoted datum KFX does not build: a `.` not before a dotted list's last item, or `#utf8\"…\"` or `#u8(…)` within, which KFX's `datum` has not yet")) {};
+                            return match refuse(v, str_lit!("a quoted datum KFX does not build: a `.` not before a dotted list's last item, or `#utf8\"…\"` within, which KFX's `datum` has not yet")) {};
                         } else {
                             return res(ty_data(str_lit!("datum"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), nil::<Str>(), s);
                         }
@@ -6601,7 +6602,7 @@ pub mod expressions {
                         if null_p(ys) {
                             return match refuse(v, str_lit!("a quasiquote of (), which FX-26 takes as a nil of any type: write nil")) {};
                         } else if not(quotable_p(car(xs))) {
-                            return match refuse(v, str_lit!("a quasiquoted datum KFX does not build: a `.` not before a dotted list's last item, or `#utf8\"…\"` or `#u8(…)` within, which KFX's `datum` has not yet")) {};
+                            return match refuse(v, str_lit!("a quasiquoted datum KFX does not build: a `.` not before a dotted list's last item, or `#utf8\"…\"` within, which KFX's `datum` has not yet")) {};
                         } else if head_is_p(car(xs), str_lit!("unquote")) {
                             return check(v, s, second(ys), ty_data(str_lit!("datum"), nil::<kayak_rt::data::DataAt<'static, Ty>>()));
                         } else {

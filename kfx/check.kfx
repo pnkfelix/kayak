@@ -2096,15 +2096,19 @@
 "`datum` (C77), FX-26's union of what a reader reads, `(union int f64
  char bool string symbol keyword nil (pairof datum datum acyclic)
  vector)`, its keywords C291's: a name, its members found when they are
- wanted, since it mentions itself. FX-26's has `bytevector` and (since
- Fixpt 06a3666) `utf8` too, which KFX's has not yet: KFX's Rust keeps a
- `utf8` as a string, which a union could not tell from one, so
- `#utf8\"…\"` within quoted data is refused."
+ wanted, since it mentions itself. Its `bytevector` since C529, frozen,
+ `(bytevectorof const)`. FX-26's has (since Fixpt 06a3666) `utf8` too,
+ which KFX's has not yet: KFX's Rust keeps a `utf8` as a string, which a
+ union could not tell from one, so `#utf8\"…\"` within quoted data is
+ refused (the runtimes' unification, step 2)."
 (define datum-members (subr kfx () tys)
   (lambda ()
     (list (ty-int) (ty-f64) (ty-char) (ty-bool) (ty-string) (ty-data "symbol" nil) (ty-data "keyword" nil) (ty-data "nil" nil)
           (ty-data "%pairof" (list (ty-data "datum" nil) (ty-data "datum" nil) (ty-rconst "acyclic")))
-          (ty-data "vector" nil))))
+          (ty-data "vector" nil)
+          ;; A frozen bytevector, `(bytevectorof const)` (C529), as Fixpt's
+          ;; `datum` has it (`bytevector?` its test).
+          (ty-data "%bytes" (list (ty-rconst "const"))))))
 
 "A union of sums as the one sum `tagcase` takes apart, and a `sum` is
  made of (Fixpt's U3b, C355): each tag once, at its first place, its

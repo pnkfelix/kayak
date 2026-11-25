@@ -6738,6 +6738,21 @@ pub mod made__load__3__main {
         }
     }
 
+    pub fn show_bytes(mut v: Bytes, mut i: Int, mut acc: Str) -> Str {
+        loop {
+            if _lt(i, int_lit(0)) {
+                return acc;
+            } else {
+                (i, acc) = (_minus(i, int_lit(1)), string_append(int_to_string(u8_to_int(bytevector_u8_ref(v, i))), if string_eq_p(acc, str_lit!("")) {
+                    str_lit!("")
+                } else {
+                    string_append(str_lit!(" "), acc)
+                }));
+                continue;
+            }
+        }
+    }
+
     pub fn show_datum(d: kayak_rt::value::Value) -> Str {
         if kayak_rt::value::null_p(d) {
             str_lit!("()")
@@ -6749,6 +6764,8 @@ pub mod made__load__3__main {
             string_append(str_lit!("\""), string_append(kayak_rt::value::unbox::<Str>(d), str_lit!("\"")))
         } else if mx_utf8_p(d) {
             string_append(str_lit!("#utf8\""), string_append(mx_utf8_to_string(d), str_lit!("\"")))
+        } else if bytevector_p(d) {
+            string_append(str_lit!("#u8("), string_append(show_bytes(kayak_rt::value::unbox_other::<Bytes>(d), _minus(bytevector_length(kayak_rt::value::unbox_other::<Bytes>(d)), int_lit(1)), str_lit!("")), str_lit!(")")))
         } else if char_p(d) {
             string_append(str_lit!("#\\"), char_to_string(kayak_rt::value::unbox::<char>(d)))
         } else if int_p(d) {
@@ -20871,6 +20888,17 @@ pub mod made__load__3__main {
         remainder(_plus(_star(h, int_lit(65599)), x), maker_st.hash_p.get().unwrap())
     }
 
+    pub fn bytes_hash<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut v: Bytes, mut i: Int, mut h: Int) -> Int {
+        loop {
+            if _lt(i, bytevector_length(v)) {
+                (i, h) = (_plus(i, int_lit(1)), mix(mxp, maker_st, h, u8_to_int(bytevector_u8_ref(v, i))));
+                continue;
+            } else {
+                return h;
+            }
+        }
+    }
+
     #[inline]
     pub fn text_hash<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, t: Str) -> Int {
         remainder(string_hash(t), maker_st.hash_p.get().unwrap())
@@ -20900,6 +20928,8 @@ pub mod made__load__3__main {
                 mix(mxp, maker_st, int_lit(11), text_hash(mxp, maker_st, symbol_to_string(mx_keyword_to_symbol(d))))
             } else if mx_utf8_p(d) {
                 mix(mxp, maker_st, int_lit(13), text_hash(mxp, maker_st, mx_utf8_to_string(d)))
+            } else if bytevector_p(d) {
+                bytes_hash(mxp, maker_st, kayak_rt::value::unbox_other::<Bytes>(d), int_lit(0), int_lit(12))
             } else {
                 int_lit(3)
             }

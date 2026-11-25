@@ -1380,9 +1380,11 @@
       (tagcase d
         (sym (n f p) (cond ((string=? n "#t") (x-bool #t a)) ((string=? n "#f") (x-bool #f a)) ((keyword-name? n) (keyword-x n a)) (else (x-sym n a))))
         (lst (ys f l p)
-          (if (and (not (null? ys)) (tagcase (car ys) (sym (n f2 p2) (string=? n "#vector")) (else other #f)))
-              (x-app (std-var "list->vector" a) (list (quoted-list (cdr ys) a)) a)
-              (quoted-list ys a)))
+          (cond ((and (not (null? ys)) (tagcase (car ys) (sym (n f2 p2) (string=? n "#vector")) (else other #f)))
+                 (x-app (std-var "list->vector" a) (list (quoted-list (cdr ys) a)) a))
+                ;; A bytevector within (C529): made, then interned with the rest.
+                ((bytes-literal? d) (bytes-quoted d a))
+                (else (quoted-list ys a))))
         (else other (parse-x d)))))
 
   ;; Quasiquotes (C221): Fixpt's parser's `quoted` (parser.fx, TODO §51),

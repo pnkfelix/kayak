@@ -101,3 +101,7 @@ kayak-rt and kcrt-core alone, recorded at each step here.
   written before. No format changed: they were already Fixpt's numbers;
   now they cannot drift. Left: the native convention's offsets (kayak-jit's
   `state`), which are the declaration's, already checked against it.
+- **Step 2(c), its `bytevector` (C529)**: KFX's `datum` takes the frozen
+  bytevector (Fixpt's `bytevector?`); kayak-rt's `Bytes` a `Value`'s
+  member; kc's native code reads one's length and bytes (kcrt routines);
+  the expander's Fixpt text unpatched. Its `utf8` waits for 2(b).

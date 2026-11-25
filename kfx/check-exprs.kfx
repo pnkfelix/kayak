@@ -823,10 +823,11 @@
           (lambda (d)
             "Whether a quoted datum is one KFX builds (C77, C80): a `.` only
              before a dotted list's last item, a vector's `#vector` only at its
-             head; no `#utf8\"…\"` nor `#u8(…)` within, which KFX's `datum` has not yet."
+             head; a bytevector's `#u8` only at its own (C529); no `#utf8\"…\"` within,
+             which KFX's `datum` has not yet."
             (tagcase d
               (sym (n f p) (and (not (string=? n ".")) (not (string=? n "#vector")) (not (string=? n "#utf8")) (not (string=? n "#u8"))))
-              (lst (xs f l p) (quotable-items? (if (head-is? d "#vector") (cdr xs) xs)))
+              (lst (xs f l p) (or (bytes-literal? d) (quotable-items? (if (head-is? d "#vector") (cdr xs) xs))))
               (else other #t))))
         (quotable-items? (subr kfx (sexps) bool)
           (lambda (xs)
@@ -3158,7 +3159,7 @@
                                 "A bare `'()` is `nil`, an empty list of any type, as Fixpt's
                                  `quoted` has it (C291)."
                                 (synth v s (sym "nil" f p)))
-                               ((not (quotable? (car xs))) (refuse v "a quoted datum KFX does not build: a `.` not before a dotted list's last item, or `#utf8\"…\"` or `#u8(…)` within, which KFX's `datum` has not yet"))
+                               ((not (quotable? (car xs))) (refuse v "a quoted datum KFX does not build: a `.` not before a dotted list's last item, or `#utf8\"…\"` within, which KFX's `datum` has not yet"))
                                (else (res (ty-data "datum" nil) nil s))))
                        (else other (refuse v "a quoted datum KFX does not read")))))
                 ((string=? h "quasiquote")
@@ -3170,7 +3171,7 @@
                      (tagcase (car xs)
                        (lst (ys f l p)
                          (cond ((null? ys) (refuse v "a quasiquote of (), which FX-26 takes as a nil of any type: write nil"))
-                               ((not (quotable? (car xs))) (refuse v "a quasiquoted datum KFX does not build: a `.` not before a dotted list's last item, or `#utf8\"…\"` or `#u8(…)` within, which KFX's `datum` has not yet"))
+                               ((not (quotable? (car xs))) (refuse v "a quasiquoted datum KFX does not build: a `.` not before a dotted list's last item, or `#utf8\"…\"` within, which KFX's `datum` has not yet"))
                                ((head-is? (car xs) "unquote") (check v s (second ys) (ty-data "datum" nil)))
                                (else (tagcase (quasi-items v s ys 1) (res (t es s) (res (ty-data "datum" nil) es s))))))
                        (else other (synth-form v s e "quote" xs)))))

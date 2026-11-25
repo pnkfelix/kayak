@@ -378,6 +378,36 @@ pub extern "C" fn kc_symbol_to_string(v: u64) -> u64 {
     word(v - TAG_BLOBLET - 40 + 8)
 }
 
+/// A bytevector's length (C529), its header's count of bytes, a fixnum.
+#[unsafe(no_mangle)]
+pub extern "C" fn kc_bytevector_length(v: u64) -> u64 {
+    layout::H_BYTES.get(header(v)) << 3
+}
+
+/// Bytevector `v`'s byte at fixnum `i`, plus one, a fixnum (kc's code
+/// takes the one off), or the index's failure: answered plus one so that
+/// in process a failure's 0 is no byte's.
+fn bytevector_u8_ref(v: u64, i: u64) -> Result<u64, String> {
+    let n = layout::H_BYTES.get(header(v));
+    let k = (i as i64) >> 3;
+    if i & TAG_MASK != TAG_FIXNUM || k < 0 || k as u64 >= n {
+        return Err(format!("bytevector index out of range (length {n})"));
+    }
+    // SAFETY: a bytevector's suffix, its `n` bytes from the word's address,
+    // within its object, alive for the run.
+    let b = unsafe { *((v - TAG_BLOBLET + k as u64) as *const u8) };
+    Ok((b as u64 + 1) << 3)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn kcrt_bytevector_u8_ref(v: u64, i: u64) -> u64 {
+    bytevector_u8_ref(v, i).unwrap_or_else(|m| failed(&m))
+}
+
+extern "C" fn here_bytevector_u8_ref(v: u64, i: u64) -> u64 {
+    bytevector_u8_ref(v, i).unwrap_or_else(failed_here)
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn kc_is_string(v: u64) -> u64 {
     boolean(v & TAG_MASK == TAG_BLOBLET && kind(v) == KIND_STRING)
@@ -1098,6 +1128,8 @@ pub fn routine(name: &str) -> u64 {
         "kcrt_list_to_vector" => here_list_to_vector as *const (),
         "kc_error" => here_error as *const (),
         "kc_string_search" => kc_string_search as *const (),
+        "kc_bytevector_length" => kc_bytevector_length as *const (),
+        "kcrt_bytevector_u8_ref" => here_bytevector_u8_ref as *const (),
         "kc_array_index_fail" => here_array_index_fail as *const (),
         "kc_make_array_fail" => here_make_array_fail as *const (),
         "kc_string_index_fail" => here_string_index_fail as *const (),

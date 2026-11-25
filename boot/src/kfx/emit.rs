@@ -2874,6 +2874,27 @@ pub mod emitter {
         }
     }
 
+    /// Each byte `\xHH`, as a Rust byte string writes one.
+    pub fn put_byte_escapes(bs: List<i64>, acc: Chars) -> Chars {
+        if null_p(bs) {
+            acc
+        } else {
+            let b = car(bs);
+            let hex = str_lit!("0123456789abcdef");
+            let acc = put(str_lit!("\\x"), acc);
+            let acc = kayak_rt::heap_cons(string_ref_i64(hex, i64_quotient(b, 16i64)), acc);
+            let acc = kayak_rt::heap_cons(string_ref_i64(hex, i64_remainder(b, 16i64)), acc);
+            put_byte_escapes(cdr(bs), acc)
+        }
+    }
+
+    /// `#u8(…)`, `#u8"…"` (`(#u8 BYTE …)`, read; C527): Rust's `b"…"`, its
+    /// bytevector made once (`bytes_lit!`), frozen.
+    #[inline]
+    pub fn put_bytes_literal(e: kayak_rt::data::DataAt<'static, Sexp>, acc: Chars) -> Chars {
+        put(str_lit!("\")"), put_byte_escapes(bytes_literal_bytes(e), put(str_lit!("kayak_rt::bytes_lit!(b\""), acc)))
+    }
+
     /// A quoted datum, built (C77): a list's pairs `cons`ed, each atom boxed.
     pub fn put_quoted(c: kayak_rt::data::DataAt<'static, Ctx>, d: kayak_rt::data::DataAt<'static, Sexp>, acc: Chars) -> Chars {
         let tagcase_ = d;
@@ -2881,6 +2902,8 @@ pub mod emitter {
             let (xs, f, l, p,) = Sexp::__Lst(tagcase_);
             if head_is_p(d, str_lit!("#vector")) {
                 put(str_lit!(")"), put_quoted_items(c, cdr(xs), put(str_lit!("kayak_rt::value::datum_list_to_vector("), acc)))
+            } else if bytes_literal_p(d) {
+                put(str_lit!(", kayak_rt::value::Shape::Bytevector)"), put_bytes_literal(d, put(str_lit!("kayak_rt::value::other("), acc)))
             } else {
                 put_quoted_items(c, xs, acc)
             }
@@ -2931,27 +2954,6 @@ pub mod emitter {
     #[inline]
     pub fn put_utf8_literal(e: kayak_rt::data::DataAt<'static, Sexp>, acc: Chars) -> Chars {
         put(str_lit!("\"))"), put_escaped(string_chars(utf8_literal_text(e)), '"', put(str_lit!("kayak_rt::Utf8(str_lit!(\""), acc)))
-    }
-
-    /// Each byte `\xHH`, as a Rust byte string writes one.
-    pub fn put_byte_escapes(bs: List<i64>, acc: Chars) -> Chars {
-        if null_p(bs) {
-            acc
-        } else {
-            let b = car(bs);
-            let hex = str_lit!("0123456789abcdef");
-            let acc = put(str_lit!("\\x"), acc);
-            let acc = kayak_rt::heap_cons(string_ref_i64(hex, i64_quotient(b, 16i64)), acc);
-            let acc = kayak_rt::heap_cons(string_ref_i64(hex, i64_remainder(b, 16i64)), acc);
-            put_byte_escapes(cdr(bs), acc)
-        }
-    }
-
-    /// `#u8(…)`, `#u8"…"` (`(#u8 BYTE …)`, read; C527): Rust's `b"…"`, its
-    /// bytevector made once (`bytes_lit!`), frozen.
-    #[inline]
-    pub fn put_bytes_literal(e: kayak_rt::data::DataAt<'static, Sexp>, acc: Chars) -> Chars {
-        put(str_lit!("\")"), put_byte_escapes(bytes_literal_bytes(e), put(str_lit!("kayak_rt::bytes_lit!(b\""), acc)))
     }
 
     /// A wrapper's boxing of a value, its start (C82).

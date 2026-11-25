@@ -5810,12 +5810,13 @@ pub fn sums_merged(ms: Tys) -> Tys {
 // `datum` (C77), FX-26's union of what a reader reads, `(union int f64
 // char bool string symbol keyword nil (pairof datum datum acyclic)
 // vector)`, its keywords C291's: a name, its members found when they are
-// wanted, since it mentions itself. FX-26's has `bytevector` and (since
-// Fixpt 06a3666) `utf8` too, which KFX's has not yet: KFX's Rust keeps a
-// `utf8` as a string, which a union could not tell from one, so
-// `#utf8"…"` within quoted data is refused.
+// wanted, since it mentions itself. Its `bytevector` since C529, frozen,
+// `(bytevectorof const)`. FX-26's has (since Fixpt 06a3666) `utf8` too,
+// which KFX's has not yet: KFX's Rust keeps a `utf8` as a string, which a
+// union could not tell from one, so `#utf8"…"` within quoted data is
+// refused (the runtimes' unification, step 2).
 pub fn datum_members() -> Tys {
-    kayak_rt::heap_cons(ty_int(), kayak_rt::heap_cons(ty_f64(), kayak_rt::heap_cons(ty_char(), kayak_rt::heap_cons(ty_bool(), kayak_rt::heap_cons(ty_string(), kayak_rt::heap_cons(ty_data(str_lit!("symbol"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::heap_cons(ty_data(str_lit!("keyword"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::heap_cons(ty_data(str_lit!("nil"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::heap_cons(ty_data(str_lit!("%pairof"), kayak_rt::heap_cons(ty_data(str_lit!("datum"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::heap_cons(ty_data(str_lit!("datum"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::heap_cons(ty_rconst(str_lit!("acyclic")), kayak_rt::nil())))), kayak_rt::heap_cons(ty_data(str_lit!("vector"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::nil()))))))))))
+    kayak_rt::heap_cons(ty_int(), kayak_rt::heap_cons(ty_f64(), kayak_rt::heap_cons(ty_char(), kayak_rt::heap_cons(ty_bool(), kayak_rt::heap_cons(ty_string(), kayak_rt::heap_cons(ty_data(str_lit!("symbol"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::heap_cons(ty_data(str_lit!("keyword"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::heap_cons(ty_data(str_lit!("nil"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::heap_cons(ty_data(str_lit!("%pairof"), kayak_rt::heap_cons(ty_data(str_lit!("datum"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::heap_cons(ty_data(str_lit!("datum"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::heap_cons(ty_rconst(str_lit!("acyclic")), kayak_rt::nil())))), kayak_rt::heap_cons(ty_data(str_lit!("vector"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::heap_cons(ty_data(str_lit!("%bytes"), kayak_rt::heap_cons(ty_rconst(str_lit!("const")), kayak_rt::nil())), kayak_rt::nil())))))))))))
 }
 
 // A union of sums as the one sum `tagcase` takes apart, and a `sum` is

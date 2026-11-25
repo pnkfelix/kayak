@@ -770,6 +770,14 @@
         (if (null? e)
             (list (go d))
             (list (go d) (the syns-a (list (atom e 0 0 0))))))))))
+;; Bytevector `v`'s bytes up to `i`, space-separated, before `acc`.
+(define show-bytes (->* (bytevector int string) string)
+  (lambda (v i acc)
+    (if (< i 0)
+        acc
+        (show-bytes v (- i 1)
+                    (string-append (int->string (u8->int (bytevector-u8-ref v i)))
+                                   (if (string=? acc "") "" (string-append " " acc)))))))
 (define show-datum (->* (datum) string)
   (lambda (d)
     (cond ((null? d) "()")
@@ -777,6 +785,8 @@
           ((mx-keyword? d) (string-append "#:" (symbol->string (mx-keyword->symbol d))))
           ((string? d) (string-append "\"" (string-append d "\"")))
           ((mx-utf8? d) (string-append "#utf8\"" (string-append (mx-utf8->string d) "\"")))
+          ((bytevector? d)
+           (string-append "#u8(" (string-append (show-bytes d (- (bytevector-length d) 1) "") ")")))
           ((char? d) (string-append "#\\" (char->string d)))
           ((int? d) (int->string d))
           ((f64? d) (f64->string d))
@@ -8298,6 +8308,12 @@
 ;; INCR_IMPED.md §5).
 (define hash-p int 2147483647)
 (define mix (->* (int int) int) (lambda (h x) (remainder (+ (* h 65599) x) hash-p)))
+;; `h` with bytevector `v`'s bytes from `i` mixed in, as `syn_hash`'s.
+(define bytes-hash (->* (bytevector int int) int)
+  (lambda (v i h)
+    (if (< i (bytevector-length v))
+        (bytes-hash v (+ i 1) (mix h (u8->int (bytevector-u8-ref v i))))
+        h)))
 (define text-hash (->* (string) int) (lambda (t) (remainder (string-hash t) hash-p)))
 (define-rec
 (syn-hash (->* (syn) int)
@@ -8312,6 +8328,7 @@
               ((bool? d) (mix 10 (if d 1 0)))
               ((mx-keyword? d) (mix 11 (text-hash (symbol->string (mx-keyword->symbol d)))))
               ((mx-utf8? d) (mix 13 (text-hash (mx-utf8->string d))))
+              ((bytevector? d) (bytes-hash d 0 12))
               (else 3)))
       (mx-eager-reader-types-lst (xs d a b x) (syns-hash 4 xs))
       (dotted (xs t d a b x) (mix (syns-hash 5 xs) (syn-hash t)))

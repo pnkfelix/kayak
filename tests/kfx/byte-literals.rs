@@ -5,7 +5,7 @@ use kayak_rt::*;
 // `#u8"…"` and `#u8(…)` (Fixpt 3569ce51; C527): bytevector constants, of
 // type `bytevector`, `(bytevectorof const)`, frozen; in KFX's Rust a `b"…"`
 // made once. Read, compared, measured and turned into text; a procedure's
-// literal the same each call.
+// literal the same each call; within quoted data, a datum's (C529).
 
 // The sum of a frozen bytevector's bytes from `i`.
 pub fn sum_bytes(mut bv: Bytes, mut i: Int, mut acc: Int) -> Int {
@@ -22,6 +22,17 @@ pub fn sum_bytes(mut bv: Bytes, mut i: Int, mut acc: Int) -> Int {
 #[inline]
 pub fn greeting() -> Bytes {
     kayak_rt::bytes_lit!(b"\x68\xc3\xa9\x6c\x6c\x6f")
+}
+
+// A datum's bytevector's length (C529), or -1.
+#[inline]
+pub fn datum_bytes(x: kayak_rt::value::Value) -> Int {
+    if bytevector_p(x) {
+        let b = kayak_rt::value::unbox_other::<Bytes>(x);
+        bytevector_length(b)
+    } else {
+        int_lit(-1)
+    }
 }
 
 // `a`, a space, `b`.
@@ -55,6 +66,12 @@ pub fn main() -> Str {
         } else { unreachable!() }
     });
     let s5 = with_space(s4, int_to_string(bytevector_length(kayak_rt::bytes_lit!(b""))));
-    with_space(s5, int_to_string(u8_to_int(bytevector_u8_ref(kayak_rt::bytes_lit!(b"\x41"), int_lit(0)))))
+    let s6 = with_space(s5, int_to_string(u8_to_int(bytevector_u8_ref(kayak_rt::bytes_lit!(b"\x41"), int_lit(0)))));
+    let d = kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("a")), kayak_rt::value::cons(kayak_rt::value::other(kayak_rt::bytes_lit!(b"\x69\x6e\x20\x61\x20\x6c\x69\x73\x74"), kayak_rt::value::Shape::Bytevector), kayak_rt::value::cons(kayak_rt::value::other(kayak_rt::bytes_lit!(b"\x01\x02"), kayak_rt::value::Shape::Bytevector), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(int_lit(3)), kayak_rt::value::Value::Nil))));
+    with_space(s6, with_space(int_to_string(datum_bytes(kayak_rt::value::car(kayak_rt::value::cdr(d)))), with_space(int_to_string(datum_bytes(kayak_rt::value::car(d))), if bytevector_p(kayak_rt::value::car(kayak_rt::value::cdr(kayak_rt::value::cdr(d)))) {
+        str_lit!("yes")
+    } else {
+        str_lit!("no")
+    })))
 }
 

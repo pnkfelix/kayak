@@ -1,7 +1,7 @@
 "`#u8\"…\"` and `#u8(…)` (Fixpt 3569ce51; C527): bytevector constants, of
  type `bytevector`, `(bytevectorof const)`, frozen; in KFX's Rust a `b\"…\"`
  made once. Read, compared, measured and turned into text; a procedure's
- literal the same each call."
+ literal the same each call; within quoted data, a datum's (C529)."
 
 "The sum of a frozen bytevector's bytes from `i`."
 (define* sum-bytes (subr spin (bytevector int int) int)
@@ -11,6 +11,10 @@
         (sum-bytes bv (+ i 1) (+ acc (u8->int (bytevector-u8-ref bv i)))))))
 
 (define greeting (subr pure () bytevector) (lambda () #u8"h\xc3;\xa9;llo"))
+
+"A datum's bytevector's length (C529), or -1."
+(define datum-bytes (subr pure (datum) int)
+  (lambda (x) (typecase x (bytevector b (bytevector-length b)) (else y -1))))
 
 "`a`, a space, `b`."
 (define with-space (subr pure (string string) string)
@@ -23,5 +27,9 @@
            (s2 (with-space s1 (if (bytevector=? t #u8(97 98 128 255 10 92 122)) "same" "differ")))
            (s3 (with-space s2 (if (bytevector=? (greeting) (greeting)) "once" "twice")))
            (s4 (with-space s3 (tagcase (bytes->utf8 (greeting)) (text u (utf8->string u)) (bad n "bad"))))
-           (s5 (with-space s4 (int->string (bytevector-length #u8())))))
-      (with-space s5 (int->string (u8->int (bytevector-u8-ref '#u8"A" 0)))))))
+           (s5 (with-space s4 (int->string (bytevector-length #u8()))))
+           (s6 (with-space s5 (int->string (u8->int (bytevector-u8-ref '#u8"A" 0)))))
+           (d '(a #u8"in a list" #u8(1 2) 3)))
+      (with-space s6 (with-space (int->string (datum-bytes (car (cdr d))))
+                                 (with-space (int->string (datum-bytes (car d)))
+                                             (if (bytevector? (car (cdr (cdr d)))) "yes" "no")))))))

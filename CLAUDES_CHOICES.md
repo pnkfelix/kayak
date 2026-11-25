@@ -16975,3 +16975,39 @@ immediates' words, not its constructors of pointers. Left of step 1: the
 native convention's state offsets, the declaration's, checked already.
 Not kayak-rt deepened: shared.
 - **The full check**: `check: all passed`, 9 min 07 s (the mean of 83 runs 8 min 14 s); the pre-check passed first.
+
+## C529. `bytevector` in KFX's `datum`; the expander's arms back (2026-11-25)
+
+The user, of C527's two patched-out `(bytevector? d)` arms: "why do you
+assume this? Why wouldn't we add bytevector support to KFX? Why do you
+think I've been having you update your Fixpt?". `bytevector?` is Fixpt's
+test of the frozen bytevector, `(bytevectorof const)` (fx26.md: "a
+reader's, in a `datum`, is one too, `bytevector?` its test"), which C527
+gave KFX; so `datum` takes it now. Step 2(c) of
+`docs/research/one-runtime.md`, before 2(a)/(b), being the cheaper and the
+user's asked.
+
+- **The checker**: `datum-members` gains `(bytevectorof const)`; its shape
+  `bytevector`, as `bytevector?` and `typecase`'s arm narrow to.
+  `#u8(…)` quotable within data (`quotable?`).
+- **KFX's Rust**: `Bytes` a `Value`'s member (`word_member!`, kind 4,
+  Fixpt's bytevector); a quoted datum's bytevector
+  `other(bytes_lit!(b"…"), Shape::Bytevector)`. kayak-rt: one line.
+- **The engine**: cg's `quoted-item` builds one within a quote
+  (`bytes-quoted`); the IR's `quoted-constant!` had it already.
+- **kc** (its native back end, for the expander it compiles):
+  `bytevector-length` (`kc_bytevector_length`, the header's bytes),
+  `bytevector-u8-ref` (`kcrt_bytevector_u8_ref`, a routine that may fail,
+  its in-process variant `here_…`, answering the byte plus one so that a
+  failure's 0 is no byte's, kc's code taking the one off) and `u8->int`
+  (a fixnum already). Appended to `x64-services`, so no routine's cell
+  moved.
+- **The expander**: C527's four patches (the arms and their helpers)
+  dropped, Fixpt's text as it is.
+- **Tests**: `tests/kfx-stricter/bytes-in-quoted-data.kfx` gone (KFX takes
+  it); `tests/kfx/byte-literals.kfx` gives a datum's bytevector to
+  `typecase` and `bytevector?`, KFX's Rust and Fixpt alike (`… 9 -1 yes`;
+  its answer file rewritten whole, the program changed); the engine as
+  Fixpt on quoted data of bytevectors. Fixpt's `run/byte-strings.fx` still
+  refused: a `typecase` of an expression (C62), and `utf8-length`.
+- **The full check**: `check: all passed`, 10 min 12 s (the mean of 84 runs 8 min 15 s); the pre-check passed first.

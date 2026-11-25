@@ -175,6 +175,10 @@ impl Member for crate::Sum {
 // (kind 3).
 word_member!([T: crate::Trace + 'static] crate::Array<T>; kind::BLOBLET, kind::VECTOR);
 
+// A frozen bytevector, `(bytevectorof const)`, a datum's (C529): its word,
+// to Fixpt's bytevector (kind 4).
+word_member!([] crate::Bytes; kind::BYTEVECTOR);
+
 /// An integer of a fixed width: its word, a fixnum (or, `u64`, a bignum's).
 macro_rules! int_member {
     ($($t:ty),*) => {$(

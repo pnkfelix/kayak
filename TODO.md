@@ -1834,7 +1834,8 @@ over its 1664 definitions, 335 of them refused:
   a program, which the user wants (`b"…"` in KFX's Rust), is refused by
   Fixpt itself (`no_bytevector`): Fixpt's first. Done at 3569ce51
   (C527): `#u8"…"`, `#u8(…)`, and `bytevector` as `(bytevectorof const)`;
-  not within quoted data (no `bytevector` in KFX's `datum`), nor in kc.
+  within quoted data since C529 (`bytevector` in KFX's `datum`); not in
+  kc's literals yet.
 - **kfx's reader has no `|…|` symbols** (found at C470): `kfx/read.kfx`,
   kc's and kfx's reader, reads `'||` as the symbol of two bars, Fixpt as
   the empty name (R7RS). The expander's source has none. To be fixed in

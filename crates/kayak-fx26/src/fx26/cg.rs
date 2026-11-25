@@ -5868,6 +5868,8 @@ pub fn quoted_item(d: kayak_rt::data::DataAt<'static, Sexp>, a: i64) -> kayak_rt
             }
         }) {
             x_app(std_var(str_lit!("list->vector"), a), kayak_rt::heap_cons(quoted_list(cdr(ys), a), kayak_rt::nil()), a)
+        } else if bytes_literal_p(d) {
+            bytes_quoted(d, a)
         } else {
             quoted_list(ys, a)
         }
