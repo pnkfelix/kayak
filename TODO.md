@@ -1812,9 +1812,8 @@ over its 1664 definitions, 335 of them refused:
   not yet `utf8?`, `utf8-length`, `-byte-length`, `-ref`, `-next`,
   `-substring`, `-slice`, `utf8=?`, `bytes-as-utf8`, nor the views
   `(bytesof r)`, `(strof r)` and their operations, nor a `utf8` in a
-  union, a datum or `typecase`. kayak-rt's `Utf8` its `string`'s
-  object (kind 1, UTF-8): Fixpt's kind 49/50 when `string` takes Fixpt's
-  UTF-32 layout (the runtimes' unification, the user's, 2026-11-24).
+  union, a datum or `typecase`. kayak-rt's `Utf8` Fixpt's own object,
+  kind 49/50, since C530 (it was the `string`'s, kind 1).
   Tier 1's and the engine's `utf8` are Fixpt's object; the IR
   evaluator's (`prims.kfx`, called by nothing) a string's value. kc's
   native back end has none of it. In the expander's port

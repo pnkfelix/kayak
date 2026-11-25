@@ -184,6 +184,161 @@ pub(crate) fn string_made(n: usize, fill: impl FnOnce(&mut [u8])) -> Option<Str>
     Some(Str(NonNull::from(ws).cast()))
 }
 
+/// `utf8` (C530; Fixpt's, its 279c16cf): an object of its own, as Fixpt's
+/// `make_utf8` makes one: kind 49 (50, `utf8-ascii`, when its text is all
+/// ASCII), no fields and no trailer, its suffix the text's bytes, the
+/// header's count of them exact, frozen. One word, to its object's header.
+/// Before C530 it was the string's object (kind 1), which a union could
+/// not tell from a string.
+#[derive(Clone, Copy)]
+pub struct Utf8(NonNull<u64>);
+
+// SAFETY: a `utf8`'s object is never written after it is made.
+unsafe impl Send for Utf8 {}
+unsafe impl Sync for Utf8 {}
+
+const KIND_UTF8: u8 = kayak_layout::kind("utf8");
+const KIND_UTF8_ASCII: u8 = kayak_layout::kind("utf8-ascii");
+
+/// The words a `utf8` of `n` bytes takes: its header, its bytes.
+pub const fn utf8_words(n: usize) -> usize {
+    1 + n.div_ceil(8)
+}
+
+/// A `utf8`'s header, of `n` bytes.
+const fn utf8_head(n: usize, ascii: bool) -> u64 {
+    layout::header(
+        if ascii { KIND_UTF8_ASCII } else { KIND_UTF8 },
+        0,
+        n,
+        true,
+        true,
+    )
+}
+
+impl Utf8 {
+    #[inline]
+    fn header(self) -> u64 {
+        // SAFETY: a `Utf8` is made only by this module, of an object whose
+        // header is its first word.
+        unsafe { *self.0.as_ptr() }
+    }
+
+    /// Its text's bytes.
+    #[inline]
+    pub fn len(self) -> usize {
+        (self.header() >> 32) as usize
+    }
+
+    #[inline]
+    pub fn is_empty(self) -> bool {
+        self.len() == 0
+    }
+
+    /// Whether its text is all ASCII: its kind says.
+    #[inline]
+    pub fn is_ascii(self) -> bool {
+        ((self.header() >> 3) & 0xff) as u8 == KIND_UTF8_ASCII
+    }
+
+    /// Its text.
+    #[inline]
+    pub fn as_str(self) -> &'static str {
+        // SAFETY: its bytes follow the header, `len` of them, within the
+        // words it was made of (whose pointer it keeps), UTF-8 when made
+        // (from a `&str`), never written.
+        unsafe {
+            let bytes = std::slice::from_raw_parts(self.0.as_ptr().add(1).cast::<u8>(), self.len());
+            std::str::from_utf8_unchecked(bytes)
+        }
+    }
+
+    /// A `utf8` of `text`, made in the heap's space.
+    pub fn of_str(text: &str) -> Utf8 {
+        let n = text.len();
+        let ws = words(utf8_words(n));
+        let (head, body) = ws.split_at_mut(1);
+        // SAFETY: the words after the header, `n` bytes of them
+        // (`utf8_words` made room), zeroed, borrowed only here.
+        let bytes: &mut [u8] =
+            unsafe { std::slice::from_raw_parts_mut(body.as_mut_ptr().cast::<u8>(), n) };
+        bytes.copy_from_slice(text.as_bytes());
+        head[0] = utf8_head(n, text.is_ascii());
+        Utf8(NonNull::from(ws).cast())
+    }
+
+    /// Its word, as a heap object holds it: its suffix's address, past its
+    /// header, tagged `100`, as Fixpt's.
+    #[inline(always)]
+    pub fn word(self) -> HeapWord {
+        HeapWord(
+            self.0
+                .as_ptr()
+                .cast_const()
+                .wrapping_add(1)
+                .map_addr(|a| a | TAG_OBJECT),
+        )
+    }
+
+    /// The `utf8` whose word is `w` (`word`'s).
+    #[inline(always)]
+    pub fn of_word(w: HeapWord) -> Utf8 {
+        let p = w.0.map_addr(|a| a & !TAG_MASK).wrapping_sub(1);
+        match NonNull::new(p.cast_mut()) {
+            Some(p) => Utf8(p),
+            None => crate::fail("a heap's word read as a utf8, which it is not"),
+        }
+    }
+}
+
+impl std::fmt::Debug for Utf8 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "#utf8{:?}", self.as_str())
+    }
+}
+
+/// A `utf8`'s words, made at compile time (a literal, `#utf8"…"`): `W` is
+/// `utf8_words` of its length.
+pub struct Utf8Lit<const W: usize> {
+    words: [u64; W],
+}
+
+impl<const W: usize> Utf8Lit<W> {
+    pub const fn new(text: &str) -> Self {
+        let b = text.as_bytes();
+        let mut words = [0u64; W];
+        words[0] = utf8_head(b.len(), text.is_ascii());
+        let mut w = 0;
+        while w * 8 < b.len() {
+            let mut chunk = [0u8; 8];
+            let mut i = 0;
+            while i < 8 && w * 8 + i < b.len() {
+                chunk[i] = b[w * 8 + i];
+                i += 1;
+            }
+            words[1 + w] = u64::from_ne_bytes(chunk);
+            w += 1;
+        }
+        Utf8Lit { words }
+    }
+
+    /// The `utf8`, its object this literal's words.
+    #[inline]
+    pub fn get(&'static self) -> Utf8 {
+        Utf8(NonNull::from(&self.words).cast())
+    }
+}
+
+/// A `utf8` literal: its object made at compile time, a `static`.
+#[macro_export]
+macro_rules! utf8_lit {
+    ($s:expr) => {{
+        const S: &str = $s;
+        static O: $crate::Utf8Lit<{ $crate::utf8_words(S.len()) }> = $crate::Utf8Lit::new(S);
+        O.get()
+    }};
+}
+
 /// `int` (C488): one word, as Fixpt's: a fixnum (tag 000, 61 bits, its
 /// value the word shifted right three), or a bignum (tag 100, the address
 /// of its object's suffix, as Fixpt's bloblet tag says): its object kind 6,

@@ -2950,10 +2950,11 @@ pub mod emitter {
         }
     }
 
-    /// `#utf8"…"` (`(#utf8 "…")`, read): its text, a static made once.
+    /// `#utf8"…"` (`(#utf8 "…")`, read): its object, Fixpt's (C530), a
+    /// static made once (`utf8_lit!`).
     #[inline]
     pub fn put_utf8_literal(e: kayak_rt::data::DataAt<'static, Sexp>, acc: Chars) -> Chars {
-        put(str_lit!("\"))"), put_escaped(string_chars(utf8_literal_text(e)), '"', put(str_lit!("kayak_rt::Utf8(str_lit!(\""), acc)))
+        put(str_lit!("\")"), put_escaped(string_chars(utf8_literal_text(e)), '"', put(str_lit!("kayak_rt::utf8_lit!(\""), acc)))
     }
 
     /// A wrapper's boxing of a value, its start (C82).

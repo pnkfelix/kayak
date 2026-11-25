@@ -576,6 +576,11 @@ pub mod unions;
 #[path = "../../../tests/kfx/untyped.rs"]
 pub mod untyped;
 
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
+#[path = "../../../tests/kfx/utf8-literals.rs"]
+pub mod utf8_literals;
+
 /// A program's `main`, which gives its answer.
 pub type Main = fn() -> kayak_rt::Str;
 
@@ -724,4 +729,5 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("unicode", unicode::main),
     ("unions", unions::main),
     ("untyped", untyped::main),
+    ("utf8-literals", utf8_literals::main),
 ];

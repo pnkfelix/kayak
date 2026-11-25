@@ -105,3 +105,8 @@ kayak-rt and kcrt-core alone, recorded at each step here.
   bytevector (Fixpt's `bytevector?`); kayak-rt's `Bytes` a `Value`'s
   member; kc's native code reads one's length and bytes (kcrt routines);
   the expander's Fixpt text unpatched. Its `utf8` waits for 2(b).
+- **Step 2(b), `utf8` its own object (C530)**: kayak-rt's `Utf8`
+  Fixpt's, as `make_utf8` makes it: kind 49 (50 all ASCII), no fields, no
+  trailer, the header's count of bytes exact; its literal a static
+  (`utf8_lit!`); `string->utf8` a copy, as Fixpt's. A union can now tell a
+  `utf8` from a string, so the checker's `datum` can take it next.

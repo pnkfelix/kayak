@@ -17011,3 +17011,24 @@ user's asked.
   Fixpt on quoted data of bytevectors. Fixpt's `run/byte-strings.fx` still
   refused: a `typecase` of an expression (C62), and `utf8-length`.
 - **The full check**: `check: all passed`, 10 min 12 s (the mean of 84 runs 8 min 15 s); the pre-check passed first.
+
+## C530. `utf8` its own object in kayak-rt, Fixpt's (2026-11-25)
+
+Step 2(b) of `docs/research/one-runtime.md` (the user's plan, carried
+without review). kayak-rt's `Utf8` was a `Str` (C525), the string's
+object, kind 1: Fixpt's formats, but not Fixpt's object, and no union
+could tell one from a string. Now Fixpt's, as its `make_utf8` makes one
+(`heap/utf8.rs`): kind 49 (`utf8`), 50 (`utf8-ascii`) when all ASCII,
+from kayak-layout's table; no fields and no trailer, the header just
+before the suffix (kayak-rt's collector finds such a header already, as
+`target_word` does); the header's count of bytes exact; frozen.
+- **kayak-rt** (`obj.rs`): `Utf8`, its `len`, `is_ascii` (its kind),
+  `as_str`, `of_str` (made in the heap's space), `word`/`of_word`;
+  `Utf8Lit` and `utf8_lit!`, a literal's static, as `str_lit!`'s.
+  `Trace` its word; `Show` `#utf8"…"`. `string->utf8` and the text of
+  `bytes->utf8` copies, as Fixpt's are; `utf8->string` a string made.
+  Deepens kayak-rt, to converge it on Fixpt's object (flagged).
+- **KFX's Rust**: `#utf8"…"` is `kayak_rt::utf8_lit!("…")`.
+- **Tests**: `tests/kfx/utf8-literals.kfx`, KFX's Rust as Fixpt
+  (`héllo, w😀rld 16 héllo, w😀rld abc`); kayak-rt's 76 tests.
+- **The full check**: `check: all passed`, 9 min 03 s (the mean of 85 runs 8 min 16 s); the pre-check passed first.

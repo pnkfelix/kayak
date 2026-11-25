@@ -114,7 +114,7 @@ impl Show for Str {
 impl Show for crate::Utf8 {
     fn show(&self, out: &mut String) {
         out.push_str("#utf8");
-        self.0.show(out);
+        crate::str_of_parts(&[self.as_str()]).show(out);
     }
 }
 

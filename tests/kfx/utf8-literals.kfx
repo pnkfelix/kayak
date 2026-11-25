@@ -1,0 +1,17 @@
+"`#utf8\"…\"` (Fixpt 06a3666; C526) in KFX's Rust, its object Fixpt's own
+ since C530 (kind 49, 50 all ASCII): made once, converted to a string and
+ to bytes and back."
+
+"A procedure's literal."
+(define greeting (subr pure () utf8) (lambda () #utf8"h\xe9;llo, w\x1F600;rld"))
+
+(define main (subr (maxeff (read @globals) spin) () string)
+  (lambda ()
+    (let* ((t (greeting))
+           (b (utf8->bytes t)))
+      (string-append (utf8->string t)
+        (string-append " "
+          (string-append (int->string (bytevector-length b))
+            (string-append " "
+              (string-append (tagcase (bytes->utf8 b) (text u (utf8->string u)) (bad n "bad"))
+                (string-append " " (utf8->string (string->utf8 "abc")))))))))))

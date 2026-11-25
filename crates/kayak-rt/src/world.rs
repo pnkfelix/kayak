@@ -206,31 +206,31 @@ pub fn bytevector_eq_p(a: BytesAt<'_>, b: BytesAt<'_>) -> bool {
 }
 
 /// `string->utf8` (Fixpt's, since its 279c16cf; C525): the text, as
-/// `utf8`. A copy in Fixpt; here the same object, which neither writes.
+/// `utf8`, its own object (C530), a copy as Fixpt's is.
 pub fn string_to_utf8(s: Str) -> crate::Utf8 {
-    crate::Utf8(s)
+    crate::Utf8::of_str(s.as_str())
 }
 
 /// `utf8->string`: the text, as a `string`.
 pub fn utf8_to_string(u: crate::Utf8) -> Str {
-    u.0
+    crate::str_of_parts(&[u.as_str()])
 }
 
 /// `utf8->bytes`: the text's bytes, a bytevector of the heap's.
 pub fn utf8_to_bytes(u: crate::Utf8) -> Bytes {
-    bytes_of(u.0.as_str().as_bytes().to_vec())
+    bytes_of(u.as_str().as_bytes().to_vec())
 }
 
 /// The same, in region `r` (C267).
 pub fn utf8_to_bytes_in<'r, R: Holds<BytesCells>>(r: &'r R, u: crate::Utf8) -> BytesAt<'r> {
-    bytes_in(r, u.0.as_str().as_bytes().to_vec())
+    bytes_in(r, u.as_str().as_bytes().to_vec())
 }
 
 /// `bytes->utf8`: bytes that are UTF-8, as `utf8`; else `(sum bad k)`,
 /// `k` the offset they are valid up to.
 pub fn bytes_to_utf8(b: BytesAt<'_>) -> Sum {
     match String::from_utf8(to_vec(b)) {
-        Ok(s) => sum_of(crate::tag_lit!("text"), crate::Utf8(leak_string(s))),
+        Ok(s) => sum_of(crate::tag_lit!("text"), crate::Utf8::of_str(&s)),
         Err(e) => sum_of(
             crate::tag_lit!("bad"),
             i64_to_int(e.utf8_error().valid_up_to() as i64),

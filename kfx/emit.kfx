@@ -1452,8 +1452,9 @@
 
       (define put-utf8-literal (subr kfx (sexp chars) chars)
         (lambda (e acc)
-          "`#utf8\"…\"` (`(#utf8 \"…\")`, read): its text, a static made once."
-          (put "\"))" (put-escaped (string-chars (utf8-literal-text e)) #\" (put "kayak_rt::Utf8(str_lit!(\"" acc)))))
+          "`#utf8\"…\"` (`(#utf8 \"…\")`, read): its object, Fixpt's (C530), a
+           static made once (`utf8_lit!`)."
+          (put "\")" (put-escaped (string-chars (utf8-literal-text e)) #\" (put "kayak_rt::utf8_lit!(\"" acc)))))
 
       (define put-box-open (subr kfx (string chars) chars)
         (lambda (how acc)

@@ -1237,17 +1237,17 @@ impl Trace for crate::Utf8 {
     type Stored = crate::HeapWord;
     #[inline(always)]
     fn store(self) -> crate::HeapWord {
-        crate::HeapWord::of_str(self.0)
+        self.word()
     }
     #[inline(always)]
     fn load(w: crate::HeapWord) -> Self {
-        crate::Utf8(w.to_str())
+        crate::Utf8::of_word(w)
     }
     fn trace<'a>(self, t: &mut Tracer<'a>)
     where
         Self: 'a,
     {
-        t.string(self.0.as_str());
+        t.string(self.as_str());
     }
 }
 
