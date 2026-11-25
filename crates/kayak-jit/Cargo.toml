@@ -8,5 +8,9 @@ license.workspace = true
 # decision 4; C116): the code area mapped twice, the instruction cache
 # flushed, the trampoline into the native convention. One of kayak's crates
 # with `unsafe` (PLAN.md Q7), and nothing but this in it.
+[dependencies]
+# Fixpt's layout, the one table of tags and kinds (TODO §56, step 1).
+kayak-layout = { path = "../kayak-layout" }
+
 [lints.rust]
 unsafe_code = "allow"

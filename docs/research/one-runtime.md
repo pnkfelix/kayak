@@ -1,0 +1,103 @@
+# One runtime: kayak-rt's and kcrt's, unified (TODO §56)
+
+The user (2026-11-24): "I didn't intend for us to end with two wildly
+diverging runtimes"; the KFX-to-Rust path "was intended as a way to get a
+near trivial bootstrap"; "see how much of the runtime we can unify between
+kayak-rt and kcrt ... potentially via Rust's trait abstraction"; then
+(2026-11-25) "make a plan to unify the runtimes so that the KFX code and
+FX26 code can share as much runtime machine as possible", and carry it
+out without waiting for review.
+
+## Where things stand
+
+| | kayak-rt (KFX's Rust) | kcrt-core (kc's native code) |
+|---|---|---|
+| size | ~21k lines, 7.5k of it `obj/` (the collector) | 1.5k lines |
+| layout constants | its own (`obj.rs`, `value.rs`, `sum.rs`), some from `kayak_jit::layout` | its own (`lib.rs`) |
+| `string` | UTF-8 after a trailer (C482), its own format | Fixpt's: UTF-32, two code points a word |
+| `utf8` | the string's object (kind 1): C525's gap | none yet |
+| closures | Fixpt's kind 41 (native-closure) | Fixpt's kind 8 (closure) |
+| collector | a heap per thread, generations, fragments, Bartlett's mostly-copying (C478–C524) | Cheney's, one heap, two spaces (C453) |
+| roots | conservative: Rust stacks scanned, ambiguous roots pin | exact enough: kc's stack, every word a value or code |
+| scheduler | futures (`suspend.rs`, `process.rs`) | none: one native stack |
+
+Shared today: Fixpt's tags and most kinds (each written out separately),
+kcrt-core linked into kayak-rt for kc's code run in process, kayak-jit's
+code area and its state block.
+
+## The principle
+
+Fixpt's formats everywhere (the memory "Fixpt's formats everywhere"): the
+two runtimes share one heap format because they must share one heap. kc's
+code runs in process beside KFX's Rust, and the engine's values cross
+between them. So a layout is not a trait parameter. Where the two differ in
+format, the fix is to adopt Fixpt's in both, not to abstract over the
+difference. Traits are for what does differ in kind: how roots are found
+(conservative Rust stacks against kc's exact native stacks) and what a
+task is (a Rust future against a native stack and its state block).
+
+## The steps
+
+1. **One layout crate, Fixpt's.** `crates/kayak-layout`: Fixpt's
+   `fixpt-heap/src/layout.rs` copied whole by `scripts/built-in.py`, as
+   kayak-reps takes `fixpt-reps` (checked at the pin). kayak-jit's
+   `layout` module, kayak-rt's constants and kcrt-core's are each made from
+   it, the names each crate uses kept as aliases, so that no constant is
+   written twice. A test per crate that its constants are the table's.
+   Small, no behaviour changes. *Serves both runtimes.*
+2. **kayak-rt's formats made Fixpt's.**
+   (a) `string` as Fixpt's UTF-32 object, kcrt-core's format: `Str`'s
+   accessors, `str_lit!`, printing and the string primitives rewritten over
+   code points. (b) `utf8` its own object, kind 49 (50 for ASCII): what
+   kayak-rt's string is now, so C482's UTF-8 machinery moves there almost
+   whole. (c) Then `utf8` and `bytevector` in KFX's `datum` (the checker's
+   `datum-members`, `Value`'s kinds), the expander's dropped arms restored
+   (C527's stopgap). Each step, every program's answers unchanged.
+   *Deepens kayak-rt, to converge it: the user's.*
+3. **One collector, over a `Roots` trait.** `crates/kayak-heap`: kayak-rt's
+   `obj/space.rs`, `collect.rs`, `roots.rs` and `frames.rs` moved there,
+   over raw Fixpt words, not kayak-rt's types. `Roots` gives a collection
+   its exact roots (rewritten) and its ambiguous ones (pinning their pages).
+   kayak-rt's is its conservative stack scan; kcrt's is kc's stack, all
+   exact, nothing pinned, so it behaves as Cheney's does now. kcrt-core's
+   `gc.rs` retired; kc gets the heap per thread, generations and fragments
+   for free. Allocation: kc's bump pointer and limit are a page's (the
+   `%r15` state block's `TOP` and `ALLOC_LIMIT`), kayak-rt's the same
+   thread page. *Moves kayak-rt's work into the shared runtime.*
+4. **The primitives over words, once.** Strings, numbers (bignums),
+   printing, hashing and symbols, written over Fixpt words in a shared
+   crate (`kayak-heap` or `kayak-prims`), called by kcrt's routines and by
+   kayak-rt's `Str`, `Int` and `Show`. kcrt-core's routines are the start:
+   they are already of Fixpt's format.
+5. **One scheduler over a `Task` trait.** A task is a Rust future
+   (kayak-rt's) or a native stack and its state block (kc's), and one
+   run queue, one per thread, with work stealing later, runs both. Coopt's
+   scheduler (`coopt-adoption.md`) is the model.
+6. **Incremental collection**, designed once, in `kayak-heap` (TODO §54
+   step 6; the memory "shared heap may move").
+
+Each step leaves every check passing and is a commit of its own. The order
+is by dependency: 1 is a prerequisite of 3 and 4; 2(a) of 4; 3 of 5's
+native tasks sharing one heap; 6 last.
+
+## Measures
+
+How much runtime code is shared: lines in shared crates against lines in
+kayak-rt and kcrt-core alone, recorded at each step here.
+
+| step | shared | kayak-rt alone | kcrt-core alone |
+|---|---|---|---|
+| before | kayak-jit's `layout`, `state` | ~21k | 1.5k |
+| 1 (C528) | + kayak-layout: Fixpt's `layout.rs` and `value.rs` (1.5k), every tag, immediate and kind of the three crates drawn from it | ~21k | 1.5k |
+
+## Done
+
+- **Step 1 (C528)**: `crates/kayak-layout`, Fixpt's `layout.rs` and
+  `value.rs` taken whole (`built-in.py`), their twelve tests passing.
+  kayak-jit's `layout` module, kcrt-core's constants and kayak-rt's
+  (`obj.rs`, `obj/collect.rs`, `sum.rs`, `value.rs`) each named from it
+  (`tag("pair")`, `kind("string")`, the immediates' words from
+  `Value::FALSE` and kin), a test in each that the values are those
+  written before. No format changed: they were already Fixpt's numbers;
+  now they cannot drift. Left: the native convention's offsets (kayak-jit's
+  `state`), which are the declaration's, already checked against it.

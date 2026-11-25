@@ -52,29 +52,33 @@ pub const DECLARATION: &str = include_str!("native-x86_64.conv");
 #[cfg(not(target_arch = "x86_64"))]
 pub const DECLARATION: &str = include_str!("native-arm64.conv");
 
-/// Fixpt's value layout, as its native convention declares it (`values`).
+/// Fixpt's value layout, as its native convention declares it (`values`):
+/// each from kayak-layout's table, Fixpt's own (TODO §56, step 1), under
+/// the names this crate's users know.
 pub mod layout {
-    pub const TAG_MASK: u64 = 0b111;
-    pub const TAG_FIXNUM: u64 = 0;
-    pub const TAG_IMMEDIATE: u64 = 3;
-    pub const TAG_BLOBLET: u64 = 4;
-    pub const TAG_TRAILER: u64 = 5;
-    pub const TAG_HEADER: u64 = 6;
-    pub const FIXNUM_SHIFT: u32 = 3;
-    pub const FIXNUM_BITS: u32 = 61;
-    pub const FALSE: u64 = 3;
-    pub const TRUE: u64 = 11;
-    pub const NULL: u64 = 19;
-    pub const UNIT: u64 = 27;
+    use kayak_layout as l;
+    pub const TAG_MASK: u64 = l::TAG_MASK;
+    pub const TAG_FIXNUM: u64 = l::tag("fixnum");
+    pub const TAG_IMMEDIATE: u64 = l::tag("immediate");
+    pub const TAG_BLOBLET: u64 = l::tag("bloblet");
+    pub const TAG_TRAILER: u64 = l::tag("trailer");
+    pub const TAG_HEADER: u64 = l::tag("header");
+    pub const FIXNUM_SHIFT: u32 = l::TAG_BITS;
+    pub const FIXNUM_BITS: u32 = l::value::FIXNUM_BITS;
+    pub const FALSE: u64 = l::imm::FALSE;
+    pub const TRUE: u64 = l::imm::TRUE;
+    pub const NULL: u64 = l::imm::NULL;
+    pub const UNIT: u64 = l::imm::UNIT;
     /// A character: its code point above bit 8, subtag 8.
-    pub const CHAR_SUBTAG: u64 = 8;
-    pub const CHAR_SHIFT: u32 = 8;
-    pub const TAG_PAIR: u64 = 1;
-    pub const KIND_STRING: u8 = 1;
-    pub const KIND_BLOBLET: u8 = 32;
-    pub const KIND_CELLULAR_CLOSURE: u8 = 38;
-    pub const KIND_NATIVE_CLOSURE: u8 = 41;
-    pub const KIND_FLAT_ARRAY: u8 = 42;
+    pub const CHAR_SUBTAG: u64 = (l::value::Value::char('\0').raw() >> l::TAG_BITS) & 0b1_1111;
+    pub const CHAR_SHIFT: u32 =
+        (l::value::Value::char('\u{1}').raw() ^ l::value::Value::char('\0').raw()).trailing_zeros();
+    pub const TAG_PAIR: u64 = l::tag("pair");
+    pub const KIND_STRING: u8 = l::kind("string");
+    pub const KIND_BLOBLET: u8 = l::kind("bloblet");
+    pub const KIND_CELLULAR_CLOSURE: u8 = l::kind("cellular-closure");
+    pub const KIND_NATIVE_CLOSURE: u8 = l::kind("native-closure");
+    pub const KIND_FLAT_ARRAY: u8 = l::kind("flat-array");
     /// A flat array's element code for `i64` (Fixpt's `FLAT_I64`), its one
     /// field, slot 2, beside its trailer.
     pub const FLAT_I64: u64 = 2;
@@ -2021,5 +2025,34 @@ mod exec_view_tests {
         assert!(super::exec_view(base + 1, page).is_none());
         let other = [0u64; 1024];
         assert!(super::exec_view(other.as_ptr() as usize & !(page - 1), page).is_none());
+    }
+}
+
+#[cfg(test)]
+mod layout_tests {
+    use super::layout::*;
+
+    /// The constants drawn from Fixpt's table (TODO §56, step 1) are those
+    /// this crate wrote out before, and Fixpt's native convention declares.
+    #[test]
+    fn the_table_gives_the_values_written_before() {
+        assert_eq!(
+            (TAG_MASK, TAG_FIXNUM, TAG_PAIR, TAG_IMMEDIATE),
+            (0b111, 0, 1, 3)
+        );
+        assert_eq!((TAG_BLOBLET, TAG_TRAILER, TAG_HEADER), (4, 5, 6));
+        assert_eq!((FIXNUM_SHIFT, FIXNUM_BITS), (3, 61));
+        assert_eq!((FALSE, TRUE, NULL, UNIT), (3, 11, 19, 27));
+        assert_eq!((CHAR_SUBTAG, CHAR_SHIFT), (8, 8));
+        assert_eq!(
+            (
+                KIND_STRING,
+                KIND_BLOBLET,
+                KIND_CELLULAR_CLOSURE,
+                KIND_NATIVE_CLOSURE,
+                KIND_FLAT_ARRAY
+            ),
+            (1, 32, 38, 41, 42)
+        );
     }
 }

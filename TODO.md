@@ -2534,3 +2534,6 @@ The design proposed (to confirm, step by step):
 First: a survey sizing `obj/`'s split and listing every format
 difference, before any code moves. Every step deepening kayak-rt rather
 than the shared runtime is said so when proposed.
+The plan, the user's to carry out without review (2026-11-25), is
+`docs/research/one-runtime.md`; step 1 done at C528 (kayak-layout,
+Fixpt's `layout.rs` and `value.rs`, every crate's constants from it).

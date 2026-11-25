@@ -31,10 +31,10 @@ use std::cell::{Cell, RefCell};
 
 use crate::{TAG_BLOBLET, TAG_HEADER, TAG_MASK, TAG_PAIR, TAG_TRAILER};
 
-const TAG_FORWARD: u64 = 0b111;
+const TAG_FORWARD: u64 = kayak_layout::tag("forward");
 /// A header's large bit (Fixpt's `header-large`), its field count past
 /// what the header holds, in a word below it: kc makes none.
-const LARGE: u64 = 1 << 11;
+const LARGE: u64 = 1 << kayak_layout::H_LARGE.lo;
 /// Words a space may grow to: 2^31, Fixpt's semispace's most.
 const MOST_WORDS: u64 = 1 << 31;
 

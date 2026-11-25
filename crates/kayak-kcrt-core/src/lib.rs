@@ -35,19 +35,28 @@
 mod gc;
 pub use gc::{Heap, collections};
 
-const TAG_MASK: u64 = 0b111;
-const TAG_FIXNUM: u64 = 0b000;
-const TAG_PAIR: u64 = 0b001;
-const TAG_IMMEDIATE: u64 = 0b011;
-const TAG_BLOBLET: u64 = 0b100;
-const IMM_SHIFT: u32 = 3;
+// Fixpt's tags, immediates and kinds, from kayak-layout's table, Fixpt's
+// own (TODO §56, step 1), under this crate's names.
+use kayak_layout as layout;
+const TAG_MASK: u64 = layout::TAG_MASK;
+const TAG_FIXNUM: u64 = layout::tag("fixnum");
+const TAG_PAIR: u64 = layout::tag("pair");
+const TAG_IMMEDIATE: u64 = layout::tag("immediate");
+const TAG_BLOBLET: u64 = layout::tag("bloblet");
+const IMM_SHIFT: u32 = layout::TAG_BITS;
 const IMM_MASK: u64 = 0b1_1111;
-const IMM_PAYLOAD_SHIFT: u32 = 8;
-const IMM_FALSE: u64 = 0;
-const IMM_TRUE: u64 = 1;
-const IMM_NULL: u64 = 2;
-const IMM_UNIT: u64 = 3;
-const IMM_CHAR: u64 = 8;
+const IMM_PAYLOAD_SHIFT: u32 =
+    (Value::char('\u{1}').raw() ^ Value::char('\0').raw()).trailing_zeros();
+use layout::value::Value;
+/// An immediate's subtag, as Fixpt's `Value` makes its word.
+const fn subtag(v: Value) -> u64 {
+    (v.raw() >> IMM_SHIFT) & IMM_MASK
+}
+const IMM_FALSE: u64 = subtag(Value::FALSE);
+const IMM_TRUE: u64 = subtag(Value::TRUE);
+const IMM_NULL: u64 = subtag(Value::NULL);
+const IMM_UNIT: u64 = subtag(Value::UNIT);
+const IMM_CHAR: u64 = subtag(Value::char('\0'));
 
 /// A pair's car and cdr.
 fn pair(v: u64) -> (u64, u64) {
@@ -129,15 +138,15 @@ const fn null() -> u64 {
 
 // ------------------------------------------------------------ objects
 
-const KIND_STRING: u64 = 1;
-const KIND_SYMBOL: u64 = 2;
-const KIND_CLOSURE: u64 = 8;
-const KIND_BOX: u64 = 10;
-const KIND_BLOBLET: u64 = 32;
-const KIND_SUM: u64 = 36;
-const KIND_PRODUCT: u64 = 37;
-const TAG_HEADER: u64 = 0b110;
-const TAG_TRAILER: u64 = 0b101;
+const KIND_STRING: u64 = layout::kind("string") as u64;
+const KIND_SYMBOL: u64 = layout::kind("symbol") as u64;
+const KIND_CLOSURE: u64 = layout::kind("closure") as u64;
+const KIND_BOX: u64 = layout::kind("box") as u64;
+const KIND_BLOBLET: u64 = layout::kind("bloblet") as u64;
+const KIND_SUM: u64 = layout::kind("sum") as u64;
+const KIND_PRODUCT: u64 = layout::kind("product") as u64;
+const TAG_HEADER: u64 = layout::tag("header");
+const TAG_TRAILER: u64 = layout::tag("trailer");
 
 fn word(addr: u64) -> u64 {
     // SAFETY: an address kc's code or this runtime made an object at, the
@@ -534,13 +543,13 @@ pub extern "C" fn kc_symbol_hash(v: u64) -> u64 {
     word(v - TAG_BLOBLET - 40 + 16)
 }
 
-const KIND_VECTOR: u64 = 3;
+const KIND_VECTOR: u64 = layout::kind("vector") as u64;
 
 /// A vector's element count: its header's fields, less the trailer.
 fn vector_length(v: u64) -> u64 {
     ((header(v) >> 14) & MOST_FIELDS).saturating_sub(1)
 }
-const KIND_FLONUM: u64 = 5;
+const KIND_FLONUM: u64 = layout::kind("flonum") as u64;
 
 /// `(f64->string x)`, Fixpt's (`num.rs`'s `format_flonum`): an integral
 /// value under 1e21 with `.0`, else Rust's shortest form, `.0` added if it
@@ -653,14 +662,14 @@ const R_TAG: u64 = 8;
 const R_SP: u64 = 16;
 /// An offset of no record, in a continuation's copy: past its segment.
 const NO_RECORD: u64 = (-8i64) as u64;
-const KIND_ARRAY: u64 = 32;
+const KIND_ARRAY: u64 = layout::kind("bloblet") as u64;
 const ONCE: u64 = 8;
 const RESUMED: u64 = 16;
 const WHOLE: u64 = 32;
 /// A mark's value in its record (C460): where a prompt's handler is.
 const R_VALUE: u64 = 24;
 /// The most fields a header holds (Fixpt's 18 bits; kc makes no large one).
-const MOST_FIELDS: u64 = 0x3_ffff;
+const MOST_FIELDS: u64 = layout::H_FIELDS.max();
 
 /// A continuation's copy's word `k` (C459): a bloblet of kind 32, its
 /// fields below its trailer, the first just below it, so that `kc_resume`
@@ -1243,5 +1252,54 @@ mod flonums {
         ] {
             assert_eq!(flonum_text(x), s, "{x:?}");
         }
+    }
+}
+
+#[cfg(test)]
+mod layout_tests {
+    use super::*;
+
+    /// The constants drawn from Fixpt's table (TODO §56, step 1) are those
+    /// this crate wrote out before.
+    #[test]
+    fn the_table_gives_the_values_written_before() {
+        assert_eq!(
+            (
+                TAG_MASK,
+                TAG_FIXNUM,
+                TAG_PAIR,
+                TAG_IMMEDIATE,
+                TAG_BLOBLET,
+                TAG_TRAILER,
+                TAG_HEADER
+            ),
+            (7, 0, 1, 3, 4, 5, 6)
+        );
+        assert_eq!((IMM_SHIFT, IMM_MASK, IMM_PAYLOAD_SHIFT), (3, 0b1_1111, 8));
+        assert_eq!(
+            (IMM_FALSE, IMM_TRUE, IMM_NULL, IMM_UNIT, IMM_CHAR),
+            (0, 1, 2, 3, 8)
+        );
+        assert_eq!(
+            (
+                KIND_STRING,
+                KIND_SYMBOL,
+                KIND_VECTOR,
+                KIND_FLONUM,
+                KIND_CLOSURE,
+                KIND_BOX
+            ),
+            (1, 2, 3, 5, 8, 10)
+        );
+        assert_eq!(
+            (
+                KIND_BLOBLET,
+                KIND_ARRAY,
+                KIND_SUM,
+                KIND_PRODUCT,
+                MOST_FIELDS
+            ),
+            (32, 32, 36, 37, 0x3_ffff)
+        );
     }
 }

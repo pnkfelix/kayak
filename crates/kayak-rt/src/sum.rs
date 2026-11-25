@@ -31,8 +31,8 @@ use std::any::TypeId;
 use std::ptr::NonNull;
 
 /// Fixpt's kinds: a symbol's, a sum's.
-const KIND_SYMBOL: u8 = 2;
-const KIND_SUM: u8 = 36;
+const KIND_SYMBOL: u8 = kayak_layout::kind("symbol");
+const KIND_SUM: u8 = kayak_layout::kind("sum");
 
 /// A tag (C499): Fixpt's symbol, kind 2, frozen: its name, its hash
 /// (Fixpt's, [`tag_hash`]), its global's place, which kayak has none of
@@ -593,7 +593,7 @@ pub mod data {
     }
 
     /// Fixpt's product's kind (37): a datatype's value's fields.
-    const KIND_PRODUCT: u8 = 37;
+    const KIND_PRODUCT: u8 = kayak_layout::kind("product");
 
     /// A datatype's variant `I` (C500): the types of its fields, a tuple, and
     /// its tag, a symbol of its own (`tag_lit!` in the one `tag` of the

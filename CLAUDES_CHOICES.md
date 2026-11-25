@@ -16944,3 +16944,34 @@ Carried:
   `macros-fresh.fx` (above); `parser-forms.fx` (the `%datum` refusal
   dropped: not the generative messages kayak took from it).
 - **The full check**: `check: all passed`, 10 min 14 s (the mean of 82 runs 8 min 13 s); the pre-check passed first.
+
+## C528. One layout: Fixpt's `layout.rs` and `value.rs`, kayak-layout (2026-11-25)
+
+The user, after C527: "make a plan to unify the runtimes so that the KFX
+code and FX26 code can share as much runtime machine as possible. And
+then start working on carrying out the plan; you don't need me to review
+it first". The plan: `docs/research/one-runtime.md` (TODO §56's steps,
+made concrete by a survey: kcrt-core is already of Fixpt's formats,
+kayak-rt's strings are not; one format, Fixpt's, not one abstracted by a
+trait, since the two runtimes share one heap in process; traits where
+they differ in kind, roots and tasks). Reviewed first: TODO §56, C506
+(kayak-rt's values Fixpt's words), C452 (kcrt-core linked into kayak-rt),
+C121 (Fixpt's formats taken whole), C300 (kayak-reps' copy of
+`fixpt-reps`).
+
+Step 1, done: `crates/kayak-layout`, Fixpt's `fixpt-heap/src/layout.rs`
+(its tags, header fields, kinds: "specified once", its own words) and
+`value.rs` (the word's format: fixnums, immediates) copied whole by
+`scripts/built-in.py`, under Fixpt's module names, so `value.rs`'s `use
+crate::layout` holds; their twelve tests pass here. kayak-jit's `layout`
+module, kcrt-core's constants and kayak-rt's each drawn from it
+(`tag("pair")`, `kind("string")`, an immediate's subtag from
+`Value::FALSE` and kin, `H_FIELDS.max()`), under the names each knows; in
+each crate a test that the values are those written out before. Nothing
+changed of a format: each number was Fixpt's already, and now it is
+written once. Fixpt's `Value` holds an index from its heap's start where
+kayak's words hold addresses, so kayak takes its constants and the
+immediates' words, not its constructors of pointers. Left of step 1: the
+native convention's state offsets, the declaration's, checked already.
+Not kayak-rt deepened: shared.
+- **The full check**: `check: all passed`, 9 min 07 s (the mean of 83 runs 8 min 14 s); the pre-check passed first.

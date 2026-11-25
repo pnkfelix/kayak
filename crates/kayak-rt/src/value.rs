@@ -32,18 +32,39 @@ impl<T: Any + crate::Visit> Obj for T {}
 
 /// Fixpt's kinds a value's object may be of.
 mod kind {
-    pub const STRING: u8 = 1;
-    pub const SYMBOL: u8 = 2;
-    pub const VECTOR: u8 = 3;
-    pub const BYTEVECTOR: u8 = 4;
-    pub const FLONUM: u8 = 5;
-    pub const BIGNUM: u8 = 6;
-    pub const BOX: u8 = 10;
-    pub const BLOBLET: u8 = 32;
-    pub const SUM: u8 = 36;
-    pub const PRODUCT: u8 = 37;
-    pub const NATIVE_CLOSURE: u8 = 41;
-    pub const FLAT_ARRAY: u8 = 42;
+    pub const STRING: u8 = kayak_layout::kind("string");
+    pub const SYMBOL: u8 = kayak_layout::kind("symbol");
+    pub const VECTOR: u8 = kayak_layout::kind("vector");
+    pub const BYTEVECTOR: u8 = kayak_layout::kind("bytevector");
+    pub const FLONUM: u8 = kayak_layout::kind("flonum");
+    pub const BIGNUM: u8 = kayak_layout::kind("bignum");
+    pub const BOX: u8 = kayak_layout::kind("box");
+    pub const BLOBLET: u8 = kayak_layout::kind("bloblet");
+    pub const SUM: u8 = kayak_layout::kind("sum");
+    pub const PRODUCT: u8 = kayak_layout::kind("product");
+    pub const NATIVE_CLOSURE: u8 = kayak_layout::kind("native-closure");
+    pub const FLAT_ARRAY: u8 = kayak_layout::kind("flat-array");
+}
+
+/// `kind`'s constants, in order, for obj.rs's test that they are the ones
+/// written out before the table (TODO §56, step 1).
+#[cfg(test)]
+pub(crate) fn tests_kinds() -> (u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8) {
+    use kind::*;
+    (
+        STRING,
+        SYMBOL,
+        VECTOR,
+        BYTEVECTOR,
+        FLONUM,
+        BIGNUM,
+        BOX,
+        BLOBLET,
+        SUM,
+        PRODUCT,
+        NATIVE_CLOSURE,
+        FLAT_ARRAY,
+    )
 }
 
 impl Value {

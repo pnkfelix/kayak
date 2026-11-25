@@ -55,6 +55,10 @@ COPIES = [
     (CONVENTION, CONVENTION_OUT),
     ("crates/fixpt-runtime/src/native-x86_64.conv", os.path.join(ROOT, "crates", "kayak-jit", "src", "native-x86_64.conv")),
     ("crates/fixpt-fx26/src/layout.fx", os.path.join(ROOT, "crates", "kayak-jit", "src", "layout.fx")),
+    # Fixpt's object layout, its every tag and kind (TODO §56, step 1):
+    # the runtimes' one table, kayak-layout's.
+    ("crates/fixpt-heap/src/layout.rs", os.path.join(ROOT, "crates", "kayak-layout", "src", "layout.rs")),
+    ("crates/fixpt-heap/src/value.rs", os.path.join(ROOT, "crates", "kayak-layout", "src", "value.rs")),
     # Types as reps (C300): Fixpt's `fixpt-reps`, taken whole but its heap's.
     ("crates/fixpt-reps/src/lib.rs", os.path.join(ROOT, "crates", "kayak-reps", "src", "fixpt", "mod.rs")),
     ("crates/fixpt-reps/src/binary.rs", os.path.join(ROOT, "crates", "kayak-reps", "src", "fixpt", "binary.rs")),

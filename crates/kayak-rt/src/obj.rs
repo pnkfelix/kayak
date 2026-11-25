@@ -315,7 +315,7 @@ impl Int {
     }
 }
 
-const KIND_BIGNUM: u8 = 6;
+const KIND_BIGNUM: u8 = kayak_layout::kind("bignum");
 
 /// An object a census notes and nothing in it to trace (a bignum's).
 #[cfg(feature = "heap-stats")]
@@ -384,7 +384,13 @@ impl<'r> BytesAt<'r> {
 pub(crate) fn bytes_object(bytes: &[u8]) -> BytesCells {
     let n = bytes.len();
     let ws: BytesCells = (0..string_words(n)).map(|_| Cell::new(0)).collect();
-    ws[0].set(layout::header(4, 0, n, true, false));
+    ws[0].set(layout::header(
+        kayak_layout::kind("bytevector"),
+        0,
+        n,
+        true,
+        false,
+    ));
     ws[1].set(layout::trailer(1));
     for (i, chunk) in bytes.chunks(8).enumerate() {
         let mut w = [0u8; 8];
@@ -432,7 +438,13 @@ pub(crate) fn kept_cells<T: Copy>(w: usize) -> &'static [Cell<T>] {
 pub(crate) fn bytes_kept(bytes: &[u8]) -> &'static [Cell<u64>] {
     let n = bytes.len();
     let ws = kept_cells::<u64>(string_words(n));
-    ws[0].set(layout::header(4, 0, n, true, false));
+    ws[0].set(layout::header(
+        kayak_layout::kind("bytevector"),
+        0,
+        n,
+        true,
+        false,
+    ));
     ws[1].set(layout::trailer(1));
     for (i, chunk) in bytes.chunks(8).enumerate() {
         let mut w = [0u8; 8];
@@ -1189,7 +1201,7 @@ const FIELDS_MAX: usize = (1 << 18) - 1;
 const LARGE: u64 = 1 << 11;
 
 /// Fixpt's kind of an extension word.
-const KIND_EXTENSION: u64 = 255;
+const KIND_EXTENSION: u64 = kayak_layout::KIND_EXTENSION as u64;
 
 /// An array of `n` `T`s's fields, as Fixpt counts them: its elements'
 /// words and its trailer.
@@ -1440,7 +1452,7 @@ mod array_tests {
 }
 
 /// A product's kind (Fixpt's `product`, 37): its fields traced, never set.
-const KIND_PRODUCT: u8 = 37;
+const KIND_PRODUCT: u8 = kayak_layout::kind("product");
 
 /// A product's object (C490, C496), as Fixpt's product (kind 37) is: its
 /// parts' words its fields, its trailer, no suffix; frozen (a product is
@@ -1636,17 +1648,23 @@ unsafe impl Send for HeapWord {}
 // SAFETY: as above.
 unsafe impl Sync for HeapWord {}
 
-const TAG_MASK: usize = 0b111;
-const TAG_IMMEDIATE: usize = 0b011;
-const TAG_OBJECT: usize = 0b100;
-const TAG_PAIR: usize = 0b001;
-const IMM_NULL: usize = 2;
-const IMM_FALSE: usize = 0;
-const IMM_TRUE: usize = 1;
-const IMM_UNIT: usize = 3;
-pub(crate) const IMM_CHAR: usize = 8;
-pub(crate) const IMM_F32: usize = 9;
-const KIND_FLONUM: u8 = 5;
+// Fixpt's tags, immediates and kinds, from kayak-layout's table (TODO
+// §56, step 1).
+const TAG_MASK: usize = kayak_layout::TAG_MASK as usize;
+const TAG_IMMEDIATE: usize = kayak_layout::tag("immediate") as usize;
+const TAG_OBJECT: usize = kayak_layout::tag("bloblet") as usize;
+const TAG_PAIR: usize = kayak_layout::tag("pair") as usize;
+/// An immediate's subtag, as Fixpt's `Value` makes its word.
+const fn subtag(v: kayak_layout::value::Value) -> usize {
+    ((v.raw() >> kayak_layout::TAG_BITS) & 0b1_1111) as usize
+}
+const IMM_NULL: usize = subtag(kayak_layout::value::Value::NULL);
+const IMM_FALSE: usize = subtag(kayak_layout::value::Value::FALSE);
+const IMM_TRUE: usize = subtag(kayak_layout::value::Value::TRUE);
+const IMM_UNIT: usize = subtag(kayak_layout::value::Value::UNIT);
+pub(crate) const IMM_CHAR: usize = subtag(kayak_layout::value::Value::char('\0'));
+pub(crate) const IMM_F32: usize = subtag(kayak_layout::value::Value::f32(0.0));
+const KIND_FLONUM: u8 = kayak_layout::kind("flonum");
 
 impl HeapWord {
     /// Bits that are no pointer: a fixnum's, an immediate's.
@@ -2136,7 +2154,7 @@ mod list_tests {
 }
 
 /// A box's kind (Fixpt's `box`, 10): its one field traced and settable.
-const KIND_BOX: u8 = 10;
+const KIND_BOX: u8 = kayak_layout::kind("box");
 
 /// A reference's object (C498), Fixpt's box: its header, its value's cell
 /// (one word, but what is held as itself as yet), its trailer, no suffix.
@@ -2844,5 +2862,39 @@ mod laid_tests {
         );
         // A box and its string: kind 10, then kind 1.
         assert_eq!(reached(r.store()).len(), 2);
+    }
+}
+
+#[cfg(test)]
+mod layout_tests {
+    use super::*;
+
+    /// The constants drawn from Fixpt's table (TODO §56, step 1) are those
+    /// this crate wrote out before.
+    #[test]
+    fn the_table_gives_the_values_written_before() {
+        assert_eq!(
+            (TAG_MASK, TAG_IMMEDIATE, TAG_OBJECT, TAG_PAIR),
+            (7, 3, 4, 1)
+        );
+        assert_eq!(
+            (IMM_FALSE, IMM_TRUE, IMM_NULL, IMM_UNIT, IMM_CHAR, IMM_F32),
+            (0, 1, 2, 3, 8, 9)
+        );
+        assert_eq!(
+            (
+                KIND_FLONUM,
+                KIND_BIGNUM,
+                KIND_PRODUCT,
+                KIND_BOX,
+                KIND_EXTENSION
+            ),
+            (5, 6, 37, 10, 255)
+        );
+        assert_eq!(kayak_layout::kind("bytevector"), 4);
+        assert_eq!(
+            crate::value::tests_kinds(),
+            (1, 2, 3, 4, 5, 6, 10, 32, 36, 37, 41, 42)
+        );
     }
 }

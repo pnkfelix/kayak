@@ -49,11 +49,11 @@ use std::hash::{BuildHasherDefault, Hasher};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Fixpt's forwarding word's tag.
-const TAG_FORWARD: u64 = 0b111;
-const TAG_MASK: u64 = 0b111;
-const TAG_PAIR: u64 = 0b001;
-const TAG_OBJECT: u64 = 0b100;
-const TAG_HEADER: u64 = 0b110;
+const TAG_FORWARD: u64 = kayak_layout::tag("forward");
+const TAG_MASK: u64 = kayak_layout::TAG_MASK;
+const TAG_PAIR: u64 = kayak_layout::tag("pair");
+const TAG_OBJECT: u64 = kayak_layout::tag("bloblet");
+const TAG_HEADER: u64 = kayak_layout::tag("header");
 
 /// Addresses, hashed by a multiply: they are spread already.
 #[derive(Default)]
