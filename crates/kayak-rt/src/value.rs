@@ -44,6 +44,8 @@ mod kind {
     pub const PRODUCT: u8 = kayak_layout::kind("product");
     pub const NATIVE_CLOSURE: u8 = kayak_layout::kind("native-closure");
     pub const FLAT_ARRAY: u8 = kayak_layout::kind("flat-array");
+    pub const UTF8: u8 = kayak_layout::kind("utf8");
+    pub const UTF8_ASCII: u8 = kayak_layout::kind("utf8-ascii");
 }
 
 /// `kind`'s constants, in order, for obj.rs's test that they are the ones
@@ -179,6 +181,9 @@ word_member!([T: crate::Trace + 'static] crate::Array<T>; kind::BLOBLET, kind::V
 // to Fixpt's bytevector (kind 4).
 word_member!([] crate::Bytes; kind::BYTEVECTOR);
 
+// UTF-8 text, a datum's (C531): its word, to Fixpt's `utf8` (kind 49, 50).
+word_member!([] crate::Utf8; kind::UTF8, kind::UTF8_ASCII);
+
 /// An integer of a fixed width: its word, a fixnum (or, `u64`, a bignum's).
 macro_rules! int_member {
     ($($t:ty),*) => {$(
@@ -225,6 +230,7 @@ pub enum Shape {
     Bloblet,
     Vector,
     Bytevector,
+    Utf8,
     Box,
     Sum,
     Product,
@@ -470,6 +476,7 @@ impl Shaped for Value {
             Some(kind::SYMBOL) => Shape::Symbol,
             Some(kind::VECTOR) => Shape::Vector,
             Some(kind::BYTEVECTOR) => Shape::Bytevector,
+            Some(kind::UTF8 | kind::UTF8_ASCII) => Shape::Utf8,
             Some(kind::FLONUM) => Shape::F64,
             Some(kind::BIGNUM) => Shape::Int,
             Some(kind::BOX) => Shape::Box,
@@ -542,6 +549,7 @@ shape_test!(procedure_p, Procedure);
 shape_test!(array_p, Bloblet);
 shape_test!(vector_p, Vector);
 shape_test!(bytevector_p, Bytevector);
+shape_test!(utf8_p, Utf8);
 shape_test!(ref_p, Box);
 shape_test!(sum_p, Sum);
 shape_test!(product_p, Product);

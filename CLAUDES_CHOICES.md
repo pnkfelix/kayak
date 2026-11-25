@@ -17032,3 +17032,26 @@ before the suffix (kayak-rt's collector finds such a header already, as
 - **Tests**: `tests/kfx/utf8-literals.kfx`, KFX's Rust as Fixpt
   (`héllo, w😀rld 16 héllo, w😀rld abc`); kayak-rt's 76 tests.
 - **The full check**: `check: all passed`, 9 min 03 s (the mean of 85 runs 8 min 16 s); the pre-check passed first.
+
+## C531. `utf8` in KFX's `datum` (2026-11-25)
+
+The plan's step 2(c), its `utf8` half (`docs/research/one-runtime.md`),
+which C530's object made possible: a union can tell a `utf8` from a
+string now. KFX's `datum` is Fixpt's union whole.
+- **The checker**: `datum-members` gains `utf8`; `utf8?` (Fixpt's type,
+  `(shape 0 utf8)`, a latent shape it may now name); `typecase` takes a
+  `utf8` arm; `#utf8"…"` quotable within data.
+- **KFX's Rust**: `Shape::Utf8`, `utf8_p`, `Utf8` a `Value`'s member
+  (kinds 49, 50); a quoted datum's `utf8` its literal's word.
+- **The engine**: `utf8?` appended to `table.kfx`'s list (280, its op in
+  `vprims.kfx` by hand, as C525's), its arity in `prims.kfx` (and in the
+  IR evaluator, which nothing calls and whose `utf8` is a string's value,
+  false); `typecase-predicate`; cg's `quoted-item` makes one within a
+  quote. Tier 1: `%fx26-utf8?`, op 235.
+- **Left**: the expander's `utf8?` stays the shim's (none), as kc's native
+  back end has no `utf8?` nor `utf8->string` yet: what the expander makes
+  of a `utf8` in a macro's use is so a gap (kc's, TODO §54).
+- **Tests**: `tests/kfx/utf8-literals.kfx` with a datum's `utf8`, KFX's
+  Rust as Fixpt (`… 9 -1 yes`); the engine as Fixpt on quoted `utf8` data;
+  `tests/kfx-stricter/utf8-in-quoted-data.kfx` gone.
+- **The full check**: `check: all passed`, 9 min 44 s (the mean of 86 runs 8 min 17 s); the pre-check passed first.

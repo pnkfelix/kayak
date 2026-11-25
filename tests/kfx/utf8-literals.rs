@@ -4,12 +4,23 @@ use kayak_rt::*;
 
 // `#utf8"…"` (Fixpt 06a3666; C526) in KFX's Rust, its object Fixpt's own
 // since C530 (kind 49, 50 all ASCII): made once, converted to a string and
-// to bytes and back.
+// to bytes and back; within quoted data, a datum's (C531).
 
 // A procedure's literal.
 #[inline]
 pub fn greeting() -> Utf8 {
     kayak_rt::utf8_lit!("héllo, w😀rld")
+}
+
+// A datum's `utf8`'s length in bytes (C531), or -1.
+#[inline]
+pub fn datum_text(x: kayak_rt::value::Value) -> Int {
+    if utf8_p(x) {
+        let u = kayak_rt::value::unbox_other::<Utf8>(x);
+        bytevector_length(utf8_to_bytes(u))
+    } else {
+        int_lit(-1)
+    }
 }
 
 pub fn main() -> Str {
@@ -25,6 +36,13 @@ pub fn main() -> Str {
             let n: Int = kayak_rt::sum_payload::<Int>(tagcase_);
             str_lit!("bad")
         } else { unreachable!() }
-    }, string_append(str_lit!(" "), utf8_to_string(string_to_utf8(str_lit!("abc")))))))))
+    }, string_append(str_lit!(" "), string_append(utf8_to_string(string_to_utf8(str_lit!("abc"))), {
+        let d = kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("a")), kayak_rt::value::cons(kayak_rt::value::other(kayak_rt::utf8_lit!("in a list"), kayak_rt::value::Shape::Utf8), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(int_lit(3)), kayak_rt::value::Value::Nil)));
+        string_append(str_lit!(" "), string_append(int_to_string(datum_text(kayak_rt::value::car(kayak_rt::value::cdr(d)))), string_append(str_lit!(" "), string_append(int_to_string(datum_text(kayak_rt::value::car(d))), if utf8_p(kayak_rt::value::car(kayak_rt::value::cdr(d))) {
+            str_lit!(" yes")
+        } else {
+            str_lit!(" no")
+        }))))
+    })))))))
 }
 

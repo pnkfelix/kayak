@@ -1347,6 +1347,8 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         utf8_word_x(a)
     } else if i64_eq(op, 279i64) {
         kfx_bytes_word_x(utf8_kfx_bytes(a))
+    } else if i64_eq(op, 280i64) {
+        bool_word((is_obj_p(a, ob_utf8()) || is_obj_p(a, ob_utf8_ascii())))
     } else if i64_eq(op, 250i64) {
         string_made_x(fixnum_value(a), b)
     } else if i64_eq(op, 255i64) {

@@ -206,7 +206,9 @@
         "%stage-run" "%reify" "effect-bound" "type-bound"
         "make-session" "%session-run" "session-redefines" "%session-ready" "%session-committed!"
         ;; UTF-8 text (Fixpt's 279c16cf; C525): bytes' to `utf8` and back.
-        "bytes->utf8" "utf8->bytes"))
+        "bytes->utf8" "utf8->bytes"
+        ;; A `utf8`'s test (C531): 280.
+        "utf8?"))
 
 (define-rec
   (list-position (subr kfx (string strings i64) i64)

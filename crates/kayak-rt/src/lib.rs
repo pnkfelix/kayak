@@ -75,7 +75,7 @@ pub use text::*;
 pub use trace::{Captures, CensusRow, Held, Product, Slot, Trace, Tracer, Visit, traced};
 pub use value::{
     array_p, bool_p, bytevector_p, char_p, datum_list_to_vector, f32_p, f64_p, int_p, pair_p,
-    procedure_p, product_p, ref_p, string_p, sum_p, symbol_p, vector_p,
+    procedure_p, product_p, ref_p, string_p, sum_p, symbol_p, utf8_p, vector_p,
 };
 pub use world::*;
 

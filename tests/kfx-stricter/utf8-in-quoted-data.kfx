@@ -1,4 +1,0 @@
-"`#utf8\"…\"` within quoted data (Fixpt 06a3666 makes it a datum, `utf8`
- a member of `datum`): KFX's `datum` has no `utf8` yet, its Rust keeping a
- `utf8` as a string, which a union could not tell from one."
-(define d '(a #utf8"in a list" 3))

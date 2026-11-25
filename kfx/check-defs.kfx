@@ -111,6 +111,7 @@
    (sum? (poly ((t type)) (subr pure (t) (bool (then (shape 0 sum)) (else (not (shape 0 sum)))))))
    (product? (poly ((t type)) (subr pure (t) (bool (then (shape 0 product)) (else (not (shape 0 product)))))))
    (bytevector? (poly ((t type)) (subr pure (t) bool)))
+   (utf8? (poly ((t type)) (subr pure (t) (bool (then (shape 0 utf8)) (else (not (shape 0 utf8)))))))
    (vector? (poly ((t type)) (subr pure (t) bool)))
    (f32? (poly ((t type)) (subr pure (t) bool)))
    (datum-list->vector (subr pure (datum) datum))

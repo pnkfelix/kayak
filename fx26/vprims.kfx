@@ -697,6 +697,8 @@
         ;; UTF-8 text's (C525), hand-written (gen-vprims.py has them not).
         ((i64= op 278) (utf8-word! a))
         ((i64= op 279) (kfx-bytes-word! (utf8-kfx-bytes a)))
+        ;; `utf8?` (C531): Fixpt's object, whole (kind 49, 50).
+        ((i64= op 280) (bool-word (or (is-obj? a ob-utf8) (is-obj? a ob-utf8-ascii))))
         ;; Strings at a region (C285), hand-written (gen-vprims.py has them not).
         ((i64= op 250) (string-made! (fixnum-value a) b))
         ((i64= op 255) (string-made! (fixnum-value b) c))

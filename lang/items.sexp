@@ -856,6 +856,7 @@
 (emitted "sum?" kayak)
 (emitted "product?" kayak)
 (emitted "bytevector?" kayak)
+(emitted "utf8?" kayak)
 (emitted "vector?" kayak)
 (emitted "f32?" kayak)
 (runtime-fn "datum-list->vector" kayak)

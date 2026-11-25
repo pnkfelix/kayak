@@ -128,7 +128,7 @@ pub fn prim_arity(n: Str) -> i64 {
         1i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("make-continuation-mark-key"), kayak_rt::nil())) {
         0i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("%identity"), kayak_rt::heap_cons(str_lit!("bytevector-length"), kayak_rt::heap_cons(str_lit!("string->utf8"), kayak_rt::heap_cons(str_lit!("utf8->string"), kayak_rt::heap_cons(str_lit!("bytes->utf8"), kayak_rt::heap_cons(str_lit!("utf8->bytes"), kayak_rt::heap_cons(str_lit!("flatarray-length-i64"), kayak_rt::nil())))))))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("%identity"), kayak_rt::heap_cons(str_lit!("bytevector-length"), kayak_rt::heap_cons(str_lit!("string->utf8"), kayak_rt::heap_cons(str_lit!("utf8->string"), kayak_rt::heap_cons(str_lit!("bytes->utf8"), kayak_rt::heap_cons(str_lit!("utf8->bytes"), kayak_rt::heap_cons(str_lit!("utf8?"), kayak_rt::heap_cons(str_lit!("flatarray-length-i64"), kayak_rt::nil()))))))))) {
         1i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("append"), kayak_rt::heap_cons(str_lit!("make-bytevector"), kayak_rt::heap_cons(str_lit!("bytevector-u8-ref"), kayak_rt::heap_cons(str_lit!("bytevector=?"), kayak_rt::heap_cons(str_lit!("make-flatarray-i64"), kayak_rt::heap_cons(str_lit!("flatarray-ref-i64"), kayak_rt::nil()))))))) {
         2i64
@@ -1238,6 +1238,8 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::data::DataAt<'static, Val> {
         v_string(string_of(a))
     } else if string_eq_p(n, str_lit!("utf8->string")) {
         a
+    } else if string_eq_p(n, str_lit!("utf8?")) {
+        flag(false)
     } else if string_eq_p(n, str_lit!("utf8->bytes")) {
         v_bytes(utf8_to_bytes(string_to_utf8(string_of(a))))
     } else if string_eq_p(n, str_lit!("bytes->utf8")) {

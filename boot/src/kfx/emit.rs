@@ -2895,6 +2895,13 @@ pub mod emitter {
         put(str_lit!("\")"), put_byte_escapes(bytes_literal_bytes(e), put(str_lit!("kayak_rt::bytes_lit!(b\""), acc)))
     }
 
+    /// `#utf8"…"` (`(#utf8 "…")`, read): its object, Fixpt's (C530), a
+    /// static made once (`utf8_lit!`).
+    #[inline]
+    pub fn put_utf8_literal(e: kayak_rt::data::DataAt<'static, Sexp>, acc: Chars) -> Chars {
+        put(str_lit!("\")"), put_escaped(string_chars(utf8_literal_text(e)), '"', put(str_lit!("kayak_rt::utf8_lit!(\""), acc)))
+    }
+
     /// A quoted datum, built (C77): a list's pairs `cons`ed, each atom boxed.
     pub fn put_quoted(c: kayak_rt::data::DataAt<'static, Ctx>, d: kayak_rt::data::DataAt<'static, Sexp>, acc: Chars) -> Chars {
         let tagcase_ = d;
@@ -2904,6 +2911,8 @@ pub mod emitter {
                 put(str_lit!(")"), put_quoted_items(c, cdr(xs), put(str_lit!("kayak_rt::value::datum_list_to_vector("), acc)))
             } else if bytes_literal_p(d) {
                 put(str_lit!(", kayak_rt::value::Shape::Bytevector)"), put_bytes_literal(d, put(str_lit!("kayak_rt::value::other("), acc)))
+            } else if utf8_literal_p(d) {
+                put(str_lit!(", kayak_rt::value::Shape::Utf8)"), put_utf8_literal(d, put(str_lit!("kayak_rt::value::other("), acc)))
             } else {
                 put_quoted_items(c, xs, acc)
             }
@@ -2948,13 +2957,6 @@ pub mod emitter {
         } else {
             put(str_lit!(")"), put_quoted_items(c, cdr(xs), put(str_lit!(", "), put_quoted(c, car(xs), put(str_lit!("kayak_rt::value::cons("), acc)))))
         }
-    }
-
-    /// `#utf8"…"` (`(#utf8 "…")`, read): its object, Fixpt's (C530), a
-    /// static made once (`utf8_lit!`).
-    #[inline]
-    pub fn put_utf8_literal(e: kayak_rt::data::DataAt<'static, Sexp>, acc: Chars) -> Chars {
-        put(str_lit!("\")"), put_escaped(string_chars(utf8_literal_text(e)), '"', put(str_lit!("kayak_rt::utf8_lit!(\""), acc)))
     }
 
     /// A wrapper's boxing of a value, its start (C82).

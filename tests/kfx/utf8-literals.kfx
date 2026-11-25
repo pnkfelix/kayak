@@ -1,9 +1,13 @@
 "`#utf8\"…\"` (Fixpt 06a3666; C526) in KFX's Rust, its object Fixpt's own
  since C530 (kind 49, 50 all ASCII): made once, converted to a string and
- to bytes and back."
+ to bytes and back; within quoted data, a datum's (C531)."
 
 "A procedure's literal."
 (define greeting (subr pure () utf8) (lambda () #utf8"h\xe9;llo, w\x1F600;rld"))
+
+"A datum's `utf8`'s length in bytes (C531), or -1."
+(define datum-text (subr pure (datum) int)
+  (lambda (x) (typecase x (utf8 u (bytevector-length (utf8->bytes u))) (else y -1))))
 
 (define main (subr (maxeff (read @globals) spin) () string)
   (lambda ()
@@ -14,4 +18,11 @@
           (string-append (int->string (bytevector-length b))
             (string-append " "
               (string-append (tagcase (bytes->utf8 b) (text u (utf8->string u)) (bad n "bad"))
-                (string-append " " (utf8->string (string->utf8 "abc")))))))))))
+                (string-append " "
+                  (string-append (utf8->string (string->utf8 "abc"))
+                    (let ((d '(a #utf8"in a list" 3)))
+                      (string-append " "
+                        (string-append (int->string (datum-text (car (cdr d))))
+                          (string-append " "
+                            (string-append (int->string (datum-text (car d)))
+                              (if (utf8? (car (cdr d))) " yes" " no"))))))))))))))))

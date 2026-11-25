@@ -5811,12 +5811,10 @@ pub fn sums_merged(ms: Tys) -> Tys {
 // char bool string symbol keyword nil (pairof datum datum acyclic)
 // vector)`, its keywords C291's: a name, its members found when they are
 // wanted, since it mentions itself. Its `bytevector` since C529, frozen,
-// `(bytevectorof const)`. FX-26's has (since Fixpt 06a3666) `utf8` too,
-// which KFX's has not yet: KFX's Rust keeps a `utf8` as a string, which a
-// union could not tell from one, so `#utf8"…"` within quoted data is
-// refused (the runtimes' unification, step 2).
+// `(bytevectorof const)`, and its `utf8` since C531, as Fixpt's (06a3666):
+// Fixpt's union whole.
 pub fn datum_members() -> Tys {
-    kayak_rt::heap_cons(ty_int(), kayak_rt::heap_cons(ty_f64(), kayak_rt::heap_cons(ty_char(), kayak_rt::heap_cons(ty_bool(), kayak_rt::heap_cons(ty_string(), kayak_rt::heap_cons(ty_data(str_lit!("symbol"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::heap_cons(ty_data(str_lit!("keyword"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::heap_cons(ty_data(str_lit!("nil"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::heap_cons(ty_data(str_lit!("%pairof"), kayak_rt::heap_cons(ty_data(str_lit!("datum"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::heap_cons(ty_data(str_lit!("datum"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::heap_cons(ty_rconst(str_lit!("acyclic")), kayak_rt::nil())))), kayak_rt::heap_cons(ty_data(str_lit!("vector"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::heap_cons(ty_data(str_lit!("%bytes"), kayak_rt::heap_cons(ty_rconst(str_lit!("const")), kayak_rt::nil())), kayak_rt::nil())))))))))))
+    kayak_rt::heap_cons(ty_int(), kayak_rt::heap_cons(ty_f64(), kayak_rt::heap_cons(ty_char(), kayak_rt::heap_cons(ty_bool(), kayak_rt::heap_cons(ty_string(), kayak_rt::heap_cons(ty_data(str_lit!("symbol"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::heap_cons(ty_data(str_lit!("keyword"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::heap_cons(ty_data(str_lit!("nil"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::heap_cons(ty_data(str_lit!("%pairof"), kayak_rt::heap_cons(ty_data(str_lit!("datum"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::heap_cons(ty_data(str_lit!("datum"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::heap_cons(ty_rconst(str_lit!("acyclic")), kayak_rt::nil())))), kayak_rt::heap_cons(ty_data(str_lit!("vector"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::heap_cons(ty_data(str_lit!("%bytes"), kayak_rt::heap_cons(ty_rconst(str_lit!("const")), kayak_rt::nil())), kayak_rt::heap_cons(ty_data(str_lit!("utf8"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), kayak_rt::nil()))))))))))))
 }
 
 // A union of sums as the one sum `tagcase` takes apart, and a `sum` is
@@ -7207,7 +7205,7 @@ pub fn logic_clauses(mut v: kayak_rt::data::DataAt<'static, Cv>, mut names: Snam
 pub fn latent_shapes() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit!("int"), kayak_rt::heap_cons(str_lit!("f64"), kayak_rt::heap_cons(str_lit!("f32"), kayak_rt::heap_cons(str_lit!("char"), kayak_rt::heap_cons(str_lit!("bool"), kayak_rt::heap_cons(str_lit!("nil"), kayak_rt::heap_cons(str_lit!("pair"), kayak_rt::heap_cons(str_lit!("string"), kayak_rt::heap_cons(str_lit!("symbol"), kayak_rt::heap_cons(str_lit!("keyword"), kayak_rt::heap_cons(str_lit!("procedure"), kayak_rt::heap_cons(str_lit!("bloblet"), kayak_rt::heap_cons(str_lit!("box"), kayak_rt::heap_cons(str_lit!("sum"), kayak_rt::heap_cons(str_lit!("product"), kayak_rt::heap_cons(str_lit!("vector"), kayak_rt::heap_cons(str_lit!("bytevector"), kayak_rt::nil())))))))))))))))))
+        kayak_rt::heap_cons(str_lit!("int"), kayak_rt::heap_cons(str_lit!("f64"), kayak_rt::heap_cons(str_lit!("f32"), kayak_rt::heap_cons(str_lit!("char"), kayak_rt::heap_cons(str_lit!("bool"), kayak_rt::heap_cons(str_lit!("nil"), kayak_rt::heap_cons(str_lit!("pair"), kayak_rt::heap_cons(str_lit!("string"), kayak_rt::heap_cons(str_lit!("symbol"), kayak_rt::heap_cons(str_lit!("keyword"), kayak_rt::heap_cons(str_lit!("procedure"), kayak_rt::heap_cons(str_lit!("bloblet"), kayak_rt::heap_cons(str_lit!("box"), kayak_rt::heap_cons(str_lit!("sum"), kayak_rt::heap_cons(str_lit!("product"), kayak_rt::heap_cons(str_lit!("vector"), kayak_rt::heap_cons(str_lit!("bytevector"), kayak_rt::heap_cons(str_lit!("utf8"), kayak_rt::nil()))))))))))))))))))
     })
 }
 
@@ -7288,7 +7286,7 @@ pub fn latent_prop_form(v: kayak_rt::data::DataAt<'static, Cv>, form: kayak_rt::
             }
         };
         if string_eq_p(shape, str_lit!("")) {
-            match refuse(v, str_lit!("a shape, one of int, f64, f32, char, bool, nil, pair, string, symbol, procedure, bloblet, box, sum, product, vector, bytevector")) {}
+            match refuse(v, str_lit!("a shape, one of int, f64, f32, char, bool, nil, pair, string, symbol, procedure, bloblet, box, sum, product, vector, bytevector, utf8")) {}
         } else {
             let holds = string_append(str_lit!("(holds (shape "), string_append(latent_param(v, second(xs), n), string_append(str_lit!(" "), string_append(shape, str_lit!("))")))));
             if negated {

@@ -2097,10 +2097,8 @@
  char bool string symbol keyword nil (pairof datum datum acyclic)
  vector)`, its keywords C291's: a name, its members found when they are
  wanted, since it mentions itself. Its `bytevector` since C529, frozen,
- `(bytevectorof const)`. FX-26's has (since Fixpt 06a3666) `utf8` too,
- which KFX's has not yet: KFX's Rust keeps a `utf8` as a string, which a
- union could not tell from one, so `#utf8\"…\"` within quoted data is
- refused (the runtimes' unification, step 2)."
+ `(bytevectorof const)`, and its `utf8` since C531, as Fixpt's (06a3666):
+ Fixpt's union whole."
 (define datum-members (subr kfx () tys)
   (lambda ()
     (list (ty-int) (ty-f64) (ty-char) (ty-bool) (ty-string) (ty-data "symbol" nil) (ty-data "keyword" nil) (ty-data "nil" nil)
@@ -2108,7 +2106,9 @@
           (ty-data "vector" nil)
           ;; A frozen bytevector, `(bytevectorof const)` (C529), as Fixpt's
           ;; `datum` has it (`bytevector?` its test).
-          (ty-data "%bytes" (list (ty-rconst "const"))))))
+          (ty-data "%bytes" (list (ty-rconst "const")))
+          ;; UTF-8 text, Fixpt's `utf8` (C531; its object its own since C530).
+          (ty-data "utf8" nil))))
 
 "A union of sums as the one sum `tagcase` takes apart, and a `sum` is
  made of (Fixpt's U3b, C355): each tag once, at its first place, its
@@ -2641,7 +2641,7 @@
  (and Q ...)))`."
 (define latent-shapes strings
   (list "int" "f64" "f32" "char" "bool" "nil" "pair" "string" "symbol" "keyword" "procedure" "bloblet" "box" "sum"
-        "product" "vector" "bytevector"))
+        "product" "vector" "bytevector" "utf8"))
 
 (define latent-param (subr kfx (cv sexp i64) string)
   (lambda (v x n)
@@ -2676,7 +2676,7 @@
       (cond ((and (string=? hd "shape") (i64= m 2))
              (let ((shape (tagcase (third xs) (sym (k f p) (if (string-member? k latent-shapes) k "")) (else other ""))))
                (if (string=? shape "")
-                   (refuse v "a shape, one of int, f64, f32, char, bool, nil, pair, string, symbol, procedure, bloblet, box, sum, product, vector, bytevector")
+                   (refuse v "a shape, one of int, f64, f32, char, bool, nil, pair, string, symbol, procedure, bloblet, box, sum, product, vector, bytevector, utf8")
                    (let ((holds (string-append "(holds (shape " (string-append (latent-param v (second xs) n) (string-append " " (string-append shape "))"))))))
                      (if negated (string-append "(not " (string-append holds ")")) holds)))))
             ((and (string=? hd "acyclic") (i64= m 1) (not negated))

@@ -1420,6 +1420,12 @@
            bytevector made once (`bytes_lit!`), frozen."
           (put "\")" (put-byte-escapes (bytes-literal-bytes e) (put "kayak_rt::bytes_lit!(b\"" acc)))))
 
+      (define put-utf8-literal (subr kfx (sexp chars) chars)
+        (lambda (e acc)
+          "`#utf8\"…\"` (`(#utf8 \"…\")`, read): its object, Fixpt's (C530), a
+           static made once (`utf8_lit!`)."
+          (put "\")" (put-escaped (string-chars (utf8-literal-text e)) #\" (put "kayak_rt::utf8_lit!(\"" acc)))))
+
       (define-rec
         (put-quoted (subr kfx (ctx sexp chars) chars)
           (lambda (c d acc)
@@ -1431,6 +1437,9 @@
                       ;; A bytevector, a datum's (C529): its word.
                       ((bytes-literal? d)
                        (put ", kayak_rt::value::Shape::Bytevector)" (put-bytes-literal d (put "kayak_rt::value::other(" acc))))
+                      ;; A `utf8`, a datum's (C531): its word.
+                      ((utf8-literal? d)
+                       (put ", kayak_rt::value::Shape::Utf8)" (put-utf8-literal d (put "kayak_rt::value::other(" acc))))
                       (else (put-quoted-items c xs acc))))
               (sym (q f p)
                 (if (or (string=? q "#t") (string=? q "#f"))
@@ -1449,12 +1458,6 @@
             (cond ((null? xs) (put "kayak_rt::value::Value::Nil" acc))
                   ((and (sym-is? (car xs) ".") (not (null? (cdr xs))) (null? (cdr (cdr xs)))) (put-quoted c (car (cdr xs)) acc))
                   (else (put ")" (put-quoted-items c (cdr xs) (put ", " (put-quoted c (car xs) (put "kayak_rt::value::cons(" acc))))))))))
-
-      (define put-utf8-literal (subr kfx (sexp chars) chars)
-        (lambda (e acc)
-          "`#utf8\"…\"` (`(#utf8 \"…\")`, read): its object, Fixpt's (C530), a
-           static made once (`utf8_lit!`)."
-          (put "\")" (put-escaped (string-chars (utf8-literal-text e)) #\" (put "kayak_rt::utf8_lit!(\"" acc)))))
 
       (define put-box-open (subr kfx (string chars) chars)
         (lambda (how acc)

@@ -728,7 +728,7 @@
                 ((string=? p "char?") "char") ((string=? p "symbol?") "symbol") ((string=? p "keyword?") "keyword") ((string=? p "array?") "bloblet")
                 ((string=? p "procedure?") "procedure") ((string=? p "null?") "nil") ((string=? p "pair?") "pair")
                 ((string=? p "f64?") "f64") ((string=? p "ref?") "box") ((string=? p "sum?") "sum")
-                ((string=? p "product?") "product") ((string=? p "bytevector?") "bytevector") ((string=? p "vector?") "vector") ((string=? p "f32?") "f32")
+                ((string=? p "product?") "product") ((string=? p "bytevector?") "bytevector") ((string=? p "utf8?") "utf8") ((string=? p "vector?") "vector") ((string=? p "f32?") "f32")
                 (else ""))))
 
       (define-rec
@@ -823,11 +823,11 @@
           (lambda (d)
             "Whether a quoted datum is one KFX builds (C77, C80): a `.` only
              before a dotted list's last item, a vector's `#vector` only at its
-             head; a bytevector's `#u8` only at its own (C529); no `#utf8\"…\"` within,
-             which KFX's `datum` has not yet."
+             head; a bytevector's `#u8` and a `utf8`'s `#utf8` only at their own
+             (C529, C531)."
             (tagcase d
               (sym (n f p) (and (not (string=? n ".")) (not (string=? n "#vector")) (not (string=? n "#utf8")) (not (string=? n "#u8"))))
-              (lst (xs f l p) (or (bytes-literal? d) (quotable-items? (if (head-is? d "#vector") (cdr xs) xs))))
+              (lst (xs f l p) (or (bytes-literal? d) (utf8-literal? d) (quotable-items? (if (head-is? d "#vector") (cdr xs) xs))))
               (else other #t))))
         (quotable-items? (subr kfx (sexps) bool)
           (lambda (xs)
@@ -913,7 +913,7 @@
                 ((string=? shape "bloblet") "Bloblet") ((string=? shape "sum") "Sum")
                 ((string=? shape "product") "Product") ((string=? shape "f32") "F32")
                 ((string=? shape "bytevector") "Bytevector") ((string=? shape "int") "Int")
-                ((string=? shape "vector") "Vector")
+                ((string=? shape "vector") "Vector") ((string=? shape "utf8") "Utf8")
                 (else ""))))
 
       (define boxed-elements? (subr kfx (st ty ty) bool)
@@ -3159,7 +3159,7 @@
                                 "A bare `'()` is `nil`, an empty list of any type, as Fixpt's
                                  `quoted` has it (C291)."
                                 (synth v s (sym "nil" f p)))
-                               ((not (quotable? (car xs))) (refuse v "a quoted datum KFX does not build: a `.` not before a dotted list's last item, or `#utf8\"…\"` within, which KFX's `datum` has not yet"))
+                               ((not (quotable? (car xs))) (refuse v "a quoted datum KFX does not build: a `.` not before a dotted list's last item"))
                                (else (res (ty-data "datum" nil) nil s))))
                        (else other (refuse v "a quoted datum KFX does not read")))))
                 ((string=? h "quasiquote")
@@ -3171,7 +3171,7 @@
                      (tagcase (car xs)
                        (lst (ys f l p)
                          (cond ((null? ys) (refuse v "a quasiquote of (), which FX-26 takes as a nil of any type: write nil"))
-                               ((not (quotable? (car xs))) (refuse v "a quasiquoted datum KFX does not build: a `.` not before a dotted list's last item, or `#utf8\"…\"` within, which KFX's `datum` has not yet"))
+                               ((not (quotable? (car xs))) (refuse v "a quasiquoted datum KFX does not build: a `.` not before a dotted list's last item"))
                                ((head-is? (car xs) "unquote") (check v s (second ys) (ty-data "datum" nil)))
                                (else (tagcase (quasi-items v s ys 1) (res (t es s) (res (ty-data "datum" nil) es s))))))
                        (else other (synth-form v s e "quote" xs)))))
@@ -3779,8 +3779,8 @@
                              (tagcase (second arm) (sym (n f p) #t) (else other #f))))
                    (refuse v "a typecase's arm is (shape name body)"))
                   ((not (string-member? (sym-name (car arm)) (list "int" "char" "bool" "nil" "pair" "string" "symbol" "keyword" "procedure" "bloblet"
-                                                                   "f64" "f32" "box" "sum" "product" "vector" "bytevector")))
-                   (refuse v (string-append "a shape a typecase tests is int, char, bool, nil, pair, string, symbol, keyword, procedure, bloblet, f64, f32, box, sum, product, vector or bytevector, not " (sym-name (car arm)))))
+                                                                   "f64" "f32" "box" "sum" "product" "vector" "bytevector" "utf8")))
+                   (refuse v (string-append "a shape a typecase tests is int, char, bool, nil, pair, string, symbol, keyword, procedure, bloblet, f64, f32, box, sum, product, vector, bytevector or utf8, not " (sym-name (car arm)))))
                   (else
                    (let* ((ms (union-local v s x))
                           (shape (sym-name (car arm)))

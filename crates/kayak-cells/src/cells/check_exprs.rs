@@ -1606,6 +1606,8 @@ pub mod expressions {
             str_lit!("product")
         } else if string_eq_p(p, str_lit!("bytevector?")) {
             str_lit!("bytevector")
+        } else if string_eq_p(p, str_lit!("utf8?")) {
+            str_lit!("utf8")
         } else if string_eq_p(p, str_lit!("vector?")) {
             str_lit!("vector")
         } else if string_eq_p(p, str_lit!("f32?")) {
@@ -1844,8 +1846,8 @@ pub mod expressions {
 
     /// Whether a quoted datum is one KFX builds (C77, C80): a `.` only
     /// before a dotted list's last item, a vector's `#vector` only at its
-    /// head; a bytevector's `#u8` only at its own (C529); no `#utf8"…"` within,
-    /// which KFX's `datum` has not yet.
+    /// head; a bytevector's `#u8` and a `utf8`'s `#utf8` only at their own
+    /// (C529, C531).
     pub fn quotable_p(d: kayak_rt::data::DataAt<'static, Sexp>) -> bool {
         let tagcase_ = d;
         if Sexp::__is_Sym(tagcase_) {
@@ -1853,7 +1855,7 @@ pub mod expressions {
             (not(string_eq_p(n, str_lit!("."))) && not(string_eq_p(n, str_lit!("#vector"))) && not(string_eq_p(n, str_lit!("#utf8"))) && not(string_eq_p(n, str_lit!("#u8"))))
         } else if Sexp::__is_Lst(tagcase_) {
             let (xs, f, l, p,) = Sexp::__Lst(tagcase_);
-            (bytes_literal_p(d) || quotable_items_p(if head_is_p(d, str_lit!("#vector")) {
+            (bytes_literal_p(d) || utf8_literal_p(d) || quotable_items_p(if head_is_p(d, str_lit!("#vector")) {
                 cdr(xs)
             } else {
                 xs
@@ -2067,6 +2069,8 @@ pub mod expressions {
             str_lit!("Int")
         } else if string_eq_p(shape, str_lit!("vector")) {
             str_lit!("Vector")
+        } else if string_eq_p(shape, str_lit!("utf8")) {
+            str_lit!("Utf8")
         } else {
             str_lit!("")
         }
@@ -6580,7 +6584,7 @@ pub mod expressions {
                             // `quoted` has it (C291).
                             return synth(v, s, sym(str_lit!("nil"), f, p));
                         } else if not(quotable_p(car(xs))) {
-                            return match refuse(v, str_lit!("a quoted datum KFX does not build: a `.` not before a dotted list's last item, or `#utf8\"…\"` within, which KFX's `datum` has not yet")) {};
+                            return match refuse(v, str_lit!("a quoted datum KFX does not build: a `.` not before a dotted list's last item")) {};
                         } else {
                             return res(ty_data(str_lit!("datum"), nil::<kayak_rt::data::DataAt<'static, Ty>>()), nil::<Str>(), s);
                         }
@@ -6602,7 +6606,7 @@ pub mod expressions {
                         if null_p(ys) {
                             return match refuse(v, str_lit!("a quasiquote of (), which FX-26 takes as a nil of any type: write nil")) {};
                         } else if not(quotable_p(car(xs))) {
-                            return match refuse(v, str_lit!("a quasiquoted datum KFX does not build: a `.` not before a dotted list's last item, or `#utf8\"…\"` within, which KFX's `datum` has not yet")) {};
+                            return match refuse(v, str_lit!("a quasiquoted datum KFX does not build: a `.` not before a dotted list's last item")) {};
                         } else if head_is_p(car(xs), str_lit!("unquote")) {
                             return check(v, s, second(ys), ty_data(str_lit!("datum"), nil::<kayak_rt::data::DataAt<'static, Ty>>()));
                         } else {
@@ -7949,8 +7953,8 @@ pub mod expressions {
             }
         })) {
             match refuse(v, str_lit!("a typecase's arm is (shape name body)")) {}
-        } else if not(string_member_p(sym_name(car(arm)), kayak_rt::heap_cons(str_lit!("int"), kayak_rt::heap_cons(str_lit!("char"), kayak_rt::heap_cons(str_lit!("bool"), kayak_rt::heap_cons(str_lit!("nil"), kayak_rt::heap_cons(str_lit!("pair"), kayak_rt::heap_cons(str_lit!("string"), kayak_rt::heap_cons(str_lit!("symbol"), kayak_rt::heap_cons(str_lit!("keyword"), kayak_rt::heap_cons(str_lit!("procedure"), kayak_rt::heap_cons(str_lit!("bloblet"), kayak_rt::heap_cons(str_lit!("f64"), kayak_rt::heap_cons(str_lit!("f32"), kayak_rt::heap_cons(str_lit!("box"), kayak_rt::heap_cons(str_lit!("sum"), kayak_rt::heap_cons(str_lit!("product"), kayak_rt::heap_cons(str_lit!("vector"), kayak_rt::heap_cons(str_lit!("bytevector"), kayak_rt::nil()))))))))))))))))))) {
-            match refuse(v, string_append(str_lit!("a shape a typecase tests is int, char, bool, nil, pair, string, symbol, keyword, procedure, bloblet, f64, f32, box, sum, product, vector or bytevector, not "), sym_name(car(arm)))) {}
+        } else if not(string_member_p(sym_name(car(arm)), kayak_rt::heap_cons(str_lit!("int"), kayak_rt::heap_cons(str_lit!("char"), kayak_rt::heap_cons(str_lit!("bool"), kayak_rt::heap_cons(str_lit!("nil"), kayak_rt::heap_cons(str_lit!("pair"), kayak_rt::heap_cons(str_lit!("string"), kayak_rt::heap_cons(str_lit!("symbol"), kayak_rt::heap_cons(str_lit!("keyword"), kayak_rt::heap_cons(str_lit!("procedure"), kayak_rt::heap_cons(str_lit!("bloblet"), kayak_rt::heap_cons(str_lit!("f64"), kayak_rt::heap_cons(str_lit!("f32"), kayak_rt::heap_cons(str_lit!("box"), kayak_rt::heap_cons(str_lit!("sum"), kayak_rt::heap_cons(str_lit!("product"), kayak_rt::heap_cons(str_lit!("vector"), kayak_rt::heap_cons(str_lit!("bytevector"), kayak_rt::heap_cons(str_lit!("utf8"), kayak_rt::nil())))))))))))))))))))) {
+            match refuse(v, string_append(str_lit!("a shape a typecase tests is int, char, bool, nil, pair, string, symbol, keyword, procedure, bloblet, f64, f32, box, sum, product, vector, bytevector or utf8, not "), sym_name(car(arm)))) {}
         } else {
             let ms = union_local(v, s, x);
             let shape = sym_name(car(arm));

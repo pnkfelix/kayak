@@ -79,7 +79,7 @@
           ((string-member? n (list "with-mark")) 3)
           ((string-member? n (list "current-marks")) 1)
           ((string-member? n (list "make-continuation-mark-key")) 0)
-          ((string-member? n (list "%identity" "bytevector-length" "string->utf8" "utf8->string" "bytes->utf8" "utf8->bytes" "flatarray-length-i64")) 1)
+          ((string-member? n (list "%identity" "bytevector-length" "string->utf8" "utf8->string" "bytes->utf8" "utf8->bytes" "utf8?" "flatarray-length-i64")) 1)
           ((string-member? n (list "append" "make-bytevector" "bytevector-u8-ref" "bytevector=?" "make-flatarray-i64" "flatarray-ref-i64")) 2)
           ((string-member? n (list "bytevector-u8-set!" "bytevector-copy" "flatarray-set-i64!")) 3)
           ((string=? n "bytevector-copy!") 5)
@@ -458,6 +458,8 @@
             ;; string's value: `utf8` its text, no object of its own.
             ((string=? n "string->utf8") (v-string (string-of a)))
             ((string=? n "utf8->string") a)
+            ;; Its `utf8` a string's value, which no test tells apart (C531).
+            ((string=? n "utf8?") (flag #f))
             ((string=? n "utf8->bytes") (v-bytes (utf8->bytes (string->utf8 (string-of a)))))
             ((string=? n "bytes->utf8")
              (tagcase (bytes->utf8 (bytes-of a)) (text t (v-sum "text" (v-string (utf8->string t)))) (bad k (v-sum "bad" (v-int k)))))

@@ -4165,6 +4165,8 @@ pub fn typecase_predicate(s: Str) -> Str {
         str_lit!("product?")
     } else if string_eq_p(s, str_lit!("vector")) {
         str_lit!("vector?")
+    } else if string_eq_p(s, str_lit!("utf8")) {
+        str_lit!("utf8?")
     } else {
         str_lit!("bytevector?")
     }
@@ -5870,6 +5872,8 @@ pub fn quoted_item(d: kayak_rt::data::DataAt<'static, Sexp>, a: i64) -> kayak_rt
             x_app(std_var(str_lit!("list->vector"), a), kayak_rt::heap_cons(quoted_list(cdr(ys), a), kayak_rt::nil()), a)
         } else if bytes_literal_p(d) {
             bytes_quoted(d, a)
+        } else if utf8_literal_p(d) {
+            utf8_quoted(d, a)
         } else {
             quoted_list(ys, a)
         }
@@ -8624,7 +8628,7 @@ pub fn primitive_forms() -> Sexps {
 pub fn c_arity_one_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit!("car"), kayak_rt::heap_cons(str_lit!("cdr"), kayak_rt::heap_cons(str_lit!("null?"), kayak_rt::heap_cons(str_lit!("not"), kayak_rt::heap_cons(str_lit!("new"), kayak_rt::heap_cons(str_lit!("get"), kayak_rt::heap_cons(str_lit!("char->integer"), kayak_rt::heap_cons(str_lit!("integer->char"), kayak_rt::heap_cons(str_lit!("string-length"), kayak_rt::heap_cons(str_lit!("char->string"), kayak_rt::heap_cons(str_lit!("symbol->string"), kayak_rt::heap_cons(str_lit!("string->symbol"), kayak_rt::heap_cons(str_lit!("array-length"), kayak_rt::heap_cons(str_lit!("current-marks"), kayak_rt::heap_cons(str_lit!("cwcc"), kayak_rt::heap_cons(str_lit!("int?"), kayak_rt::heap_cons(str_lit!("string?"), kayak_rt::heap_cons(str_lit!("bool?"), kayak_rt::heap_cons(str_lit!("char?"), kayak_rt::heap_cons(str_lit!("symbol?"), kayak_rt::heap_cons(str_lit!("pair?"), kayak_rt::heap_cons(str_lit!("procedure?"), kayak_rt::heap_cons(str_lit!("f64?"), kayak_rt::heap_cons(str_lit!("f32?"), kayak_rt::heap_cons(str_lit!("ref?"), kayak_rt::heap_cons(str_lit!("sum?"), kayak_rt::heap_cons(str_lit!("product?"), kayak_rt::heap_cons(str_lit!("bytevector?"), kayak_rt::heap_cons(str_lit!("vector?"), kayak_rt::heap_cons(str_lit!("array?"), kayak_rt::heap_cons(str_lit!("nat?"), kayak_rt::nil())))))))))))))))))))))))))))))))
+        kayak_rt::heap_cons(str_lit!("car"), kayak_rt::heap_cons(str_lit!("cdr"), kayak_rt::heap_cons(str_lit!("null?"), kayak_rt::heap_cons(str_lit!("not"), kayak_rt::heap_cons(str_lit!("new"), kayak_rt::heap_cons(str_lit!("get"), kayak_rt::heap_cons(str_lit!("char->integer"), kayak_rt::heap_cons(str_lit!("integer->char"), kayak_rt::heap_cons(str_lit!("string-length"), kayak_rt::heap_cons(str_lit!("char->string"), kayak_rt::heap_cons(str_lit!("symbol->string"), kayak_rt::heap_cons(str_lit!("string->symbol"), kayak_rt::heap_cons(str_lit!("array-length"), kayak_rt::heap_cons(str_lit!("current-marks"), kayak_rt::heap_cons(str_lit!("cwcc"), kayak_rt::heap_cons(str_lit!("int?"), kayak_rt::heap_cons(str_lit!("string?"), kayak_rt::heap_cons(str_lit!("bool?"), kayak_rt::heap_cons(str_lit!("char?"), kayak_rt::heap_cons(str_lit!("symbol?"), kayak_rt::heap_cons(str_lit!("pair?"), kayak_rt::heap_cons(str_lit!("procedure?"), kayak_rt::heap_cons(str_lit!("f64?"), kayak_rt::heap_cons(str_lit!("f32?"), kayak_rt::heap_cons(str_lit!("ref?"), kayak_rt::heap_cons(str_lit!("sum?"), kayak_rt::heap_cons(str_lit!("product?"), kayak_rt::heap_cons(str_lit!("bytevector?"), kayak_rt::heap_cons(str_lit!("vector?"), kayak_rt::heap_cons(str_lit!("array?"), kayak_rt::heap_cons(str_lit!("nat?"), kayak_rt::heap_cons(str_lit!("utf8?"), kayak_rt::nil()))))))))))))))))))))))))))))))))
     })
 }
 

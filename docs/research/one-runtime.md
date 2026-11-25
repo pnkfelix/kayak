@@ -110,3 +110,6 @@ kayak-rt and kcrt-core alone, recorded at each step here.
   trailer, the header's count of bytes exact; its literal a static
   (`utf8_lit!`); `string->utf8` a copy, as Fixpt's. A union can now tell a
   `utf8` from a string, so the checker's `datum` can take it next.
+- **Step 2(c), its `utf8` (C531)**: KFX's `datum` Fixpt's union whole;
+  `utf8?` and `typecase`'s `utf8` arm in the checker, KFX's Rust, the
+  engine and tier 1. Left: kc's `utf8?`, so the expander's shim stays.

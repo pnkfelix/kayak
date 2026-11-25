@@ -549,7 +549,7 @@
           ((string=? s "pair") "pair?") ((string=? s "string") "string?") ((string=? s "symbol") "symbol?") ((string=? s "keyword") "keyword?")
           ((string=? s "procedure") "procedure?") ((string=? s "bloblet") "array?") ((string=? s "f64") "f64?")
           ((string=? s "f32") "f32?") ((string=? s "box") "ref?") ((string=? s "sum") "sum?") ((string=? s "product") "product?")
-          ((string=? s "vector") "vector?") (else "bytevector?"))))
+          ((string=? s "vector") "vector?") ((string=? s "utf8") "utf8?") (else "bytevector?"))))
 
 "Names `bloblet-form` tests against, made once (C264): a list written in place is
  made at each call."
@@ -1384,6 +1384,7 @@
                  (x-app (std-var "list->vector" a) (list (quoted-list (cdr ys) a)) a))
                 ;; A bytevector within (C529): made, then interned with the rest.
                 ((bytes-literal? d) (bytes-quoted d a))
+                ((utf8-literal? d) (utf8-quoted d a))
                 (else (quoted-list ys a))))
         (else other (parse-x d)))))
 
@@ -2038,7 +2039,7 @@
     "char->string" "symbol->string" "string->symbol" "array-length" "current-marks" "cwcc"
     ;; The shapes' tests (C217).
     "int?" "string?" "bool?" "char?" "symbol?" "pair?" "procedure?" "f64?" "f32?" "ref?" "sum?"
-    "product?" "bytevector?" "vector?" "array?" "nat?"))
+    "product?" "bytevector?" "vector?" "array?" "nat?" "utf8?"))
 
 "Names `c-arity` tests against, made once (C264): a list written in place is
  made at each call."
