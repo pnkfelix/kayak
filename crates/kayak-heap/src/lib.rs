@@ -9,10 +9,12 @@
 //! memory is read here: each function is given how to read a word, so the
 //! crate has no `unsafe`, and its caller's own rules for reading (a word
 //! of kayak-rt's space, of kc's stack) stay the caller's. Then (C536)
-//! strings' primitives over their code points ([`text`]).
+//! strings' primitives over their code points ([`text`]). Then (C537) a
+//! collection's roots, the trait each runtime finds them by ([`roots`]).
 
 use kayak_layout as layout;
 
+pub mod roots;
 pub mod text;
 
 const TAG_MASK: u64 = layout::TAG_MASK;

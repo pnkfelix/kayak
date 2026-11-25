@@ -220,16 +220,20 @@ fn copy_all(lo: u64, hi: u64, sp: u64, block: *mut u64, words: u64) -> Result<(u
         to_base,
         top: to_base,
     };
-    let mut a = sp;
-    while a < b(B_STACK) {
-        c.forward_at(a)?;
-        a += 8;
-    }
-    let mut a = b(B_CELLS_LO);
-    while a < b(B_CELLS_HI) {
-        c.forward_at(a)?;
-        a += 8;
-    }
+    // kc's roots, all exact (`kayak_heap::roots`, C537): its stack's
+    // frames, from the stack pointer to the base its entry kept, and the
+    // globals' cells.
+    let runs = [
+        (sp as usize, b(B_STACK) as usize),
+        (b(B_CELLS_LO) as usize, b(B_CELLS_HI) as usize),
+    ];
+    let mut failed = Ok(());
+    kayak_heap::roots::Roots::each_exact(&mut kayak_heap::roots::Runs(&runs), &mut |a| {
+        if failed.is_ok() {
+            failed = c.forward_at(a as u64);
+        }
+    });
+    failed?;
     c.scan()?;
     let top = c.top;
     SPACES.with(|s| {

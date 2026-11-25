@@ -154,9 +154,46 @@ kayak-rt and kcrt-core alone, recorded at each step here.
   (`string_points`) where they decoded each to a Rust `String`: `string=?`,
   `string<?`, `string-hash`, search, `string-append`, `substring`.
 - **The barrier, step 3's next decision**: kayak-rt's generations
-  remember a written cell (C523); Fixpt's native code marks cards
-  (`fixpt-native`'s `x86_64::stored`: a generation table by 1 GiB, a card
-  table by 512 bytes, in line, a slow call to the heap). kc's code, to
-  allocate in kayak-rt's pages in process, needs one of them on its
-  stores; Fixpt's is the one to take (its convention, and native code's
-  in line), which means kayak-rt's remembered cells become Fixpt's cards.
+  keep a store buffer: each written slot that now holds a heap pointer,
+  outside the thread's current (young) page, pushed (`space::remember`,
+  C523), which a minor collection takes as roots. Fixpt's native code
+  marks cards instead (`fixpt-native`'s `x86_64::stored`: a generation
+  table by 1 GiB, a card table by 512 bytes, in line, a slow call to the
+  heap). For kc's code to allocate in kayak-rt's pages in process, its
+  stores need kayak-rt's barrier: a routine `kc_remember(slot)` that
+  kayak-rt registers in kcrt's routine table (kcrt-core cannot name
+  kayak-rt, which links it), called after each store of a value into a
+  heap object (`set`, an array's element, a vector's). The store buffer
+  first, as it is what kayak-rt's collector reads; Fixpt's cards if the
+  measures favour them, a change to both runtimes then, not to kc alone.
+- **Step 3, the roots (C537)**: `kayak_heap::roots::Roots`, a
+  collection's roots as each runtime finds them: exact slots (read and
+  rewritten) and ambiguous words (pinning). kcrt's Cheney takes its roots
+  through it (`Runs`: kc's stack from its pointer to its base, the
+  globals' cells, all exact). kayak-rt's are next: its `roots_from`'s
+  words the ambiguous ones, its kept blocks' slots the exact.
+
+## Step 3's rest: kc's code in kayak-rt's heap, in process
+
+What it takes for kc's code run in process (`kc run`, a transformer) to
+allocate in kayak-rt's thread pages instead of kcrt's semispaces (a
+built program keeps kcrt's Cheney: it has no kayak-rt):
+1. **Where objects start.** kayak-rt's collector pins a page's objects by
+   their start bits, which `space::words` sets; kc's code bumps `%r12` in
+   line and sets none. A page kc fills is all kc's objects, one after
+   another, each saying its size, so its starts are found by walking it
+   (`kayak_heap::object_at`) when kc gives it back: at `kc_gc_call`, and
+   before any collection while kc's frames are on the stack.
+2. **The refill.** In process, `kc_collect`'s routine is kayak-rt's
+   (registered in kcrt's routine table, which kcrt-core holds and
+   kayak-rt fills: kcrt-core cannot name kayak-rt, which links it): it
+   walks the page kc filled, takes a new one (`%r12` and `%r13` its start
+   and end), and collects when kayak-rt's policy says.
+3. **The roots.** kc's frames are on the thread's own stack, below the
+   Rust frame that called `kc_call2`, so kayak-rt's conservative scan
+   sees them; the globals' cells (`kc_cells_lo` to `kc_cells_hi`) are a
+   kept block, registered at `kc_gc_init`. Exact roots (`Runs`) would let
+   kc's objects move; ambiguous ones pin them, which is correct first.
+4. **The barrier.** kc's two stores into the heap (`set`, `array-set!`)
+   call `kc_remember` after the store: kayak-rt's `space::remember` in
+   process, nothing in a built program.

@@ -17198,3 +17198,24 @@ format made a matter of moving code: both runtimes' strings are Fixpt's.
 - **kc's identity** hashes `kayak-heap/src/text.rs` too.
 - **Tests**: kayak-heap's 8; kcrt-core's `strings_as_points`.
 - **The full check**: `check: all passed`, 10 min 27 s (the mean of 96 runs 8 min 25 s); the pre-check passed first.
+
+## C537. A collection's roots, a trait: `kayak_heap::roots` (2026-11-25)
+
+Step 3's piece (`docs/research/one-runtime.md`): the one way the two
+runtimes' collections must differ, so the plan's trait.
+- **`Roots`**: `each_exact` (a slot's address, read and rewritten where
+  what it reaches moves) and `each_ambiguous` (a word, pinning what it
+  may point to; none by default). `Runs`, runs of exact slots `[lo, hi)`.
+- **kcrt**: its Cheney copy takes its roots by `Runs` (kc's stack from
+  its pointer to its base, the globals' cells), where it walked the two
+  runs itself. No behaviour changed.
+- **Not yet kayak-rt's**: its roots (`roots_from`: registers and stacks
+  scanned, kept objects reached where a word reaches them, constants,
+  other threads' lists) feed its marking directly; through `Roots` once
+  the collector itself moves to kayak-heap. The plan doc gains the design
+  of kc's code allocating in kayak-rt's pages in process (where objects
+  start, the refill, the roots, the barrier), and the barrier's choice
+  (kayak-rt's store buffer first, Fixpt's cards if the measures say).
+- **kc's identity** hashes `kayak-heap/src/roots.rs` too.
+- **Tests**: kayak-heap's `runs_each_slot_once` (9 in all).
+- **The full check**: `check: all passed`, 10 min 28 s (the mean of 98 runs 8 min 28 s); the pre-check passed first.
