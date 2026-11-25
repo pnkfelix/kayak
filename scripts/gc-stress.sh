@@ -33,6 +33,18 @@ env KAYAK_GC_STRESS=1 KAYAK_GC_POISON=1 KAYAK_CORPUS_ONLY=$threads cargo nextest
     --hide-progress-bar --status-level fail -E 'test(every_program_gives_fixpts_answer)' > /dev/null 2>&1 \
     || { echo "gc-stress: the corpus's programs of threads, at every allocation, differ or fail" >&2; exit 1; }
 echo "gc-stress: its programs of processes and par, a collection at every allocation"
+# kc's code in process, its objects in kayak-rt's heap (C538): its
+# programs of it (tests/kc/heap), a collection every 31st allocation, freed
+# pages poisoned, each collection verified (the barrier's slots among it).
+cargo build --release --quiet -p kayak-kc
+kcdb=$(mktemp -d)
+for f in tests/kc/heap/*.fx; do
+    want=$(sed -n '1s/^;; => //p' "$f")
+    got=$(KAYAK_GC_STRESS=31 KAYAK_GC_POISON=1 KAYAK_GC_VERIFY=1 ./target/release/kc --db "$kcdb/db" run "$f" 2>&1 | tail -1)
+    [ "$got" = "$want" ] || { rm -rf "$kcdb"; echo "gc-stress: kc's $f in process: $got, not $want" >&2; exit 1; }
+done
+rm -rf "$kcdb"
+echo "gc-stress: kc's code in process in kayak-rt's heap, a collection every 31 allocations, verified"
 # The compiler making itself, every 300007th: boot/src/kfx/ again.
 cargo build --release --quiet -p kfx
 tmp=$(mktemp -d)

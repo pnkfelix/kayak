@@ -716,16 +716,20 @@
                    (list-type? c (car (module-body c (string-append "%alias " (sym-name t))))))
                   (else #f)))))
 
+      (define local-kind-in (subr kfx (string string string strings) string)
+        (lambda (s as-knot as-item ls)
+          (cond ((null? ls) "")
+                ((string=? (car ls) s) "local")
+                ((string=? (car ls) as-knot) "knot")
+                ((string=? (car ls) as-item) "item")
+                (else (local-kind-in s as-knot as-item (cdr ls))))))
       (define local-kind (subr kfx (string strings) string)
         (lambda (s ls)
           "What `s` is where it is named: `local`, `knot` (a procedure of a
            `letrec`, in its group's lambdas, before it is made: reached through
-           its knot), or `` (not bound locally). The innermost binding counts."
-          (cond ((null? ls) "")
-                ((string=? (car ls) s) "local")
-                ((string=? (car ls) (string-append "%knot " s)) "knot")
-                ((string=? (car ls) (string-append "%item " s)) "item")
-                (else (local-kind s (cdr ls))))))
+           its knot), or `` (not bound locally). The innermost binding counts.
+           Its markers' names made once, not at each binding passed (C538)."
+          (if (null? ls) "" (local-kind-in s (string-append "%knot " s) (string-append "%item " s) ls))))
 
       ;; Closures as FX-26's heap grammar has them (C481; kayak-rt's
       ;; `closure.rs`): its captures a tuple, split by their types into traced
@@ -838,14 +842,20 @@
                        (direct-calls (cdr cs) (cons (car cs) out)))))
                 (else (direct-calls (cdr cs) (cons (car cs) out))))))
 
+      (define fn-alias-in (subr kfx (string string string string strings) string)
+        (lambda (s as-knot as-item as-alias ls)
+          (cond ((null? ls) "")
+                ((or (string=? (car ls) s) (string=? (car ls) as-knot) (string=? (car ls) as-item)) "")
+                ((has-prefix? (car ls) as-alias) (after-prefix (car ls) as-alias))
+                (else (fn-alias-in s as-knot as-item as-alias (cdr ls))))))
       (define fn-alias (subr kfx (string strings) string)
         (lambda (s ls)
           "The path of the function a `let` bound `s` to (C481), innermost
-           binding first; `` if `s` names none so."
-          (cond ((null? ls) "")
-                ((or (string=? (car ls) s) (string=? (car ls) (string-append "%knot " s)) (string=? (car ls) (string-append "%item " s))) "")
-                ((has-prefix? (car ls) (string-append "%fnalias " (string-append s " "))) (after-prefix (car ls) (string-append "%fnalias " (string-append s " "))))
-                (else (fn-alias s (cdr ls))))))
+           binding first; `` if `s` names none so. Its markers' names made
+           once (C538)."
+          (if (null? ls)
+              ""
+              (fn-alias-in s (string-append "%knot " s) (string-append "%item " s) (string-append "%fnalias " (string-append s " ")) ls))))
 
       (define local-rust-name (subr kfx (string) string)
         (lambda (l)

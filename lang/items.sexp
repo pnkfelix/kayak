@@ -622,6 +622,7 @@
 (syscall "kayak:kc-failure/1" "(subr (io sys) () string)" kayak)
 (syscall "kayak:kc-give/1" "(subr (io sys) (string) unit)" kayak)
 (syscall "kayak:kc-output/1" "(subr (io sys) () string)" kayak)
+(syscall "kayak:kc-done/1" "(subr (io sys) () unit)" kayak)
 (syscall "kayak:unseal/1" "(subr (io sys) (int) unit)" kayak)
 (syscall "kayak:last-sealed/1" "(subr (io sys) () int)" kayak)
 

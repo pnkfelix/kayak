@@ -22,7 +22,8 @@
    1  the image's address        (the code's, at entry)
    3  the array's length         (KFX's)
    5  1 for a transformer's run  (KFX's, C454)
-   16 on   the heap"
+   16 on   the heap: none in process (C538), where kc's objects are
+           made in kayak-rt's heap, lent it (`obj::kc_heap`)"
 
 (define-syscall kc-routine "kayak:kc-routine/1" (subr (io sys) (string) int))
 (define-syscall kc-failure "kayak:kc-failure/1" (subr (io sys) () string))
@@ -30,6 +31,7 @@
 (define-syscall kc-output "kayak:kc-output/1" (subr (io sys) () string))
 (define-syscall last-sealed "kayak:last-sealed/1" (subr (io sys) () int))
 (define-syscall unseal "kayak:unseal/1" (subr (io sys) (int) unit))
+(define-syscall kc-done "kayak:kc-done/1" (subr (io sys) () unit))
 
 (define kc-native
   (module
@@ -84,7 +86,12 @@
 
     (define native-sealed (subr (maxeff nrt (io native)) ((listof i64 acyclic) i64) run-image)
       (lambda (image words)
-        (let* ((h (heap-of words))
+        ;; In process, kc's objects are made in kayak-rt's heap (C538): the
+        ;; array's heap is empty (its 16 words the image's, the code's), so
+        ;; that the code's first object asks for room, and none is in the
+        ;; array, which kayak-rt's collector reads no value of. `words`, a
+        ;; built program's.
+        (let* ((h (heap-of 16))
                (b (the code (make-bloblet (i64->int (size image)) h))))
           (begin
             (bytes-put! b 0 image)
@@ -110,7 +117,8 @@
             (begin
               (flatarray-set-i64! h 5 (if apply 1 0))
               (if apply (kc-give input) #u)
-              (if (i64= (f h) 0) "" (kc-failure)))))))
+              (let ((r (f h)))
+                (begin (kc-done) (if (i64= r 0) "" (kc-failure)))))))))
 
     "What the code wrote, each value's line, taken."
     (define native-output (subr nrt () string) (lambda () (kc-output)))

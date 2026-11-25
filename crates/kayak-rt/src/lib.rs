@@ -226,7 +226,7 @@ pub(crate) fn str_of_points(parts: &[&[u32]]) -> Str {
 /// A string of `n` code points, which `fill` writes, kept for the run: its
 /// object (C533, `obj.rs`).
 fn str_made(n: usize, fill: impl FnOnce(&mut [u32])) -> Str {
-    stats::note::<Str>(n);
+    stats::note::<Str>(8 * obj::string_words(n));
     if n == 0 {
         return str_lit!("");
     }

@@ -209,6 +209,80 @@ pub(crate) fn words(w: usize) -> *mut u64 {
     })
 }
 
+/// Room lent native code that bumps a pointer of its own through it (C538:
+/// kc's code in process, `obj::kc_heap`): the thread's current page from
+/// its next word to its end, if `w` words fit there; else room as
+/// `words(w)` makes it (a safepoint: a collection may run), the object's
+/// start noted, the pointer left at it, so that the native code makes its
+/// `w` words there. Its first word and end, and whether it is a large
+/// object's (its own, `w` words, not a page's).
+pub(crate) fn lend(w: usize) -> (usize, usize, bool) {
+    BUMP.with(|b| {
+        let at = b.at.get();
+        let room = (b.limit.get().addr().saturating_sub(at.addr())) / 8;
+        if !at.is_null() && room >= w && w * 8 <= LARGE_BYTES {
+            return (at.addr(), b.limit.get().addr(), false);
+        }
+        let at = refill(b, w);
+        if w * 8 > LARGE_BYTES {
+            return (at.addr(), at.addr() + 8 * w, true);
+        }
+        b.at.set(at);
+        (at.addr(), b.limit.get().addr(), false)
+    })
+}
+
+/// Lent room's objects, from `from` to `next`, given back (`lend`'s, not
+/// a large object's): each one's start noted as `words` notes one, read by
+/// its header (`kayak_heap::object_at`), and the page's next word `next`.
+pub(crate) fn lent_back(from: usize, next: usize) {
+    BUMP.with(|b| {
+        assert!(
+            b.at.get().addr() == from && next <= b.limit.get().addr(),
+            "kayak: native code's room given back is not the room lent"
+        );
+        let c = b.chunk.get().expect("lent a page");
+        let base = b.at.get();
+        let mut at = from;
+        while at < next {
+            // SAFETY: the words native code made from `from`, each object
+            // whole, within the page lent.
+            let o = kayak_heap::object_at(at, |a| unsafe { *base.byte_add(a - from) });
+            c.note_start(base.wrapping_byte_add(at - from));
+            at = o.end;
+        }
+        b.at.set(base.wrapping_byte_add(next - from));
+        if b.end.get().addr() < next {
+            b.end.set(b.at.get());
+        }
+    })
+}
+
+/// Lent room native code made what it will not give back in (its run
+/// over: what it made there dead), zeroed again, as `words` gives words:
+/// from `from`, the page's next word still, to the page's end.
+pub(crate) fn lent_dropped(from: usize) {
+    BUMP.with(|b| {
+        let at = b.at.get();
+        if at.addr() != from || at.is_null() {
+            return;
+        }
+        let n = (b.limit.get().addr() - from) / 8;
+        // SAFETY: the page's words from its next to its end, the thread's,
+        // none an object's yet (none noted there).
+        unsafe { std::ptr::write_bytes(at, 0, n) };
+    })
+}
+
+/// A slot's address stored into by native code (C538), through the write
+/// barrier (`remember`).
+pub(crate) fn remember_slot(slot: usize) {
+    // SAFETY: a slot of a heap object native code just stored a word into,
+    // a word, alive.
+    let cell = unsafe { &*std::ptr::with_exposed_provenance::<Cell<u64>>(slot) };
+    remember(cell);
+}
+
 /// `words(w)`, as a slice.
 #[inline]
 pub(crate) fn words_slice(w: usize) -> &'static mut [u64] {

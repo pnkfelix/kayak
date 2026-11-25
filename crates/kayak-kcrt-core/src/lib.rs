@@ -33,7 +33,7 @@
 #![allow(unsafe_code)]
 
 mod gc;
-pub use gc::{Heap, collections};
+pub use gc::{B_CELLS_HI, B_CELLS_LO, B_HI, B_NEXT, Heap, HeapHost, collections, set_host};
 
 // Fixpt's tags, immediates and kinds, from kayak-layout's table, Fixpt's
 // own (TODO §56, step 1), under this crate's names.
@@ -1085,6 +1085,16 @@ extern "C" fn here_string_append(args: *const u64, block: *mut u64) -> u64 {
 /// first space again, the collector's own spaces dropped (the run
 /// before's region, dropped whole, what this runtime made there with it,
 /// C455).
+/// kc's code's write barrier (C538): after each store of a value into a
+/// heap object (`set`, `array-set!`), the slot's address. A built
+/// program's heap has no generations: nothing.
+#[unsafe(no_mangle)]
+pub extern "C" fn kc_remember(_slot: u64) {}
+
+extern "C" fn here_remember(slot: u64) {
+    gc::remember(slot);
+}
+
 extern "C" fn here_gc_reset() {
     gc::reset();
 }
@@ -1153,6 +1163,7 @@ pub fn routine(name: &str) -> u64 {
         "kc_show" => here_show as *const (),
         "kcrt_given" => here_given as *const (),
         "kc_gc_reset" => here_gc_reset as *const (),
+        "kc_remember" => here_remember as *const (),
         "kc_fail" => here_fail as *const (),
         "kc_intern" => kc_intern as *const (),
         "kc_string_eq" => kc_string_eq as *const (),

@@ -27,7 +27,8 @@ use super::*;
 // 1  the image's address        (the code's, at entry)
 // 3  the array's length         (KFX's)
 // 5  1 for a transformer's run  (KFX's, C454)
-// 16 on   the heap
+// 16 on   the heap: none in process (C538), where kc's objects are
+// made in kayak-rt's heap, lent it (`obj::kc_heap`)
 
 pub fn _pctsyscall_available_colonkc_routine() -> bool {
     kayak_rt::syscall_require(str_lit!("syscall kc-routine (\"kayak:kc-routine/1\")"), str_lit!("kayak:kc-routine/1"), str_lit!("(subr (io sys) (string) int)"));
@@ -87,6 +88,16 @@ pub fn _pctsyscall_available_colonunseal() -> bool {
 pub fn unseal(x1: Int) -> () {
     _pctsyscall_available_colonunseal();
     kayak_rt::syscall1(str_lit!("syscall unseal (\"kayak:unseal/1\")"), str_lit!("kayak:unseal/1"), str_lit!("(subr (io sys) (int) unit)"), x1)
+}
+
+pub fn _pctsyscall_available_colonkc_done() -> bool {
+    kayak_rt::syscall_require(str_lit!("syscall kc-done (\"kayak:kc-done/1\")"), str_lit!("kayak:kc-done/1"), str_lit!("(subr (io sys) () unit)"));
+    true
+}
+
+pub fn kc_done() -> () {
+    _pctsyscall_available_colonkc_done();
+    kayak_rt::syscall0(str_lit!("syscall kc-done (\"kayak:kc-done/1\")"), str_lit!("kayak:kc-done/1"), str_lit!("(subr (io sys) () unit)"))
 }
 
 pub mod kc_native {
@@ -274,7 +285,7 @@ pub mod kc_native {
     }
 
     pub fn native_sealed(image: List<i64>, words: i64) -> kayak_rt::data::DataAt<'static, RunImage> {
-        let h = heap_of(words);
+        let h = heap_of(16i64);
         let b = the::<Code>(make_bloblet(i64_to_int(size(image)), (kayak_rt::Slot::new(h),)));
         bytes_put_x(b, int_lit(0), image);
         let sealed = seal_code(b);
@@ -314,7 +325,9 @@ pub mod kc_native {
             } else {
                 ()
             };
-            if i64_eq(f.call(h), 0i64) {
+            let r = f.call(h);
+            kc_done();
+            if i64_eq(r, 0i64) {
                 str_lit!("")
             } else {
                 kc_failure()

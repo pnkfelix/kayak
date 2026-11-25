@@ -207,7 +207,11 @@ const SYSCALLS: &[Syscall] = &[
     Syscall {
         host: "kayak:kc-routine/1",
         canonical: "(subr (io sys) (string) int)",
-        run: |a| (kayak_kcrt_core::routine(&crate::Str::of_word(a[0]).text()) as i64).word(),
+        run: |a| {
+            // kc's code in process allocates in this thread's heap (C538).
+            crate::obj::kc_heap::install();
+            (kayak_kcrt_core::routine(&crate::Str::of_word(a[0]).text()) as i64).word()
+        },
     },
     // What the last of those routines that failed in process said, taken:
     // its words, which a built program would say before it ends.
@@ -231,6 +235,16 @@ const SYSCALLS: &[Syscall] = &[
         host: "kayak:kc-output/1",
         canonical: "(subr (io sys) () string)",
         run: |_| crate::leak_string(kayak_kcrt_core::output_taken()).word(),
+    },
+    // A run of kc's code in process over (C538): the room of this thread's
+    // heap it was lent and did not give back dropped, its cells no roots.
+    Syscall {
+        host: "kayak:kc-done/1",
+        canonical: "(subr (io sys) () unit)",
+        run: |_| {
+            crate::obj::kc_heap::done();
+            ().word()
+        },
     },
     // Sealed code freed (C456), named by where it runs (what
     // `kayak:last-sealed/1` gave after its `seal-code`): its block of the

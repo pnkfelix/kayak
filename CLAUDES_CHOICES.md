@@ -17219,3 +17219,54 @@ runtimes' collections must differ, so the plan's trait.
 - **kc's identity** hashes `kayak-heap/src/roots.rs` too.
 - **Tests**: kayak-heap's `runs_each_slot_once` (9 in all).
 - **The full check**: `check: all passed`, 10 min 28 s (the mean of 98 runs 8 min 28 s); the pre-check passed first.
+
+## C538. kc's code in process allocates in kayak-rt's heap (2026-11-25)
+
+Step 3's main piece (`docs/research/one-runtime.md`, "Step 3's rest"):
+kc's objects, in process (`kc run`, a transformer), made in the thread's
+pages and collected by kayak-rt's collector, generations and all, where
+they were kcrt's semispaces and Cheney's copy. A built program keeps those.
+- **The seam**: kcrt-core's `HeapHost` (`room`, `words`, `remember`,
+  `reset`), which kayak-rt installs where kc's code first runs in process
+  (`kayak:kc-routine/1`). Given, `kc_collect` asks it for room and
+  `gc::words` (a heap routine's) for words; kcrt-core never names
+  kayak-rt, which links it.
+- **kayak-rt** (`obj::kc_heap`; `space::lend`, `lent_back`,
+  `lent_dropped`, `remember_slot`): kc's code is lent the rest of the
+  thread's current page, or a page or a large object `refill` makes (its
+  policy's collection perhaps first). Each time it asks for more, what it
+  made since is given back: each object's start noted, read by its header
+  (`kayak_heap::object_at`), as `space::words` notes kayak-rt's own, and
+  the page's next word moved past them. Its roots: its frames, on the
+  thread's stack below the Rust frame that called it, which a collection
+  scans already (ambiguous, so pinned); its globals' cells, scanned while
+  it runs (`roots::native_cells`). One run at a time a thread: two at once
+  fail loudly (none nests: the expander kc loads is a module of kayak's
+  runtime, and a transformer's code calls only kcrt).
+- **kc**: `kc_gc_call` stores `%r12` (the heap's next word) in the block
+  first; `set` and `array-set!` call `kc_remember` with the slot after the
+  store (appended to `x64-services`; a built program's does nothing); in
+  process the array's heap is empty (`heap-of 16`), so that no kc object is
+  in the flat array, whose words kayak-rt's collector does not follow, and
+  `kc run`'s `--heap` is a built program's alone; `kayak:kc-done/1` after
+  each run zeroes the room it never gave back, so that kayak-rt's next
+  words are zeroed as `words` promises.
+- **Tests**: `tests/kc/heap/lent-pages.fx` (a list kept as a global across
+  collections, lists made and dropped) and `tests/kc/heap/barrier.fx` (an
+  old box and array given young lists; small enough for Fixpt's
+  evaluator's step limit, which kc-steps compares with), in kc-steps; and in gc-stress, in
+  process, a collection every 31st allocation, freed pages poisoned, each
+  collection verified. Under a collection at every allocation (357,920 of
+  them) the answers are right; with `kc_remember` made nothing, the
+  verifier stops the barrier test. Shared-runtime work, not kayak-rt's.
+  Seen once and not again in ~70 runs: a verifier failure (a pair's word
+  to where no pair is) in the first stressed run after the barrier test
+  was edited, kc's compiler running under the verifier too; TODO §56.
+- **Besides**: kayak-rt's census (`heap-stats`) counts a string's object's
+  bytes (since C533 it counted its code points); the emitter's
+  `local-kind` and `fn-alias` make their markers' names once a call, not
+  at each binding passed (57% of the bytes of strings kfx made compiling
+  itself; minor collections 75 to 66, its peak the same). And TODO §56
+  notes the user's question of `utf8` for compactness, measured: live
+  strings under 17 MB, the peak the collector's sizing over what survives.
+- **The full check**: `check: all passed`, 8 min 03 s (the mean of 100 runs 8 min 27 s); the pre-check passed first.

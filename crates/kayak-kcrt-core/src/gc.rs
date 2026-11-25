@@ -46,12 +46,43 @@ const MOST_WORDS: u64 = 1 << 31;
 /// and, for a routine that makes something in the heap (C455), the heap's
 /// next free word and the stack pointer where its caller's frames start.
 const B_LO: usize = 0;
-const B_HI: usize = 1;
+pub const B_HI: usize = 1;
 const B_STACK: usize = 2;
-const B_CELLS_LO: usize = 3;
-const B_CELLS_HI: usize = 4;
-const B_NEXT: usize = 5;
+pub const B_CELLS_LO: usize = 3;
+pub const B_CELLS_HI: usize = 4;
+pub const B_NEXT: usize = 5;
 const B_SP: usize = 6;
+
+/// A host's heap for kc's code in process (C538; the plan's step 3):
+/// kayak-rt's thread pages, where kc's objects are collected with its own
+/// by its collector, instead of this one's spaces. Given, `kc_collect`
+/// asks it for room (`room`: kc's code's heap after, `next` to `end`, room
+/// for `need` bytes from `next`), and a routine that makes something in
+/// kc's heap asks it for words (`words`, as [`words`] does); kc's code's
+/// stores are its barrier's (`remember`, a slot's address); a run's start
+/// is its (`reset`). Each is given the block (`kc_gc`, the state block's
+/// words from 688): the heap's next word kc's code reached is its
+/// `B_NEXT`. A built program has none: this collector's.
+pub struct HeapHost {
+    pub room: fn(need: u64, block: *mut u64) -> Result<Heap, String>,
+    pub words: fn(block: *mut u64, n: u64) -> Result<u64, String>,
+    pub remember: fn(slot: u64),
+    pub reset: fn(),
+}
+
+static HOST: std::sync::OnceLock<HeapHost> = std::sync::OnceLock::new();
+
+/// The host's heap given kc's code in process, from now on (once).
+pub fn set_host(h: HeapHost) {
+    let _ = HOST.set(h);
+}
+
+/// kc's code's barrier (C538): the host's, or none.
+pub(crate) fn remember(slot: u64) {
+    if let Some(h) = HOST.get() {
+        (h.remember)(slot);
+    }
+}
 
 /// The heap after a collection, in `%rax` and `%rdx`: its next free word
 /// and its end; a next of 0, a failure (in process).
@@ -73,6 +104,9 @@ std::thread_local! {
 /// again from the space it is given, nothing of the run before reachable.
 pub(crate) fn reset() {
     SPACES.with(|s| s.borrow_mut().clear());
+    if let Some(h) = HOST.get() {
+        (h.reset)();
+    }
 }
 
 /// Collections so far in this thread.
@@ -251,6 +285,9 @@ fn copy_all(lo: u64, hi: u64, sp: u64, block: *mut u64, words: u64) -> Result<(u
 /// or, if what lives and what is needed fill more than half of it, again
 /// into one big enough that they fill half.
 pub(crate) fn collect(need: u64, sp: u64, block: *mut u64) -> Result<Heap, String> {
+    if let Some(h) = HOST.get() {
+        return (h.room)(need, block);
+    }
     let b = |k: usize| get(block as u64 + 8 * k as u64);
     let (lo, hi) = (b(B_LO), b(B_HI));
     let words = (hi - lo) / 8;
@@ -286,6 +323,9 @@ pub(crate) fn collect(need: u64, sp: u64, block: *mut u64) -> Result<Heap, Strin
 /// take back. What the routine was given it reads after, from the stack
 /// words the collection moved.
 pub(crate) fn words(block: *mut u64, n: u64) -> Result<u64, String> {
+    if let Some(h) = HOST.get() {
+        return (h.words)(block, n);
+    }
     let b = |k: usize| get(block as u64 + 8 * k as u64);
     let mut next = b(B_NEXT);
     if next + 8 * n > b(B_HI) {

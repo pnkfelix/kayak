@@ -2543,3 +2543,26 @@ Fixpt's `layout.rs` and `value.rs`, every crate's constants from it).
   freed_pages > 0` resting on no stale stack word pinning the list's
   pages. Make it hold its list only through the heap, as
   `strings_of_each_length_moved` does (C533).
+- UTF-32's memory (C533, measured 2026-11-25; the user's question, "can't
+  you use utf8 strings to address the compactness issue?"): kfx compiling
+  itself, peak 206 MB (C532) to 296 MB, time the same. Live strings stay
+  under 17 MB (about 170k, mostly symbol names; ~8 MB as UTF-8), the live
+  heap under ~75 MB; the peak is the collector's sizing over what
+  survives (three times what a major collection kept, plus a 32 MB
+  nursery), majors 143 to 232 ms. In the programs, not the runtime
+  (`string` stays Fixpt's): (1) the reader over the source as `utf8` by
+  byte offset (Fixpt's `utf8-ref`, `utf8-next`, which kayak has not
+  carried), not a `string` (2 MB of source, 8 MB as UTF-32); (2) the
+  emitter's characters straight to bytes, no `string` between (3.2 MB of
+  Rust, 13 MB as UTF-32), first measuring whether the output is held at
+  once; (3) symbol names as `utf8` last (the checker throughout). And
+  apart from the format, the growth policy's factor of three.
+- A verifier failure seen once (C538), not reproduced in ~70 runs since:
+  `kc run tests/kc/heap/barrier.fx`, `KAYAK_GC_STRESS=31 KAYAK_GC_POISON=1
+  KAYAK_GC_VERIFY=1 KAYAK_GC_STATS=1`, the first run after the program was
+  edited (its db warm for the version before, so kc's compiler ran too,
+  under the same stress and verifier, which no check did before C538):
+  "a field's word 0x…551 points into the allocation at 0x…550, at no
+  object" (`collect.rs` 1114), a pair's word to where no pair is. Which
+  side (kc's objects in kayak-rt's heap, or kayak-rt's own under kc's
+  compiler) unknown. gc-stress runs the case each check.

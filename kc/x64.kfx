@@ -602,7 +602,7 @@
                             (c (x64-emit c (string-append "movq " (string-append (x64-slot (i64+ si 1)) ", %rcx"))))
                             (c (x64-emit c (string-append "movq " (string-append (x64-slot (i64+ si 2)) ", %rdx"))))
                             (c (x64-array-index c)))
-                       (x64-emit (x64-emit c "movq %rdx, -20(%rsi)") (string-append "movq $" (string-append (i64->string (x64-constant-of (car (read-all "(unit)" "l0" 1)))) ", %rax")))))
+                       (x64-emit (x64-emit (x64-emit (x64-emit c "movq %rdx, -20(%rsi)") "leaq -20(%rsi), %rdi") "call kc_remember") (string-append "movq $" (string-append (i64->string (x64-constant-of (car (read-all "(unit)" "l0" 1)))) ", %rax")))))
                     ((and (string=? h "prim") (string=? (prim-name t) "with-mark"))
                      ;; A mark (C460): the key, the value and the thunk to `kc_with_mark`.
                      (let* ((c (x64-emit-args c (prim-args t) si env))
@@ -1052,7 +1052,8 @@
                           (c (x64-emit c "movq %rsi, 8(%r12,%rax,8)"))
                           (c (x64-emit c "leaq 4(%rdx), %rax")))
                      (x64-emit c "movq %rdx, %r12")))
-                  ((string=? n "set") (x64-emit (x64-emit c "movq %rcx, -20(%rax)") "movq $27, %rax"))
+                  ;; The store's slot to the barrier (C538): kayak-rt's, in process.
+                  ((string=? n "set") (x64-emit (x64-emit (x64-emit (x64-emit c "movq %rcx, -20(%rax)") "leaq -20(%rax), %rdi") "call kc_remember") "movq $27, %rax"))
                   ((string=? n "string=?") (x64-calling c "kc_string_eq"))
                   ((string=? n "string<?") (x64-calling c "kc_string_lt"))
                   ((string=? n "string-append") (x64-calling c "kc_string_append"))
@@ -1267,7 +1268,7 @@
                   "    movq %r12, 688(%r15)\n    movq %r13, 696(%r15)\n    movq %rax, 704(%r15)\n"
                   "    leaq kc_cells_lo(%rip), %rax\n    subq 208(%r15), %rax\n    subq $4, %rax\n    movq %rax, 712(%r15)\n"
                   "    leaq kc_cells_hi(%rip), %rax\n    subq 208(%r15), %rax\n    subq $4, %rax\n    movq %rax, 720(%r15)\n    ret\n"
-                  "    .globl kc_gc_call\nkc_gc_call:\n    leaq 8(%rsp), %rsi\n    leaq 688(%r15), %rdx\n"
+                  "    .globl kc_gc_call\nkc_gc_call:\n    movq %r12, 728(%r15)\n    leaq 8(%rsp), %rsi\n    leaq 688(%r15), %rdx\n"
                   "    subq $8, %rsp\n    call kc_collect\n    addq $8, %rsp\n    movq %rax, %r12\n    movq %rdx, %r13\n    ret\n"
                   "    .text\n    .globl kc_abort\nkc_abort:\n    movq 664(%r15), %rax\n"
                   ".Lkc_abort_look:\n    testq %rax, %rax\n    je .Lkc_abort_none\n    cmpq %rdi, 8(%rax)\n    je .Lkc_abort_found\n"
@@ -1339,7 +1340,9 @@
             "kcrt_reverse" "kcrt_int_to_string"
             "kcrt_char_to_string" "kc_char_whitespace" "kc_char_numeric" "kc_string_hash" "kc_symbol_hash"
             "kcrt_f64_to_string" "kcrt_list_to_vector" "kc_error" "kc_string_search"
-            "kc_bytevector_length" "kcrt_bytevector_u8_ref" "kc_is_utf8" "kcrt_utf8_to_string"))
+            "kc_bytevector_length" "kcrt_bytevector_u8_ref" "kc_is_utf8" "kcrt_utf8_to_string"
+            ;; The write barrier (C538).
+            "kc_remember"))
 
     (hide
       "Routines that always fail, and those that may (C452): each called,

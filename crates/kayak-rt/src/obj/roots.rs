@@ -993,12 +993,29 @@ pub(super) struct Roots {
     pub ends: [usize; 3],
 }
 
+std::thread_local! {
+    /// The globals' cells of the native code running on this thread with
+    /// room in its heap (C538, `obj::kc_heap`), `[lo, hi)`: roots, as its
+    /// frames on this stack are, while it runs.
+    static NATIVE_CELLS: std::cell::Cell<(usize, usize)> = const { std::cell::Cell::new((0, 0)) };
+}
+
+/// The globals' cells of the native code now running, `[lo, hi)`; `(0, 0)`,
+/// none.
+pub(crate) fn native_cells(run: (usize, usize)) {
+    NATIVE_CELLS.set(run);
+}
+
 pub(super) fn roots_from(saved: &[usize; 12], from: usize) -> Roots {
     let mut words: Vec<usize> = saved.to_vec();
     let base = stack_base();
     // SAFETY: this thread's own stack, from its caller's frame to its
     // base, which the thread is running on.
     unsafe { scan_words(from, base.saturating_sub(from), &mut |w| words.push(w)) };
+    let (lo, hi) = NATIVE_CELLS.get();
+    // SAFETY: the cells of the native code running on this thread, its
+    // image's, alive while it runs (`native_cells`).
+    unsafe { scan_words(lo, hi.saturating_sub(lo), &mut |w| words.push(w)) };
     let mut constants = Vec::new();
     let made: Vec<(usize, ConstantRead)> =
         CONSTANTS.lock().unwrap_or_else(|e| e.into_inner()).clone();

@@ -1756,23 +1756,33 @@ pub mod emitter {
         }
     }
 
-    /// What `s` is where it is named: `local`, `knot` (a procedure of a
-    /// `letrec`, in its group's lambdas, before it is made: reached through
-    /// its knot), or `` (not bound locally). The innermost binding counts.
-    pub fn local_kind(mut s: Str, mut ls: Strings) -> Str {
+    pub fn local_kind_in(mut s: Str, mut as_knot: Str, mut as_item: Str, mut ls: Strings) -> Str {
         loop {
             if null_p(ls) {
                 return str_lit!("");
             } else if string_eq_p(car(ls), s) {
                 return str_lit!("local");
-            } else if string_eq_p(car(ls), string_append(str_lit!("%knot "), s)) {
+            } else if string_eq_p(car(ls), as_knot) {
                 return str_lit!("knot");
-            } else if string_eq_p(car(ls), string_append(str_lit!("%item "), s)) {
+            } else if string_eq_p(car(ls), as_item) {
                 return str_lit!("item");
             } else {
                 ls = cdr(ls);
                 continue;
             }
+        }
+    }
+
+    /// What `s` is where it is named: `local`, `knot` (a procedure of a
+    /// `letrec`, in its group's lambdas, before it is made: reached through
+    /// its knot), or `` (not bound locally). The innermost binding counts.
+    /// Its markers' names made once, not at each binding passed (C538).
+    #[inline]
+    pub fn local_kind(s: Str, ls: Strings) -> Str {
+        if null_p(ls) {
+            str_lit!("")
+        } else {
+            local_kind_in(s, string_append(str_lit!("%knot "), s), string_append(str_lit!("%item "), s), ls)
         }
     }
 
@@ -1976,20 +1986,29 @@ pub mod emitter {
         }
     }
 
-    /// The path of the function a `let` bound `s` to (C481), innermost
-    /// binding first; `` if `s` names none so.
-    pub fn fn_alias(mut s: Str, mut ls: Strings) -> Str {
+    pub fn fn_alias_in(mut s: Str, mut as_knot: Str, mut as_item: Str, mut as_alias: Str, mut ls: Strings) -> Str {
         loop {
             if null_p(ls) {
                 return str_lit!("");
-            } else if (string_eq_p(car(ls), s) || string_eq_p(car(ls), string_append(str_lit!("%knot "), s)) || string_eq_p(car(ls), string_append(str_lit!("%item "), s))) {
+            } else if (string_eq_p(car(ls), s) || string_eq_p(car(ls), as_knot) || string_eq_p(car(ls), as_item)) {
                 return str_lit!("");
-            } else if has_prefix_p(car(ls), string_append(str_lit!("%fnalias "), string_append(s, str_lit!(" ")))) {
-                return after_prefix(car(ls), string_append(str_lit!("%fnalias "), string_append(s, str_lit!(" "))));
+            } else if has_prefix_p(car(ls), as_alias) {
+                return after_prefix(car(ls), as_alias);
             } else {
                 ls = cdr(ls);
                 continue;
             }
+        }
+    }
+
+    /// The path of the function a `let` bound `s` to (C481), innermost
+    /// binding first; `` if `s` names none so. Its markers' names made
+    /// once (C538).
+    pub fn fn_alias(s: Str, ls: Strings) -> Str {
+        if null_p(ls) {
+            str_lit!("")
+        } else {
+            fn_alias_in(s, string_append(str_lit!("%knot "), s), string_append(str_lit!("%item "), s), string_append(str_lit!("%fnalias "), string_append(s, str_lit!(" "))), ls)
         }
     }
 

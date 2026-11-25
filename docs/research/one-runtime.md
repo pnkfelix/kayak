@@ -92,6 +92,7 @@ kayak-rt and kcrt-core alone, recorded at each step here.
 | 2 (C529–C534) | formats: every object either makes is Fixpt's; kcrt reads kayak-rt's strings, `utf8`s and bytevectors as its own | ~21k | 1.5k |
 | 3, the walk (C535) | + kayak-heap: one object walk (an object's extent, its traced fields, its header from its suffix), both collectors' | ~21k | 1.5k |
 | 4, strings (C536) | + kayak-heap's `text`: a string's words, `string-hash`, a symbol's hash, search, both runtimes' | ~21k | 1.5k |
+| 3, kc in kayak-rt's heap (C538) | kc's code in process allocates in kayak-rt's thread pages, collected by its collector, its stores through its barrier; kcrt's Cheney a built program's alone | ~21k | 1.5k |
 
 ## Done
 
@@ -173,9 +174,22 @@ kayak-rt and kcrt-core alone, recorded at each step here.
   globals' cells, all exact). kayak-rt's are next: its `roots_from`'s
   words the ambiguous ones, its kept blocks' slots the exact.
 
-## Step 3's rest: kc's code in kayak-rt's heap, in process
+- **Step 3, kc's code in kayak-rt's heap (C538)**: in process, kc's
+  objects are made in this thread's pages and collected with kayak-rt's
+  (`obj::kc_heap`), as designed below: the page lent (`space::lend`), each
+  object's start noted as it is given back, walked by its header
+  (`lent_back`); its frames on the scanned stack, its globals' cells
+  roots while it runs; its two stores through `kc_remember`, kayak-rt's
+  barrier; a run's room it never gave back zeroed again
+  (`kayak:kc-done/1`). kcrt-core's `HeapHost` is the seam: kayak-rt
+  installs it, a built program has none and keeps Cheney's copy.
+  Measured right under stress (a collection every allocation, freed pages
+  poisoned, every collection verified, the barrier's slots too); with the
+  barrier off, the verifier stops the run.
 
-What it takes for kc's code run in process (`kc run`, a transformer) to
+## Step 3's rest: kc's code in kayak-rt's heap, in process (done, C538)
+
+What it took for kc's code run in process (`kc run`, a transformer) to
 allocate in kayak-rt's thread pages instead of kcrt's semispaces (a
 built program keeps kcrt's Cheney: it has no kayak-rt):
 1. **Where objects start.** kayak-rt's collector pins a page's objects by
