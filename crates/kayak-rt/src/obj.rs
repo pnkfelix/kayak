@@ -213,7 +213,6 @@ macro_rules! str_lit {
 }
 
 pub(crate) mod collect;
-mod frames;
 pub(crate) mod kc_heap;
 pub(crate) mod publish;
 pub(crate) mod roots;
@@ -2943,15 +2942,14 @@ pub(crate) mod laid {
         #[allow(dead_code)]
         pub id: usize,
         pub fields: &'static [HeapWord],
-        /// Where its suffix starts, where an object's word points (0 for
-        /// a pair).
-        pub suffix: usize,
         pub end: usize,
     }
 
     /// The object whose first word is `at`: its header read by the walk
-    /// kayak-rt's collector and kcrt's share (`kayak_heap::object_at`,
-    /// C535), its fields' slice made here, of `at`'s provenance.
+    /// the collectors share (`kayak_heap::object_at`, C535), its fields'
+    /// slice made here, kayak-rt's words, of `at`'s provenance; for
+    /// kayak-rt's own readers of the heap (its roots' report, its census),
+    /// the collector's being `kayak_heap::laid` (C540).
     ///
     /// # Safety
     /// `at` is the first word of an object kayak-rt made, kept for the run.
@@ -2973,7 +2971,6 @@ pub(crate) mod laid {
             pair: o.pair,
             id: o.main,
             fields,
-            suffix: o.suffix,
             end: o.end,
         }
     }

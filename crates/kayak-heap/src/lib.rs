@@ -13,10 +13,17 @@
 //! collection's roots, the trait each runtime finds them by ([`roots`]).
 //! Then (C539) the space ([`space`]): pages, a thread's heap, its start
 //! bits, its bump, its store buffer, kayak-rt's before; the crate's one
-//! module with `unsafe`, the heap's own memory.
+//! module with `unsafe`, the heap's own memory. Then (C540) the collector
+//! ([`collect`]), over a runtime's `Host`: its roots and what it is told.
 
 use kayak_layout as layout;
 
+#[allow(unsafe_code)]
+pub mod collect;
+#[allow(unsafe_code)]
+pub mod frames;
+#[allow(unsafe_code)]
+pub mod laid;
 pub mod roots;
 #[allow(unsafe_code)]
 pub mod space;
@@ -30,6 +37,7 @@ const KIND_EXTENSION: u64 = layout::KIND_EXTENSION as u64;
 /// Whether the fields of an object of kind `code` hold values a collector
 /// follows: Fixpt's table's `traced` (a string's, a bytevector's, a
 /// flonum's and a bignum's do not).
+#[inline]
 pub const fn traced(code: u8) -> bool {
     KIND_TRACED[code as usize]
 }

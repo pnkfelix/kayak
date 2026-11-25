@@ -94,6 +94,7 @@ kayak-rt and kcrt-core alone, recorded at each step here.
 | 4, strings (C536) | + kayak-heap's `text`: a string's words, `string-hash`, a symbol's hash, search, both runtimes' | ~21k | 1.5k |
 | 3, kc in kayak-rt's heap (C538) | kc's code in process allocates in kayak-rt's thread pages, collected by its collector, its stores through its barrier; kcrt's Cheney a built program's alone | ~21k | 1.5k |
 | 3, the space (C539) | + kayak-heap's `space` (1.6k lines, kayak-rt's `obj/space.rs` moved whole): pages, a thread's heap, start bits, the bump, the store buffer | ~19.5k | 1.5k |
+| 3, the collector (C540) | + kayak-heap's `collect` (marking, Cheney's copy, minor and major, the verifier), `frames`, `laid`, the kept index: kayak-rt gives its roots (`Host`) | ~18k | 1.5k |
 
 ## Done
 
@@ -198,6 +199,19 @@ kayak-rt and kcrt-core alone, recorded at each step here.
   them within kayak-rt; without, kfx's self-compile was 3.5% slower. Next:
   the collector (`obj::collect`, its marking and copying) over the
   `Roots` trait, leaving kayak-rt its roots and its types' traces.
+
+- **Step 3, the collector (C540)**: kayak-rt's `obj/collect.rs` (but its
+  tests) and `obj/frames.rs` moved to `kayak_heap::collect` and `frames`;
+  the kept-block index (`KeptAt`, `KeptIndex`), the gathered roots
+  (`Gathered`) and `scan_words` to `kayak_heap::roots`; a `laid` of plain
+  words for the collector. What the runtime gives is `collect::Host`:
+  its registers spilled, its roots gathered, what it is told after (what
+  it reaches of others' kept blocks, which of its own to retire). The
+  space starts the collector itself once a runtime is its host. kayak-rt's
+  `obj::collect` is its `Host` (`Rt`) and the collector's tests. **Step 3
+  is done**: the heap is the shared crate's; what is kayak-rt's is its
+  roots and its types. A built kc program could have it next, its `Host`
+  kc's exact stack and cells, retiring Cheney's copy (`gc.rs`).
 
 ## Step 3's rest: kc's code in kayak-rt's heap, in process (done, C538)
 

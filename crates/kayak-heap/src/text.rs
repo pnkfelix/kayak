@@ -16,12 +16,14 @@ const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
 
 /// The words a string of `n` code points takes: header, count, points.
+#[inline]
 pub const fn string_words(n: usize) -> usize {
     2 + n.div_ceil(2)
 }
 
 /// A string's header, of `n` code points: its suffix's bytes, the
 /// count's word and the points'; frozen, fields and suffix.
+#[inline]
 pub const fn string_header(n: usize) -> u64 {
     layout::tag("header")
         | layout::H_KIND.put(0, layout::kind("string") as u64)
@@ -32,6 +34,7 @@ pub const fn string_header(n: usize) -> u64 {
 
 /// The words of a string of `points`, written into `ws`
 /// (`string_words(points.len())` of them): header, count, points.
+#[inline]
 pub fn fill_string(points: &[u32], ws: &mut [u64]) {
     let n = points.len();
     ws[0] = string_header(n);
@@ -44,6 +47,7 @@ pub fn fill_string(points: &[u32], ws: &mut [u64]) {
 /// FX-26's `string-hash`, Fixpt's `%string-hash` (`Heap::string_fnv`):
 /// FNV-1a of the code points, each a `u64`, shifted right 4, a fixnum's
 /// value. Of the contents alone, never an address (the heap may move).
+#[inline]
 pub fn string_hash(points: &[u32]) -> i64 {
     let h = points
         .iter()
@@ -55,6 +59,7 @@ pub fn string_hash(points: &[u32]) -> i64 {
 /// its name's UTF-8 bytes, its sign bit cleared, kept to a fixnum's 61
 /// bits, the fixnum's value. A `const fn`, so that a literal's is made as
 /// rustc builds.
+#[inline]
 pub const fn symbol_hash(name: &str) -> i64 {
     let m = name.as_bytes();
     let mut h = FNV_OFFSET;
@@ -70,6 +75,7 @@ pub const fn symbol_hash(name: &str) -> i64 {
 /// Where `sub` is first found in `s` at or past code point `from`, or
 /// none: `from` past the end of `s` finds nothing; an empty `sub` is found
 /// at `from` (Fixpt's `Heap::string_search`).
+#[inline]
 pub fn search(s: &[u32], sub: &[u32], from: usize) -> Option<usize> {
     if from > s.len() {
         return None;

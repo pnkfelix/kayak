@@ -126,7 +126,7 @@ impl Copier<'_> {
             let mut fields = Vec::new();
             each_object(&self.view, from, |o| {
                 for f in o.fields {
-                    fields.push((std::ptr::from_ref(f).addr() - from, f.raw() as u64));
+                    fields.push((std::ptr::from_ref(f).addr() - from, *f));
                 }
             });
             for (off, w) in fields {

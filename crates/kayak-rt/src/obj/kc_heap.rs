@@ -13,9 +13,9 @@
 //! first (`refill`'s policy). Its roots: its frames, on this thread's
 //! stack, below the Rust frame that called it, which a collection scans;
 //! its globals' cells, scanned while it runs (`roots::native_cells`). Its
-//! stores into the heap pass kayak-rt's barrier (`kc_remember`). A run's
-//! room it never gave back (it ended, or failed) is dropped and zeroed
-//! again (`done`, `kayak:kc-done/1`), its objects dead.
+//! stores into the heap pass kayak-rt's barrier (`kc_remember`). What a
+//! run made since it was last lent room is given back as it ends
+//! (`done`, `kayak:kc-done/1`) as any other, its objects dead.
 
 use std::cell::Cell;
 
@@ -114,13 +114,22 @@ pub(crate) fn install() {
     });
 }
 
-/// A run over (C538, `kayak:kc-done/1`): the room it was lent and did not
-/// give back dropped, zeroed again; its cells no roots.
+/// A run over (C538, `kayak:kc-done/1`): what it made since its room was
+/// lent given back, to where its heap reached as it ended (the state
+/// block's `kc_heap_next`, word 680, the word before the block, which
+/// `kc_entry`, `kc_call2` and `kc_failed` write), each object's start
+/// noted; its cells no roots. Its objects are then the heap's as any dead
+/// one is: not dropped and its words made kayak-rt's at once, which left
+/// a dead noted object of the run pointing into words kayak-rt made again
+/// with no collection between (C540: what a stale word that reached it
+/// then read).
 pub(crate) fn done() {
     if let Some(l) = LENT.take()
         && !l.large
     {
-        super::space::lent_dropped(l.from);
+        // SAFETY: the run's state block's word 680, before its block.
+        let next = unsafe { *(l.block as *const u64).sub(1) } as usize;
+        super::space::lent_back(l.from, next);
     }
     super::roots::native_cells((0, 0));
 }

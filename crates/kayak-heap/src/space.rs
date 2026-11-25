@@ -24,23 +24,6 @@ use std::cell::{Cell, RefCell};
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
-/// The collector the space starts where its policy says one is due
-/// (C539): a runtime's (kayak-rt's `obj::collect`), given once. The space
-/// was kayak-rt's; it is the shared heap's now (`docs/research/
-/// one-runtime.md`, step 3), and a collector is the runtime's still.
-pub struct Collector {
-    pub major: fn(),
-    pub minor: fn(),
-}
-
-static COLLECTOR: std::sync::OnceLock<Collector> = std::sync::OnceLock::new();
-
-/// The collector, from now on (once).
-#[inline]
-pub fn set_collector(c: Collector) {
-    let _ = COLLECTOR.set(c);
-}
-
 /// A page's bytes: what a thread takes at once, and what a collector
 /// pins whole (Bartlett's).
 pub const PAGE_BYTES: usize = 1 << 15;
@@ -274,23 +257,6 @@ pub fn lent_back(from: usize, next: usize) {
         if b.end.get().addr() < next {
             b.end.set(b.at.get());
         }
-    })
-}
-
-/// Lent room native code made what it will not give back in (its run
-/// over: what it made there dead), zeroed again, as `words` gives words:
-/// from `from`, the page's next word still, to the page's end.
-#[inline]
-pub fn lent_dropped(from: usize) {
-    BUMP.with(|b| {
-        let at = b.at.get();
-        if at.addr() != from || at.is_null() {
-            return;
-        }
-        let n = (b.limit.get().addr() - from) / 8;
-        // SAFETY: the page's words from its next to its end, the thread's,
-        // none an object's yet (none noted there).
-        unsafe { std::ptr::write_bytes(at, 0, n) };
     })
 }
 
@@ -540,11 +506,13 @@ fn refill(b: &Bump, w: usize) -> *mut u64 {
             let minor = nursery > 0 && b.since.get() >= nursery && total >= min_due();
             (major || minor, major)
         };
-        if due
-            && concurrent() == 0
-            && let Some(c) = COLLECTOR.get()
-        {
-            if major { (c.major)() } else { (c.minor)() }
+        // The collector's, once a runtime gave it its roots (C540).
+        if due && concurrent() == 0 && crate::collect::hosted() {
+            if major {
+                crate::collect::collect()
+            } else {
+                crate::collect::collect_minor()
+            }
         }
     }
     if w * 8 > LARGE_BYTES {

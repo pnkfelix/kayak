@@ -1,7 +1,7 @@
 //! The heap's space, the shared heap's since C539 (`kayak_heap::space`,
-//! which was this file): kayak-rt's collector given it before kayak-rt's
-//! first allocation, so that a collection its policy finds due is
-//! kayak-rt's (`obj::collect`). Each way into the space's `refill` (where
+//! which was this file): kayak-rt's roots given the shared collector
+//! before kayak-rt's first allocation (`obj::collect`'s `Rt`, C540), so
+//! that a collection the space's policy finds due can run. Each way into the space's `refill` (where
 //! a collection may start) passes `ready` first; the rest is the space's.
 
 pub(crate) use kayak_heap::space::*;
@@ -12,12 +12,7 @@ static READY: std::sync::Once = std::sync::Once::new();
 #[inline(always)]
 fn ready() {
     if !READY.is_completed() {
-        READY.call_once(|| {
-            kayak_heap::space::set_collector(kayak_heap::space::Collector {
-                major: super::collect::collect,
-                minor: super::collect::collect_minor,
-            })
-        });
+        READY.call_once(|| kayak_heap::collect::set_host(&super::collect::Rt));
     }
 }
 

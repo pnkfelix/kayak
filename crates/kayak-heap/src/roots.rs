@@ -1,3 +1,4 @@
+#![allow(unsafe_code)]
 //! A collection's roots, as each runtime finds them (C537; the plan's
 //! step 3): the one thing about a collection the two runtimes must do
 //! differently, so a trait, where their objects' format is one (the
@@ -34,6 +35,115 @@ impl Roots for Runs<'_> {
             }
         }
     }
+}
+
+// What kayak-rt's collector took its roots as (`obj::roots`, C511-C513),
+// here with the collector since C540.
+
+/// How a kept block is scanned: by its type (`T`'s words told), or, none,
+/// word by word.
+pub type Scan = Option<unsafe fn(usize, &mut dyn FnMut(usize))>;
+
+/// What is kept that a collection reaches only by a word (`Kept::free`):
+/// this thread's, and a live thread's, by first byte, to find the one a
+/// word is in.
+#[derive(Default)]
+pub struct KeptIndex {
+    at: Vec<KeptAt>,
+    /// The least first byte, and past the greatest last.
+    lo: usize,
+    hi: usize,
+}
+
+#[derive(Clone, Copy)]
+pub struct KeptAt {
+    pub start: usize,
+    pub len: usize,
+    pub scan: Scan,
+    pub shared: bool,
+    /// This thread's: scanned when reached, and freed if not. Another
+    /// thread's is scanned only if shared (it locks what it reads), and
+    /// told in this thread's list (`Reach`) when reached from its own.
+    pub mine: bool,
+}
+
+impl KeptIndex {
+    #[inline]
+    pub fn made(mut at: Vec<KeptAt>) -> KeptIndex {
+        at.sort_unstable_by_key(|k| k.start);
+        let lo = at.first().map_or(0, |k| k.start);
+        let hi = at.iter().map(|k| k.start + k.len).max().unwrap_or(0);
+        KeptIndex { at, lo, hi }
+    }
+
+    /// This thread's kept objects that are not shared: scanned when
+    /// reached.
+    #[inline]
+    pub fn mine_unshared(&self) -> impl Iterator<Item = KeptAt> + '_ {
+        self.at.iter().copied().filter(|k| k.mine && !k.shared)
+    }
+
+    /// The kept object `w` is a word of, if any.
+    #[inline]
+    pub fn find(&self, w: usize) -> Option<KeptAt> {
+        if w < self.lo || w >= self.hi {
+            return None;
+        }
+        let i = self.at.partition_point(|k| k.start <= w);
+        (i > 0 && w < self.at[i - 1].start + self.at[i - 1].len).then(|| self.at[i - 1])
+    }
+}
+
+impl KeptAt {
+    /// Its words told.
+    #[inline]
+    pub fn words(&self, f: &mut dyn FnMut(usize)) {
+        match self.scan {
+            // SAFETY: an object kept, of its bytes, not freed while a
+            // collection that began before it was retired runs.
+            None => unsafe { scan_words(self.start, self.len, f) },
+            // SAFETY: a `T` kept, as above.
+            Some(scan) => unsafe { scan(self.start, f) },
+        }
+    }
+}
+
+/// The aligned words of the `len` bytes from `start`, told.
+///
+/// # Safety
+/// The bytes are readable for the scan. A word of padding may be told: an
+/// ambiguous root's, which a collector only pins by.
+#[inline]
+pub unsafe fn scan_words(start: usize, len: usize, f: &mut dyn FnMut(usize)) {
+    let mut at = (start + 7) & !7;
+    while at + 8 <= start + len {
+        // SAFETY: the caller's.
+        f(unsafe { std::ptr::read_volatile(at as *const usize) });
+        at += 8;
+    }
+}
+
+/// A collection's roots as a runtime gathers them (kayak-rt's `obj::roots`,
+/// C511; here since C540), every word ambiguous:
+/// the registers spilled in `saved` and the stack from `from`, this
+/// thread's owned blocks and thread locals, and every kept object, each
+/// whole, by its bytes or its type (kept for the run, and perhaps reached
+/// where no root is seen: a thread local of its own, a scheduler's slot);
+/// and apart, the constants' words, which every thread may read, and what
+/// other threads may take as this one collects (C512): what shared kept
+/// objects hold, and every other thread's list (`Reach`).
+pub struct Gathered {
+    pub words: Vec<usize>,
+    pub constants: Vec<usize>,
+    pub shared: Vec<usize>,
+    /// What is kept that is followed only where a word reaches it.
+    pub kept: KeptIndex,
+    /// Where this thread's list ended as the collection began.
+    pub reach_from: usize,
+    /// Where in `words` each source's words end: the registers' and
+    /// stack's, the owned blocks', the kept objects' (the thread locals'
+    /// after), for a report.
+    pub ends: [usize; 3],
 }
 
 #[cfg(test)]

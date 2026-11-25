@@ -17297,3 +17297,45 @@ shared crate, its first and most separable part.
   (the second not explained yet; stack words that pin may differ).
 - **gc-stress** runs kayak-heap's tests under stress with kayak-rt's.
 - **The full check**: `check: all passed`, 9 min 48 s (the mean of 102 runs 8 min 29 s); the pre-check passed first.
+
+## C540. The collector moves to `kayak-heap`, over a runtime's `Host` (2026-11-25)
+
+Step 3's last piece (`docs/research/one-runtime.md`): the heap is the
+shared crate's.
+- **Moved**: `obj/collect.rs` but its tests (now `kayak_heap::collect`),
+  `obj/frames.rs` (`kayak_heap::frames`, std alone); from `obj/roots.rs`,
+  `KeptAt`, `KeptIndex`, `scan_words` and the gathered roots (`Gathered`,
+  its `Roots` before) to `kayak_heap::roots`. The collector's `laid` is
+  kayak-heap's (`laid::at`, its fields plain words; kayak-rt keeps its own,
+  of its `HeapWord`s, for its root report and census). `HeapWord`'s four
+  uses in the collector, plain words.
+- **`collect::Host`**: what a collection needs of the runtime: `spill`,
+  `roots`, `reported`, `retire`, `kept_extent`; given once (`set_host`).
+  The space calls the collector itself where its policy says, once one is
+  hosted (C539's `Collector` hook gone). kayak-rt's `obj::collect` is its
+  `Host` (`Rt`, each method the `obj::roots` function it called), a
+  re-export, and the collector's tests, of kayak-rt's types, unchanged.
+- **`unsafe`** in kayak-heap: `collect`, `frames`, `laid`, `roots` (its
+  kept blocks' scan) and `space`, all moved from kayak-rt's `obj/`.
+- **Measured** (kfx compiling itself, side by side with C539, three
+  each): 3.07 s against 3.00 s, peak 316 MB against 248 MB. Not slower
+  code: per collection, the first ones reach and move the same objects;
+  later, more is reached (stale stack words pin differently), and the
+  copy is the difference (826 ms against 699). The peak has moved so by
+  layout alone before (302 MB at C538, 248 at C539). Each small `pub fn`
+  of kayak-heap's `text`, `roots` and `collect` `#[inline]`.
+- **C538's verifier failure, found and fixed** (the check's gc-stress hit
+  it; eight stressed runs at once, each compiling into a fresh db, hit it
+  in 10 of 24): `kayak:kc-done/1` zeroed the room a run had not given back
+  and let kayak-rt allocate there at once. A dead object of the run's,
+  noted at its last hand-back, still pointed into that room; reached by a
+  stale stack word in the next collection (the one making the run's
+  output string), its field met a kayak-rt object where its pair had
+  been. kayak-rt's own invariant is that words are made again only
+  through a collection, which clears a dead object's fields first. Now a
+  run's end gives its room back as a refill does, to where its heap
+  reached (`kc_heap_next`, word 680, which `kc_failed` now writes too, as
+  `kc_entry` and `kc_call2` did): each object noted, dead as any other,
+  nothing made again early; `space::lent_dropped` gone. 0 of 32 since,
+  under the same load. TODO §56's note of it gone.
+- **The full check**: `check: all passed`, 10 min 31 s (the mean of 104 runs 8 min 31 s); the pre-check passed first.

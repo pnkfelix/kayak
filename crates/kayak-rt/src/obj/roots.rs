@@ -119,7 +119,7 @@ unsafe fn free_boxed<T>(at: usize, poison: bool) {
 }
 
 /// How a kept object is scanned: its bytes, or by its type.
-type Scan = Option<unsafe fn(usize, &mut dyn FnMut(usize))>;
+use kayak_heap::roots::{Gathered as Roots, KeptAt, KeptIndex, Scan, scan_words};
 
 impl Registry {
     fn lock(&self) -> MutexGuard<'_, Inner> {
@@ -353,67 +353,6 @@ fn keep(start: usize, len: usize, scan: Scan, shared: bool, free: Free) {
             shared,
             free,
         });
-    }
-}
-
-/// What is kept that a collection reaches only by a word (`Kept::free`):
-/// this thread's, and a live thread's, by first byte, to find the one a
-/// word is in.
-#[derive(Default)]
-pub(super) struct KeptIndex {
-    at: Vec<KeptAt>,
-    /// The least first byte, and past the greatest last.
-    lo: usize,
-    hi: usize,
-}
-
-#[derive(Clone, Copy)]
-pub(super) struct KeptAt {
-    pub start: usize,
-    len: usize,
-    scan: Scan,
-    pub shared: bool,
-    /// This thread's: scanned when reached, and freed if not. Another
-    /// thread's is scanned only if shared (it locks what it reads), and
-    /// told in this thread's list (`Reach`) when reached from its own.
-    pub mine: bool,
-}
-
-impl KeptIndex {
-    fn made(mut at: Vec<KeptAt>) -> KeptIndex {
-        at.sort_unstable_by_key(|k| k.start);
-        let lo = at.first().map_or(0, |k| k.start);
-        let hi = at.iter().map(|k| k.start + k.len).max().unwrap_or(0);
-        KeptIndex { at, lo, hi }
-    }
-
-    /// This thread's kept objects that are not shared: scanned when
-    /// reached.
-    pub(super) fn mine_unshared(&self) -> impl Iterator<Item = KeptAt> + '_ {
-        self.at.iter().copied().filter(|k| k.mine && !k.shared)
-    }
-
-    /// The kept object `w` is a word of, if any.
-    #[inline]
-    pub(super) fn find(&self, w: usize) -> Option<KeptAt> {
-        if w < self.lo || w >= self.hi {
-            return None;
-        }
-        let i = self.at.partition_point(|k| k.start <= w);
-        (i > 0 && w < self.at[i - 1].start + self.at[i - 1].len).then(|| self.at[i - 1])
-    }
-}
-
-impl KeptAt {
-    /// Its words told.
-    pub(super) fn words(&self, f: &mut dyn FnMut(usize)) {
-        match self.scan {
-            // SAFETY: an object kept, of its bytes, not freed while a
-            // collection that began before it was retired runs.
-            None => unsafe { scan_words(self.start, self.len, f) },
-            // SAFETY: a `T` kept, as above.
-            Some(scan) => unsafe { scan(self.start, f) },
-        }
     }
 }
 
@@ -692,20 +631,6 @@ pub(crate) fn words_of_val<T: ?Sized>(v: &T, f: &mut dyn FnMut(usize)) {
     }
 }
 
-/// The aligned words of the `len` bytes from `start`, told.
-///
-/// # Safety
-/// The bytes are readable for the scan. A word of padding may be told: an
-/// ambiguous root's, which a collector only pins by.
-unsafe fn scan_words(start: usize, len: usize, f: &mut dyn FnMut(usize)) {
-    let mut at = (start + 7) & !7;
-    while at + 8 <= start + len {
-        // SAFETY: the caller's.
-        f(unsafe { std::ptr::read_volatile(at as *const usize) });
-        at += 8;
-    }
-}
-
 /// The constants made: each one's slot, and how it is read (as the
 /// reading thread reads it: a thread's own, for a constant kept for each).
 type ConstantRead = unsafe fn(usize, &mut dyn FnMut(usize));
@@ -969,28 +894,6 @@ fn reached_from(saved: &[usize; 12], from: usize) -> Reached {
         }
     }
     r
-}
-
-/// A collection's roots (`obj::collect`, C511), every word ambiguous:
-/// the registers spilled in `saved` and the stack from `from`, this
-/// thread's owned blocks and thread locals, and every kept object, each
-/// whole, by its bytes or its type (kept for the run, and perhaps reached
-/// where no root is seen: a thread local of its own, a scheduler's slot);
-/// and apart, the constants' words, which every thread may read, and what
-/// other threads may take as this one collects (C512): what shared kept
-/// objects hold, and every other thread's list (`Reach`).
-pub(super) struct Roots {
-    pub words: Vec<usize>,
-    pub constants: Vec<usize>,
-    pub shared: Vec<usize>,
-    /// What is kept that is followed only where a word reaches it.
-    pub kept: KeptIndex,
-    /// Where this thread's list ended as the collection began.
-    pub reach_from: usize,
-    /// Where in `words` each source's words end: the registers' and
-    /// stack's, the owned blocks', the kept objects' (the thread locals'
-    /// after), for a report.
-    pub ends: [usize; 3],
 }
 
 std::thread_local! {

@@ -1409,7 +1409,7 @@
                 "    movq kc_native_entry-16(%rip), %rcx\n    cmpq $0, 36(%rcx)\n    je .Lkc_native_done\n"
                 "    movq %r15, %rdi\n    call kc_apply_run\n"
                 ".Lkc_native_done:\n    movl $0, %eax\n    popq %rbp\n    ret\n"
-                "kc_failed:\n    movq 744(%r15), %rsp\n    movl $8, %eax\n    popq %rbp\n    ret\n"
+                "kc_failed:\n    movq %r12, 680(%r15)\n    movq 744(%r15), %rsp\n    movl $8, %eax\n    popq %rbp\n    ret\n"
                 (x64-routine-stubs x64-services 0 nil)
                 "    .data\n    .p2align 3\nkc_routines:\n" (x64-quads addrs nil) "    .text\n"))))
 

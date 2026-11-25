@@ -2557,12 +2557,3 @@ Fixpt's `layout.rs` and `value.rs`, every crate's constants from it).
   Rust, 13 MB as UTF-32), first measuring whether the output is held at
   once; (3) symbol names as `utf8` last (the checker throughout). And
   apart from the format, the growth policy's factor of three.
-- A verifier failure seen once (C538), not reproduced in ~70 runs since:
-  `kc run tests/kc/heap/barrier.fx`, `KAYAK_GC_STRESS=31 KAYAK_GC_POISON=1
-  KAYAK_GC_VERIFY=1 KAYAK_GC_STATS=1`, the first run after the program was
-  edited (its db warm for the version before, so kc's compiler ran too,
-  under the same stress and verifier, which no check did before C538):
-  "a field's word 0x…551 points into the allocation at 0x…550, at no
-  object" (`collect.rs` 1114), a pair's word to where no pair is. Which
-  side (kc's objects in kayak-rt's heap, or kayak-rt's own under kc's
-  compiler) unknown. gc-stress runs the case each check.
