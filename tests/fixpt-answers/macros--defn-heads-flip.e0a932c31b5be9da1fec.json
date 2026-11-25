@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: read error: <kayak>-snapshot/tests/fx26/programs/macros/defn-heads-flip.fx:24:75: this template's scopes have no one reading: `(m 2)`, headed by `m`, is read as a use of the macro a use before it defines and then as an application",
+"fixpt: read error: <programs>/macros/defn-heads-flip.fx:24:75: this template's scopes have no one reading: `(m 2)`, headed by `m`, is read as a use of the macro a use before it defines and then as an application",
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

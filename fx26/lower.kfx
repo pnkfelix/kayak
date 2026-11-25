@@ -723,6 +723,7 @@
              (lower (second xs) sc gs))
             ;; `#utf8"…"` (Fixpt 06a3666): a quote's constant, made once.
             ((string=? h "#utf8") (lower-quoted e sc gs))
+            ((string=? h "#u8") (lower-quoted e sc gs))
             ((string=? h "quote") (lower-quoted (car xs) sc gs))
             ((string=? h "quasiquote") (lower-quasi (car xs) 1 sc gs))
             ((or (string=? h "plambda") (string=? h "proj")) (if (string=? h "proj") (lower (car xs) sc gs) (lower (second xs) sc gs)))

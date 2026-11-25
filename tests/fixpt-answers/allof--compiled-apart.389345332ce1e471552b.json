@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/allof/compiled-apart.fx:6:3: `f` is declared a (allof (subr pure ((moduleof (val a int) (val b int))) int) (subr pure ((moduleof (val b int) (val a int))) int)): one body cannot be each member of this `allof`: checked as a (subr pure ((moduleof (val a int) (val b int))) int) and as a (subr pure ((moduleof (val b int) (val a int))) int), it would be compiled differently",
+"fixpt: <programs>/allof/compiled-apart.fx:6:3: `f` is declared a (allof (subr pure ((moduleof (val a int) (val b int))) int) (subr pure ((moduleof (val b int) (val a int))) int)): one body cannot be each member of this `allof`: checked as a (subr pure ((moduleof (val a int) (val b int))) int) and as a (subr pure ((moduleof (val b int) (val a int))) int), it would be compiled differently",
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

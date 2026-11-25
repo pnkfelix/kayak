@@ -1,0 +1,36 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"byte-strings.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"t : bytevector ! pure",
+"#u8(97 98 128 255 10 92 122) : bytevector ! (read (globals t))",
+"7 : nat ! (read (globals t))",
+"#t : bool ! (read (globals t))",
+"65 : u8 ! pure",
+"#u8(113 117 111 116 101 100) : bytevector ! pure",
+"#u8(1 2) : bytevector ! pure",
+"once : (subr pure () bytevector) ! pure",
+"4 : nat ! (read (globals once))",
+"#u8() : bytevector ! pure",
+"#t : bool ! pure",
+"\"hé\" : string ! pure",
+"first : (subr pure (bytevector) int) ! pure",
+"90 : int ! (read (globals first))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
+]
+}
+]
+}

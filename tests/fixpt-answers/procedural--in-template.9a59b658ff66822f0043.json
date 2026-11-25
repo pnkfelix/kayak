@@ -12,13 +12,13 @@
 ""
 ],
 "err": [
-"fixpt: the FX-26 front end: <kayak>-snapshot/tests/fx26/programs/procedural/in-template.fx:6:42: `wrap` is refused: no signature is written, and the one inferred from its clauses does not fit them: `id` is a procedural macro, whose binding structure no signature says: not in a template",
+"fixpt: the FX-26 front end: <programs>/procedural/in-template.fx:6:42: `wrap` is refused: no signature is written, and the one inferred from its clauses does not fit them: `id` is a procedural macro, whose binding structure no signature says: not in a template",
 "  inferred: (macro (_ data) expr)",
 "  write one: (define-syntax wrap SIGNATURE (syntax-rules …))",
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

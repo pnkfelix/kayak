@@ -2841,6 +2841,34 @@ pub fn utf8_bytes_same_p(mut a: i64, mut b: i64, mut i: i64, mut n: i64) -> bool
     }
 }
 
+// A bytevector's bytes (Fixpt 3569ce51's `#u8(…)`, interned by them; C527):
+// its length the word at its address, its bytes the words after.
+pub fn bytes_at_hash(mut p: i64, mut i: i64, mut n: i64, mut h: i64) -> i64 {
+    loop {
+        if i64_gt_eq(i, n) {
+            return h;
+        } else {
+            (i, h) = (i64_plus(i, 1i64), intern_mix(h, byte_of(p, i)));
+            continue;
+        }
+    }
+}
+
+pub fn bytes_at_same_p(mut p: i64, mut q: i64, mut i: i64, mut n: i64) -> bool {
+    loop {
+        if i64_gt_eq(i, n) {
+            return true;
+        } else {
+            if i64_eq(byte_of(p, i), byte_of(q, i)) {
+                i = i64_plus(i, 1i64);
+                continue;
+            } else {
+                return false;
+            }
+        }
+    }
+}
+
 /// An interned object's hash: of a pair's parts, a string's words, a
 /// float's bits, a vector's elements (Fixpt's `datum_hash`).
 pub fn datum_hash(o: i64) -> i64 {
@@ -2856,6 +2884,8 @@ pub fn datum_hash(o: i64) -> i64 {
         intern_mix(5i64, slot_of(o, 2i64))
     } else if utf8_text_p(o) {
         utf8_hash(o, 0i64, suffix_bytes(o), 6i64)
+    } else if is_kind_p(o, k_bytevector()) {
+        bytes_at_hash(i64_plus(address(o), 1i64), 0i64, word_at(address(o)), 7i64)
     } else {
         0i64
     }
@@ -2876,6 +2906,8 @@ pub fn datum_same_p(o: i64, c: i64) -> bool {
         (is_kind_p(o, k_keyword()) && is_kind_p(c, k_keyword()) && i64_eq(slot_of(o, 2i64), slot_of(c, 2i64)))
     } else if (utf8_text_p(o) || utf8_text_p(c)) {
         (utf8_text_p(o) && utf8_text_p(c) && i64_eq(suffix_bytes(o), suffix_bytes(c)) && utf8_bytes_same_p(o, c, 0i64, suffix_bytes(o)))
+    } else if (is_kind_p(o, k_bytevector()) || is_kind_p(c, k_bytevector())) {
+        (is_kind_p(o, k_bytevector()) && is_kind_p(c, k_bytevector()) && i64_eq(word_at(address(o)), word_at(address(c))) && bytes_at_same_p(i64_plus(address(o), 1i64), i64_plus(address(c), 1i64), 0i64, word_at(address(o))))
     } else {
         false
     }
@@ -3007,7 +3039,7 @@ pub fn intern_datum_x(v: i64) -> i64 {
         } else {
             cons_x(ia, id)
         }
-    } else if (is_kind_p(v, k_string()) || is_kind_p(v, k_flonum()) || is_kind_p(v, k_keyword()) || utf8_text_p(v)) {
+    } else if (is_kind_p(v, k_string()) || is_kind_p(v, k_flonum()) || is_kind_p(v, k_keyword()) || utf8_text_p(v) || is_kind_p(v, k_bytevector())) {
         v
     } else if is_kind_p(v, k_vector()) {
         let w = make_bloblet_x(k_vector(), eq_size(v), 0i64, true, false);

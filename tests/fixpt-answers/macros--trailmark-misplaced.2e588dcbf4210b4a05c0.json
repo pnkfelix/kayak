@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: the FX-26 front end: <kayak>-snapshot/tests/fx26/programs/macros/trailmark-misplaced.fx:10:16: a use of `string-cases`: `((else 1) (\"b\" 2))` is of none of the shapes this part may have",
+"fixpt: the FX-26 front end: <programs>/macros/trailmark-misplaced.fx:10:16: a use of `string-cases`: `((else 1) (\"b\" 2))` is of none of the shapes this part may have",
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

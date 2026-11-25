@@ -1073,6 +1073,13 @@
     (lambda (u i n h) (if (i64>= i n) h (utf8-hash u (i64+ i 1) n (intern-mix h (byte-of (address u) i))))))
   (utf8-bytes-same? (subr cm (i64 i64 i64 i64) bool)
     (lambda (a b i n) (or (i64>= i n) (and (i64= (byte-of (address a) i) (byte-of (address b) i)) (utf8-bytes-same? a b (i64+ i 1) n))))))
+"A bytevector's bytes (Fixpt 3569ce51's `#u8(…)`, interned by them; C527):
+ its length the word at its address, its bytes the words after."
+(define-rec
+  (bytes-at-hash (subr cm (i64 i64 i64 i64) i64)
+    (lambda (p i n h) (if (i64>= i n) h (bytes-at-hash p (i64+ i 1) n (intern-mix h (byte-of p i))))))
+  (bytes-at-same? (subr cm (i64 i64 i64 i64) bool)
+    (lambda (p q i n) (or (i64>= i n) (and (i64= (byte-of p i) (byte-of q i)) (bytes-at-same? p q (i64+ i 1) n))))))
 (define datum-hash (subr cm (i64) i64)
   (lambda (o)
     "An interned object's hash: of a pair's parts, a string's words, a
@@ -1083,6 +1090,7 @@
           ((is-kind? o k-vector) (elements-hash o 0 (eq-size o) 4))
           ((is-kind? o k-keyword) (intern-mix 5 (slot-of o 2)))
           ((utf8-text? o) (utf8-hash o 0 (suffix-bytes o) 6))
+          ((is-kind? o k-bytevector) (bytes-at-hash (i64+ (address o) 1) 0 (word-at (address o)) 7))
           (else 0))))
 (define datum-same? (subr cm (i64 i64) bool)
   (lambda (o c)
@@ -1100,6 +1108,9 @@
           ((or (utf8-text? o) (utf8-text? c))
            (and (utf8-text? o) (utf8-text? c) (i64= (suffix-bytes o) (suffix-bytes c))
                 (utf8-bytes-same? o c 0 (suffix-bytes o))))
+          ((or (is-kind? o k-bytevector) (is-kind? c k-bytevector))
+           (and (is-kind? o k-bytevector) (is-kind? c k-bytevector) (i64= (word-at (address o)) (word-at (address c)))
+                (bytes-at-same? (i64+ (address o) 1) (i64+ (address c) 1) 0 (word-at (address o)))))
           (else #f))))
 (define-rec
   (interned-chain! (subr cm (i64 i64) unit)
@@ -1164,7 +1175,7 @@
       (let ((c (cond ((is-pair? v)
                       (let* ((a (pair-car v)) (d (pair-cdr v)) (ia (intern-datum! a)) (id (intern-datum! d)))
                         (if (and (i64= ia a) (i64= id d)) v (cons! ia id))))
-                     ((or (is-kind? v k-string) (is-kind? v k-flonum) (is-kind? v k-keyword) (utf8-text? v)) v)
+                     ((or (is-kind? v k-string) (is-kind? v k-flonum) (is-kind? v k-keyword) (utf8-text? v) (is-kind? v k-bytevector)) v)
                      ((is-kind? v k-vector)
                       (let ((w (make-bloblet! k-vector (eq-size v) 0 #t #f)))
                         (if (vector-interned! v w 0 #t) v w)))

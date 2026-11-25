@@ -38,6 +38,11 @@ pub mod branches_cons_list;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/byte-literals.rs"]
+pub mod byte_literals;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/bytes.rs"]
 pub mod bytes;
 
@@ -603,6 +608,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("bloblet-generic", bloblet_generic::main),
     ("bloblets", bloblets::main),
     ("branches-cons-list", branches_cons_list::main),
+    ("byte-literals", byte_literals::main),
     ("bytes", bytes::main),
     ("bytes-region", bytes_region::main),
     ("caller-place", caller_place::main),

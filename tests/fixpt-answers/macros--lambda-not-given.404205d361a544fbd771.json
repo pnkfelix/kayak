@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: the FX-26 front end: <kayak>-snapshot/tests/fx26/programs/macros/lambda-not-given.fx:8:13: a use of `call-rec`: `5` is not a lambda, as this part must be",
+"fixpt: the FX-26 front end: <programs>/macros/lambda-not-given.fx:8:13: a use of `call-rec`: `5` is not a lambda, as this part must be",
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

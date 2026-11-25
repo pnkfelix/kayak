@@ -9,7 +9,7 @@
 {
 "code": 1,
 "out": [
-"! <kayak>-snapshot/tests/fx26/programs/higher-kinds/stack-arity.fx:23:1: `list-stack..stack` takes 1 description(s), and has 2",
+"! <programs>/higher-kinds/stack-arity.fx:23:1: `list-stack..stack` takes 1 description(s), and has 2",
 "; both checkers agree",
 ""
 ],
@@ -17,7 +17,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

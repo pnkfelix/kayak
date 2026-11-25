@@ -1,0 +1,38 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"byte-strings.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define t : bytevector ! pure",
+"bytevector ! (read (globals t))",
+"nat ! (read (globals t))",
+"bool ! (read (globals t))",
+"u8 ! pure",
+"bytevector ! pure",
+"define d : datum ! pure",
+"int ! (read (globals d))",
+"(listof bool acyclic) ! (read (globals d))",
+"define once : (subr pure () bytevector) ! pure",
+"bool ! (read (globals once))",
+"bytevector ! pure",
+"bool ! pure",
+"int ! pure",
+"int ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
+]
+}
+]
+}

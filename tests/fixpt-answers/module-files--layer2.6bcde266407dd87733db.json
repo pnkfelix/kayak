@@ -23,8 +23,8 @@
 {
 "code": 0,
 "out": [
-"; <kayak>-snapshot/tests/fx26/programs/module-files/layer2.fx, checked as a module file",
-"(poly ((s region)) (subr (maxeff (alloc s) (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/module-files/layer1.fx))) () (moduleof (desc own (maxeff (read s) (write s))) (val rd (moduleof (desc own (maxeff (read s) (write s))) (desc cell (ref int s)) (val c cell) (val bump (subr (maxeff (read s) (write s)) () int)))) (val bump (subr (maxeff (read s) (write s)) () int)) (val twice (subr (maxeff (read s) (write s)) () int))))) ! (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/module-files/layer2.fx))",
+"; <programs>/module-files/layer2.fx, checked as a module file",
+"(poly ((s region)) (subr (maxeff (alloc s) (read (globals %shared:<programs>/module-files/layer1.fx))) () (moduleof (desc own (maxeff (read s) (write s))) (val rd (moduleof (desc own (maxeff (read s) (write s))) (desc cell (ref int s)) (val c cell) (val bump (subr (maxeff (read s) (write s)) () int)))) (val bump (subr (maxeff (read s) (write s)) () int)) (val twice (subr (maxeff (read s) (write s)) () int))))) ! (read (globals %shared:<programs>/module-files/layer2.fx))",
 "; both checkers agree",
 ""
 ],
@@ -32,7 +32,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

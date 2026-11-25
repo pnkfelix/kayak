@@ -23,8 +23,8 @@
 {
 "code": 0,
 "out": [
-"; <kayak>-snapshot/tests/fx26/programs/module-files/names-inner.fx, checked as a module file",
-"(poly ((r region)) (subr pure () (moduleof (desc s (mu %4 (sumof (#:sa (productof (1 int))) (#:sb (productof (1 %4) (2 %4)))))) (val sa (subr pure (int) s)) (val sb (subr pure (s s) s))))) ! (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/module-files/names-inner.fx))",
+"; <programs>/module-files/names-inner.fx, checked as a module file",
+"(poly ((r region)) (subr pure () (moduleof (desc s (mu %4 (sumof (#:sa (productof (1 int))) (#:sb (productof (1 %4) (2 %4)))))) (val sa (subr pure (int) s)) (val sb (subr pure (s s) s))))) ! (read (globals %shared:<programs>/module-files/names-inner.fx))",
 "; both checkers agree",
 ""
 ],
@@ -32,7 +32,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

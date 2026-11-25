@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: the FX-26 front end: <kayak>-snapshot/tests/fx26/programs/macros/sig-letters.fx:4:52: `AA` is an address in Herman's letters: an address is `(path #:a #:d …)`, its steps from the root, `#:a` the car and `#:d` the cdr",
+"fixpt: the FX-26 front end: <programs>/macros/sig-letters.fx:4:52: `AA` is an address in Herman's letters: an address is `(path #:a #:d …)`, its steps from the root, `#:a` the car and `#:d` the cdr",
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

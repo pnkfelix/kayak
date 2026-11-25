@@ -444,6 +444,34 @@ pub(crate) fn bytes_kept(bytes: &[u8]) -> &'static [Cell<u64>] {
     ws
 }
 
+/// A bytevector literal's object (`#u8(…)`, `#u8"…"`, C527): `bytes`,
+/// outside the heap's space, so no collection moves or frees it, kept for
+/// the run, as a string literal's `static` is. Frozen: the checker lets
+/// nothing write a `(bytevectorof const)`.
+pub fn bytes_lit_made(bytes: &[u8]) -> Bytes {
+    bytes_at(Box::leak(bytes_object(bytes)))
+}
+
+/// A bytevector literal: its object made once on each thread, at its
+/// first use (a `Bytes` is no `static`'s, its words cells).
+#[macro_export]
+macro_rules! bytes_lit {
+    ($b:expr) => {{
+        ::std::thread_local! {
+            static O: ::core::cell::Cell<::core::option::Option<$crate::Bytes>> =
+                const { ::core::cell::Cell::new(::core::option::Option::None) };
+        }
+        O.with(|o| match o.get() {
+            ::core::option::Option::Some(b) => b,
+            ::core::option::Option::None => {
+                let b = $crate::bytes_lit_made($b);
+                o.set(::core::option::Option::Some(b));
+                b
+            }
+        })
+    }};
+}
+
 /// The bytevector whose object is `ws` (`bytes_object`'s), kept for `'r`.
 pub(crate) fn bytes_at(ws: &[Cell<u64>]) -> BytesAt<'_> {
     BytesAt(NonNull::from(ws).cast(), std::marker::PhantomData)

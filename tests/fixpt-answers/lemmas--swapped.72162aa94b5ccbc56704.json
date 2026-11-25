@@ -9,17 +9,17 @@
 {
 "code": 1,
 "out": [
-"! <kayak>-snapshot/tests/fx26/programs/lemmas/swapped.fx:5:3: `bad` is declared a (poly ((a type) (b type)) (subr spin ((subr spin (a) b) (tree a)) (tree b))): a (subr spin ((subr spin (a) b) (tree a)) (tree b)) is expected here, and this is a (subr (maxeff (read (globals bad down-tree up-tree)) spin) ((subr spin (a) b) (tree a)) (tree b))",
+"! <programs>/lemmas/swapped.fx:5:3: `bad` is declared a (poly ((a type) (b type)) (subr spin ((subr spin (a) b) (tree a)) (tree b))): a (subr spin ((subr spin (a) b) (tree a)) (tree b)) is expected here, and this is a (subr (maxeff (read (globals bad down-tree up-tree)) spin) ((subr spin (a) b) (tree a)) (tree b))",
 "  beyond what is expected, it has (read (globals bad down-tree up-tree))",
 "; both checkers agree",
-"; checked as a program, whose globals a later definition may change: `fixpt check --module <kayak>-snapshot/tests/fx26/programs/lemmas/swapped.fx` checks it as a module file",
+"; checked as a program, whose globals a later definition may change: `fixpt check --module <programs>/lemmas/swapped.fx` checks it as a module file",
 ""
 ],
 "err": [
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

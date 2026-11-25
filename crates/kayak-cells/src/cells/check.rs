@@ -4070,7 +4070,7 @@ pub fn conversion_of(v: kayak_rt::data::DataAt<'static, Cv>, g: Str) -> Str {
 
 // A `define-generative`'s usage, and its refusals' messages below, as Fixpt's
 // `parser-forms.fx` says them (`generative-conversions`, `gen-named`).
-// fixpt-source: crates/fixpt-fx26/src/parser-forms.fx@6f7bd73
+// fixpt-source: crates/fixpt-fx26/src/parser-forms.fx@3569ce5
 #[inline]
 pub fn generative_usage() -> Str {
     str_lit!("`(define-generative name type #:seal name #:unseal name)`, or `(define-generative (name (param kind) …) type …)`")
@@ -6522,7 +6522,7 @@ pub fn logic_keywords() -> Strings {
 pub fn logic_base_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit!("int"), kayak_rt::heap_cons(str_lit!("nat"), kayak_rt::heap_cons(str_lit!("i64"), kayak_rt::heap_cons(str_lit!("u64"), kayak_rt::heap_cons(str_lit!("i32"), kayak_rt::heap_cons(str_lit!("u32"), kayak_rt::heap_cons(str_lit!("i16"), kayak_rt::heap_cons(str_lit!("u16"), kayak_rt::heap_cons(str_lit!("i8"), kayak_rt::heap_cons(str_lit!("u8"), kayak_rt::heap_cons(str_lit!("f64"), kayak_rt::heap_cons(str_lit!("f32"), kayak_rt::heap_cons(str_lit!("bool"), kayak_rt::heap_cons(str_lit!("char"), kayak_rt::heap_cons(str_lit!("unit"), kayak_rt::heap_cons(str_lit!("string"), kayak_rt::heap_cons(str_lit!("symbol"), kayak_rt::heap_cons(str_lit!("keyword"), kayak_rt::heap_cons(str_lit!("utf8"), kayak_rt::heap_cons(str_lit!("datum"), kayak_rt::heap_cons(str_lit!("void"), kayak_rt::heap_cons(str_lit!("false"), kayak_rt::heap_cons(str_lit!("nil"), kayak_rt::nil())))))))))))))))))))))))
+        kayak_rt::heap_cons(str_lit!("int"), kayak_rt::heap_cons(str_lit!("nat"), kayak_rt::heap_cons(str_lit!("i64"), kayak_rt::heap_cons(str_lit!("u64"), kayak_rt::heap_cons(str_lit!("i32"), kayak_rt::heap_cons(str_lit!("u32"), kayak_rt::heap_cons(str_lit!("i16"), kayak_rt::heap_cons(str_lit!("u16"), kayak_rt::heap_cons(str_lit!("i8"), kayak_rt::heap_cons(str_lit!("u8"), kayak_rt::heap_cons(str_lit!("f64"), kayak_rt::heap_cons(str_lit!("f32"), kayak_rt::heap_cons(str_lit!("bool"), kayak_rt::heap_cons(str_lit!("char"), kayak_rt::heap_cons(str_lit!("unit"), kayak_rt::heap_cons(str_lit!("string"), kayak_rt::heap_cons(str_lit!("symbol"), kayak_rt::heap_cons(str_lit!("keyword"), kayak_rt::heap_cons(str_lit!("utf8"), kayak_rt::heap_cons(str_lit!("bytevector"), kayak_rt::heap_cons(str_lit!("datum"), kayak_rt::heap_cons(str_lit!("void"), kayak_rt::heap_cons(str_lit!("false"), kayak_rt::heap_cons(str_lit!("nil"), kayak_rt::nil()))))))))))))))))))))))))
     })
 }
 
@@ -8537,6 +8537,10 @@ pub fn parse_type(mut v: kayak_rt::data::DataAt<'static, Cv>, mut tvars: Strings
                 return ty_data(s, nil::<kayak_rt::data::DataAt<'static, Ty>>());
             } else if string_eq_p(s, str_lit!("utf8")) {
                 return ty_data(s, nil::<kayak_rt::data::DataAt<'static, Ty>>());
+            } else if (string_eq_p(s, str_lit!("bytevector")) && not(dt_named_p(s, cv_dts(v))) && null_p(find_alias(s, cv_aliases(v)))) {
+                // `(bytevectorof const)` (Fixpt c5b5991; C527): frozen bytes; a
+                // program's own `bytevector` its own, as `io-error`'s (TODO §88 there).
+                return ty_data(str_lit!("%bytes"), kayak_rt::heap_cons(ty_rconst(str_lit!("const")), kayak_rt::nil()));
             } else if string_eq_p(s, str_lit!("false")) {
                 return ty_data(s, nil::<kayak_rt::data::DataAt<'static, Ty>>());
             } else if string_eq_p(s, str_lit!("nil")) {
@@ -8764,9 +8768,14 @@ pub fn parse_type(mut v: kayak_rt::data::DataAt<'static, Cv>, mut tvars: Strings
                 }
             } else if sym_is_p(car(xs), str_lit!("bytevectorof")) {
                 // FX-26's bytes (C49), as kayak-rt's `Bytes`: at a region, written
-                // in place.
+                // in place; at `const`, frozen (Fixpt's `bytevector`, since c5b5991;
+                // C527), nothing writing them, as `(stringof const)` is `string`.
                 if i64_eq(size(xs), 2i64) {
-                    return ty_data(str_lit!("%bytes"), kayak_rt::heap_cons(parse_mutable_region(v, tvars, second(xs)), kayak_rt::nil()));
+                    return ty_data(str_lit!("%bytes"), kayak_rt::heap_cons(if sym_is_p(second(xs), str_lit!("const")) {
+                        ty_rconst(str_lit!("const"))
+                    } else {
+                        parse_mutable_region(v, tvars, second(xs))
+                    }, kayak_rt::nil()));
                 } else {
                     return match refuse(v, string_append(str_lit!("(bytevectorof R): "), show_sexp(t))) {};
                 }

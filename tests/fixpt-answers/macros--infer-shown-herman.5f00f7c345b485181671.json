@@ -12,13 +12,13 @@
 ""
 ],
 "err": [
-"fixpt: read error: <kayak>-snapshot/tests/fx26/programs/macros/infer-shown-herman.fx:6:83: `h1` is refused: no signature is written, and the one inferred from its clauses does not fit them: `rest` is placed in no scope of the pattern's binders, but its signature says it is in the scope of `x`",
+"fixpt: read error: <programs>/macros/infer-shown-herman.fx:6:83: `h1` is refused: no signature is written, and the one inferred from its clauses does not fit them: `rest` is placed in no scope of the pattern's binders, but its signature says it is in the scope of `x`",
 "  inferred: (macro/addressed (bvar . (import (many (expr ...)) (rho ((path #:a) var)))) defn)",
 "  write one: (define-syntax h1 SIGNATURE (syntax-rules …))",
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

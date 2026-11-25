@@ -22,8 +22,8 @@
 {
 "code": 0,
 "out": [
-"; <kayak>-snapshot/tests/fx26/programs/module-files/mp-none.fx, checked as a module file",
-"(subr (alloc @heap) () (moduleof (val n (ref int @heap)))) ! (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/module-files/mp-none.fx))",
+"; <programs>/module-files/mp-none.fx, checked as a module file",
+"(subr (alloc @heap) () (moduleof (val n (ref int @heap)))) ! (read (globals %shared:<programs>/module-files/mp-none.fx))",
 "; both checkers agree",
 ""
 ],
@@ -31,7 +31,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

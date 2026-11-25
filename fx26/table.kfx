@@ -294,6 +294,8 @@
                                 ;; `#utf8"…"` (Fixpt 06a3666): its text, once.
                                 ((utf8-literal? d)
                                  (utf8-made! (the (bytevectorof @c) (utf8->bytes (string->utf8 (utf8-literal-text d))))))
+                                ;; `#u8(…)` (Fixpt 3569ce51): its bytes, once.
+                                ((bytes-literal? d) (literal-bytes-made! (bytes-literal-bytes d)))
                                 ((head-is? d "#vector")
                                  (list-array! ob-vector (constant-at (quoted-constant! (lst (cdr ys) f l p)))))
                                 ((and (sym-is? (car ys) ".") (not (null? (cdr ys))) (null? (cdr (cdr ys))))

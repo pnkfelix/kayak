@@ -23,8 +23,8 @@
 {
 "code": 0,
 "out": [
-"; <kayak>-snapshot/tests/fx26/programs/module-files/arrow-star-uses.fx, checked as a module file",
-"(poly ((r region)) (subr (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/module-files/arrow-star-types.fx)) () (moduleof (desc t int) (desc e (maxeff (read r) spin)) (desc h (subr (maxeff (read r) spin) (int) int)) (val a (moduleof (desc t int) (desc e (maxeff (read r) spin)))) (val f (subr (maxeff (read r) spin) (h int) int))))) ! (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/module-files/arrow-star-uses.fx))",
+"; <programs>/module-files/arrow-star-uses.fx, checked as a module file",
+"(poly ((r region)) (subr (read (globals %shared:<programs>/module-files/arrow-star-types.fx)) () (moduleof (desc t int) (desc e (maxeff (read r) spin)) (desc h (subr (maxeff (read r) spin) (int) int)) (val a (moduleof (desc t int) (desc e (maxeff (read r) spin)))) (val f (subr (maxeff (read r) spin) (h int) int))))) ! (read (globals %shared:<programs>/module-files/arrow-star-uses.fx))",
 "; both checkers agree",
 ""
 ],
@@ -32,7 +32,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

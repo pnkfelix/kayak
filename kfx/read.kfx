@@ -326,6 +326,34 @@
 (define utf8-opening? (subr kfx (chars) bool)
   (lambda (cs) "Whether `cs` begins `#utf8\"`." (chars-begin? cs (string-chars "#utf8\""))))
 
+"`#u8(…)` and `#u8\"…\"` (Fixpt 3569ce51; C527): bytes, each `0` to `255`,
+ read `(#u8 BYTE …)`, a head no KFX name is, as `#(…)`'s. A byte string's
+ characters ASCII, each its byte, a string's escapes, `\\xHH;` any byte;
+ its bytes' nodes at offsets within its text, one apart."
+(define-rec
+  (byte-text-ascii? (subr kfx (chars) bool)
+    (lambda (cs)
+      "Whether a byte string's characters, to its closing quote, are ASCII."
+      (cond ((null? cs) #t)
+            ((char=? (car cs) #\") #t)
+            ((i64> (char->i64 (car cs)) 127) #f)
+            ((and (char=? (car cs) #\\) (not (null? (cdr cs))))
+             (and (i64<= (char->i64 (car (cdr cs))) 127) (byte-text-ascii? (cdr (cdr cs)))))
+            (else (byte-text-ascii? (cdr cs))))))
+  (text-bytes (subr kfx (chars string i64 i64 i64) sexps)
+    (lambda (cs file line at n)
+      "The text's characters, each at most `FF`, as bytes."
+      (cond ((null? cs) nil)
+            ((i64> (char->i64 (car cs)) 255) (read-error file line "a byte string's `\\x` escape is at most `FF`"))
+            (else (cons (num (char->i64 (car cs)) file (i64+ at n)) (text-bytes (cdr cs) file line at (i64+ n 1)))))))
+  (bytes-checked (subr kfx (sexps string i64) sexps)
+    (lambda (xs file line)
+      "`#u8(…)`'s items, each a byte."
+      (cond ((null? xs) nil)
+            ((tagcase (car xs) (num (k f p) (and (i64>= k 0) (i64<= k 255))) (else other #f))
+             (cons (car xs) (bytes-checked (cdr xs) file line)))
+            (else (read-error file line "a bytevector's items are bytes, 0 to 255"))))))
+
 (define-rec
   (read-datum (subr kfx (here string string) got)
     (lambda (h text file)
@@ -363,6 +391,19 @@
                    (let ((body (cdr (cdr (cdr (cdr (cdr (cdr cs))))))))
                      (tagcase (string-body body text nil (i64+ pos 6) file line (i64+ pos 5) line (i64+ pos 6))
                        (got (x after) (got (lst (list (sym "#utf8" file (i64+ pos 1)) x) file line pos) after)))))
+                  ((and (chars-begin? cs (string-chars "#u8(")) (not (string=? file "")))
+                   (tagcase (read-items (here (cdr (cdr (cdr (cdr cs)))) line (i64+ pos 4)) text file)
+                     (gots (xs after) (got (lst (cons (sym "#u8" file (i64+ pos 1)) (bytes-checked xs file line)) file line pos) after))))
+                  ((and (chars-begin? cs (string-chars "#u8\"")) (not (string=? file "")))
+                   (let ((body (cdr (cdr (cdr (cdr cs))))))
+                     (if (not (byte-text-ascii? body))
+                         (read-error file line "a byte string's characters are ASCII: `\\xHH;` for another byte")
+                         (tagcase (string-body body text nil (i64+ pos 4) file line (i64+ pos 3) line (i64+ pos 4))
+                           (got (x after)
+                             (got (lst (cons (sym "#u8" file (i64+ pos 1))
+                                             (text-bytes (string-chars (tagcase x (str (t f p) t) (else other ""))) file line (i64+ pos 4) 0))
+                                       file line pos)
+                                  after))))))
                   ((char=? c #\") (string-body (cdr cs) text nil (i64+ pos 1) file line pos line (i64+ pos 1)))
                   ((and (char=? c #\#) (not (null? (cdr cs))) (char=? (car (cdr cs)) #\\))
                    (let ((name (cdr (cdr cs))))
@@ -539,6 +580,14 @@
     (and (head-is? e "#utf8")
          (i64= (size (items e)) 2)
          (tagcase (car (cdr (items e))) (str (x f p) #t) (else other #f)))))
+
+(define bytes-literal? (subr kfx (sexp) bool)
+  (lambda (e) "Whether `e` is `#u8(…)` or `#u8\"…\"` as read, `(#u8 BYTE …)`." (head-is? e "#u8")))
+
+(define bytes-literal-bytes (subr kfx (sexp) (listof i64 acyclic))
+  (lambda (e)
+    "Its bytes."
+    (map (lambda ((x sexp)) (tagcase x (num (k f p) k) (else other (the i64 0)))) (cdr (items e)))))
 
 (define utf8-literal-text (subr kfx (sexp) string)
   (lambda (e)

@@ -244,3 +244,11 @@
       (begin (mem-set! at (header (if (bytes-ascii? bv 0 n) ob-utf8-ascii ob-utf8) 0 n))
              (words-zeroed! (i64+ at 1) w)
              (let ((u (bloblet-at (i64+ at 1)))) (begin (utf8-bytes-set! u bv 0 n) u))))))
+
+"A bytevector of `bs`, bytes (`#u8(…)`, C527): table.kfx's quoted
+ constant, made once at loading."
+(define-rec
+  (literal-bytes-filled! (subr hp (i64 (listof i64 acyclic) i64) unit)
+    (lambda (b bs i) (if (null? bs) #u (begin (byte-set! b i (car bs)) (literal-bytes-filled! b (cdr bs) (i64+ i 1)))))))
+(define literal-bytes-made! (subr hp ((listof i64 acyclic)) i64)
+  (lambda (bs) (let ((b (bytes-alloc! (size bs)))) (begin (literal-bytes-filled! b bs 0) b))))

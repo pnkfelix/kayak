@@ -9,7 +9,7 @@
 {
 "code": 1,
 "out": [
-"! <kayak>-snapshot/tests/fx26/programs/processes/wait-masked.fx:6:3: `ask-self` is declared a (subr pure (int) int): a (subr pure (int) int) is expected here, and this is a (subr spin (int) int)",
+"! <programs>/processes/wait-masked.fx:6:3: `ask-self` is declared a (subr pure (int) int): a (subr pure (int) int) is expected here, and this is a (subr spin (int) int)",
 "  beyond what is expected, it has spin; it may not end: it waits, (await @q), on what nothing outside it sees",
 "; both checkers agree",
 ""
@@ -18,7 +18,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

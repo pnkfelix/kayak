@@ -23,7 +23,7 @@
 {
 "code": 1,
 "out": [
-"! <kayak>-snapshot/tests/fx26/programs/io/io-kind-unknown.fx:3:24: an I/O effect's kind is one of `stdin`, `stdout`, `stderr`, `fs-read`, `fs-write`, `clock`, `args`, `exit`, `terminal`, `native`, `sys`, `process`, `clock-read`, `stdin-poll`, `process-control`, `env-read`",
+"! <programs>/io/io-kind-unknown.fx:3:24: an I/O effect's kind is one of `stdin`, `stdout`, `stderr`, `fs-read`, `fs-write`, `clock`, `args`, `exit`, `terminal`, `native`, `sys`, `process`, `clock-read`, `stdin-poll`, `process-control`, `env-read`",
 "; both checkers agree",
 ""
 ],
@@ -31,7 +31,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

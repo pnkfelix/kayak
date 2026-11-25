@@ -1017,6 +1017,8 @@ pub fn quoted_constant_x(d: kayak_rt::data::DataAt<'static, Sexp>) -> i64 {
                     w_nil()
                 } else if utf8_literal_p(d) {
                     utf8_made_x(the::<Bytes>(utf8_to_bytes(string_to_utf8(utf8_literal_text(d)))))
+                } else if bytes_literal_p(d) {
+                    literal_bytes_made_x(bytes_literal_bytes(d))
                 } else if head_is_p(d, str_lit!("#vector")) {
                     list_array_x(ob_vector(), constant_at(quoted_constant_x(lst(cdr(ys), f, l, p))))
                 } else if (sym_is_p(car(ys), str_lit!(".")) && not(null_p(cdr(ys))) && null_p(cdr(cdr(ys)))) {

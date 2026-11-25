@@ -79,7 +79,7 @@ pub use value::{
 };
 pub use world::*;
 
-pub use obj::{Str, StrLit, string_words};
+pub use obj::{Str, StrLit, bytes_lit_made, string_words};
 
 impl std::fmt::Display for Str {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

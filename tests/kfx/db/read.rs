@@ -990,6 +990,64 @@ pub fn utf8_opening_p(cs: Chars) -> bool {
     chars_begin_p(cs, string_chars(str_lit!("#utf8\"")))
 }
 
+// `#u8(…)` and `#u8"…"` (Fixpt 3569ce51; C527): bytes, each `0` to `255`,
+// read `(#u8 BYTE …)`, a head no KFX name is, as `#(…)`'s. A byte string's
+// characters ASCII, each its byte, a string's escapes, `\xHH;` any byte;
+// its bytes' nodes at offsets within its text, one apart.
+/// Whether a byte string's characters, to its closing quote, are ASCII.
+pub fn byte_text_ascii_p(mut cs: Chars) -> bool {
+    loop {
+        if null_p(cs) {
+            return true;
+        } else if char_eq_p(car(cs), '"') {
+            return true;
+        } else if i64_gt(char_to_i64(car(cs)), 127i64) {
+            return false;
+        } else if (char_eq_p(car(cs), '\\') && not(null_p(cdr(cs)))) {
+            if i64_lt_eq(char_to_i64(car(cdr(cs))), 127i64) {
+                cs = cdr(cdr(cs));
+                continue;
+            } else {
+                return false;
+            }
+        } else {
+            cs = cdr(cs);
+            continue;
+        }
+    }
+}
+
+/// The text's characters, each at most `FF`, as bytes.
+pub fn text_bytes(cs: Chars, file: Str, line: i64, at: i64, n: i64) -> Sexps {
+    if null_p(cs) {
+        nil::<kayak_rt::data::DataAt<'static, Sexp>>()
+    } else if i64_gt(char_to_i64(car(cs)), 255i64) {
+        match read_error(file, line, str_lit!("a byte string's `\\x` escape is at most `FF`")) {}
+    } else {
+        kayak_rt::heap_cons(num(char_to_i64(car(cs)), file, i64_plus(at, n)), text_bytes(cdr(cs), file, line, at, i64_plus(n, 1i64)))
+    }
+}
+
+/// `#u8(…)`'s items, each a byte.
+pub fn bytes_checked(xs: Sexps, file: Str, line: i64) -> Sexps {
+    if null_p(xs) {
+        nil::<kayak_rt::data::DataAt<'static, Sexp>>()
+    } else if {
+        let tagcase_ = car(xs);
+        if Sexp::__is_Num(tagcase_) {
+            let (k, f, p,) = Sexp::__Num(tagcase_);
+            (i64_gt_eq(k, 0i64) && i64_lt_eq(k, 255i64))
+        } else {
+            let other = tagcase_;
+            false
+        }
+    } {
+        kayak_rt::heap_cons(car(xs), bytes_checked(cdr(xs), file, line))
+    } else {
+        match read_error(file, line, str_lit!("a bytevector's items are bytes, 0 to 255")) {}
+    }
+}
+
 /// A datum at the start of `h`'s text, the rest of `text`, which `file`
 /// holds.
 pub fn read_datum(h: kayak_rt::data::DataAt<'static, Here>, text: Str, file: Str) -> kayak_rt::data::DataAt<'static, Got> {
@@ -1056,6 +1114,32 @@ pub fn read_datum(h: kayak_rt::data::DataAt<'static, Here>, text: Str, file: Str
                 let (x, after,) = Got::__Got(tagcase_);
                 got(lst(kayak_rt::heap_cons(sym(str_lit!("#utf8"), file, i64_plus(pos, 1i64)), kayak_rt::heap_cons(x, kayak_rt::nil())), file, line, pos), after)
             } else { kayak_rt::data::no_variant() }
+        } else if (chars_begin_p(cs, string_chars(str_lit!("#u8("))) && not(string_eq_p(file, str_lit!("")))) {
+            let tagcase_ = read_items(here(cdr(cdr(cdr(cdr(cs)))), line, i64_plus(pos, 4i64)), text, file);
+            if Gots::__is_Gots(tagcase_) {
+                let (xs, after,) = Gots::__Gots(tagcase_);
+                got(lst(kayak_rt::heap_cons(sym(str_lit!("#u8"), file, i64_plus(pos, 1i64)), bytes_checked(xs, file, line)), file, line, pos), after)
+            } else { kayak_rt::data::no_variant() }
+        } else if (chars_begin_p(cs, string_chars(str_lit!("#u8\""))) && not(string_eq_p(file, str_lit!("")))) {
+            let body = cdr(cdr(cdr(cdr(cs))));
+            if not(byte_text_ascii_p(body)) {
+                match read_error(file, line, str_lit!("a byte string's characters are ASCII: `\\xHH;` for another byte")) {}
+            } else {
+                let tagcase_ = string_body(body, text, nil::<Str>(), i64_plus(pos, 4i64), file, line, i64_plus(pos, 3i64), line, i64_plus(pos, 4i64));
+                if Got::__is_Got(tagcase_) {
+                    let (x, after,) = Got::__Got(tagcase_);
+                    got(lst(kayak_rt::heap_cons(sym(str_lit!("#u8"), file, i64_plus(pos, 1i64)), text_bytes(string_chars({
+                        let tagcase_ = x;
+                        if Sexp::__is_Str(tagcase_) {
+                            let (t, f, p,) = Sexp::__Str(tagcase_);
+                            t
+                        } else {
+                            let other = tagcase_;
+                            str_lit!("")
+                        }
+                    }), file, line, i64_plus(pos, 4i64), 0i64)), file, line, pos), after)
+                } else { kayak_rt::data::no_variant() }
+            }
         } else if char_eq_p(c, '"') {
             string_body(cdr(cs), text, nil::<Str>(), i64_plus(pos, 1i64), file, line, pos, line, i64_plus(pos, 1i64))
         } else if (char_eq_p(c, '#') && not(null_p(cdr(cs))) && char_eq_p(car(cdr(cs)), '\\')) {
@@ -1572,6 +1656,26 @@ pub fn utf8_literal_p(e: kayak_rt::data::DataAt<'static, Sexp>) -> bool {
             false
         }
     })
+}
+
+/// Whether `e` is `#u8(…)` or `#u8"…"` as read, `(#u8 BYTE …)`.
+#[inline]
+pub fn bytes_literal_p(e: kayak_rt::data::DataAt<'static, Sexp>) -> bool {
+    head_is_p(e, str_lit!("#u8"))
+}
+
+/// Its bytes.
+pub fn bytes_literal_bytes(e: kayak_rt::data::DataAt<'static, Sexp>) -> List<i64> {
+    map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::data::DataAt<'static, Sexp>| {
+        let tagcase_ = x;
+        if Sexp::__is_Num(tagcase_) {
+            let (k, f, p,) = Sexp::__Num(tagcase_);
+            k
+        } else {
+            let other = tagcase_;
+            the::<i64>(0i64)
+        }
+    })), cdr(items(e)))
 }
 
 /// `#utf8"…"`'s text, as a string.

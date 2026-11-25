@@ -1301,6 +1301,8 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: kayak_rt::data::DataAt<'stat
             return lower(second(xs), sc, gs);
         } else if string_eq_p(h, str_lit!("#utf8")) {
             return lower_quoted(e, sc, gs);
+        } else if string_eq_p(h, str_lit!("#u8")) {
+            return lower_quoted(e, sc, gs);
         } else if string_eq_p(h, str_lit!("quote")) {
             return lower_quoted(car(xs), sc, gs);
         } else if string_eq_p(h, str_lit!("quasiquote")) {

@@ -54,9 +54,18 @@ def forms(text):
             out.append(head_of(text[i:j]))
             i = j
         else:
+            # An atom, or a prefix and what it makes one datum of (`'(…)`,
+            # `#(…)`, `#u8(…)`, `#u8"…"`, `'#utf8"…"`, C527): its string's
+            # text and its list are its own, spaces and all.
             j = i
-            while j < n and text[j] not in " \t\r\n()":
-                j += 1
+            while j < n and text[j] not in " \t\r\n)":
+                if text[j] == '"':
+                    j = skip_string(text, j)
+                elif text[j] == "(":
+                    j = skip_list(text, j) if j > i else j
+                    break
+                else:
+                    j += 1
             out.append(("expression", 1))
             i = j
     return out

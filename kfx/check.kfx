@@ -1413,7 +1413,7 @@
 
 "A `define-generative`'s usage, and its refusals' messages below, as Fixpt's
  `parser-forms.fx` says them (`generative-conversions`, `gen-named`).
- fixpt-source: crates/fixpt-fx26/src/parser-forms.fx@6f7bd73"
+ fixpt-source: crates/fixpt-fx26/src/parser-forms.fx@3569ce5"
 (define generative-usage string
   "`(define-generative name type #:seal name #:unseal name)`, or `(define-generative (name (param kind) …) type …)`")
 
@@ -2349,7 +2349,7 @@
         "define-convention"))
 (define logic-base-names strings
   (list "int" "nat" "i64" "u64" "i32" "u32" "i16" "u16" "i8" "u8" "f64" "f32" "bool" "char" "unit" "string"
-        "symbol" "keyword" "utf8" "datum" "void" "false" "nil"))
+        "symbol" "keyword" "utf8" "bytevector" "datum" "void" "false" "nil"))
 
 (define param-name-written (subr kfx (cv strings sexp) string)
   (lambda (v tvars p)
@@ -3221,6 +3221,10 @@
                 ((string=? s "symbol") (ty-data s nil))
                 ((string=? s "keyword") (ty-data s nil))
                 ((string=? s "utf8") (ty-data s nil))
+                ((and (string=? s "bytevector") (not (dt-named? s (cv-dts v))) (null? (find-alias s (cv-aliases v))))
+                 "`(bytevectorof const)` (Fixpt c5b5991; C527): frozen bytes; a
+                  program's own `bytevector` its own, as `io-error`'s (TODO §88 there)."
+                 (ty-data "%bytes" (list (ty-rconst "const"))))
                 ((string=? s "false") (ty-data s nil))
                 ((string=? s "nil") (ty-data s nil))
                 ((or (string=? s "datum") (string=? s "vector")) (ty-data s nil))
@@ -3328,9 +3332,10 @@
                      (refuse v (string-append "(stringof R): " (show-sexp t)))))
                 ((sym-is? (car xs) "bytevectorof")
                  "FX-26's bytes (C49), as kayak-rt's `Bytes`: at a region, written
-                  in place."
+                  in place; at `const`, frozen (Fixpt's `bytevector`, since c5b5991;
+                  C527), nothing writing them, as `(stringof const)` is `string`."
                  (if (i64= (size xs) 2)
-                     (ty-data "%bytes" (list (parse-mutable-region v tvars (second xs))))
+                     (ty-data "%bytes" (list (if (sym-is? (second xs) "const") (ty-rconst "const") (parse-mutable-region v tvars (second xs)))))
                      (refuse v (string-append "(bytevectorof R): " (show-sexp t)))))
                 ((sym-is? (car xs) "ref")
                  (no-knot v (lambda ((x string)) x) (ty-ref (parse-type v tvars (second xs)) (parse-mutable-region v tvars (third xs)))))

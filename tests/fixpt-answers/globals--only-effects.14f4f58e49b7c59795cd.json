@@ -23,16 +23,16 @@
 {
 "code": 1,
 "out": [
-"! <kayak>-snapshot/tests/fx26/programs/globals/only-effects.fx:3:24: globals are a region only in effects: `(read @globals)`, `(write (globals g))`",
+"! <programs>/globals/only-effects.fx:3:24: globals are a region only in effects: `(read @globals)`, `(write (globals g))`",
 "; both checkers agree",
-"; checked as a program, whose globals a later definition may change: `fixpt check --module <kayak>-snapshot/tests/fx26/programs/globals/only-effects.fx` checks it as a module file",
+"; checked as a program, whose globals a later definition may change: `fixpt check --module <programs>/globals/only-effects.fx` checks it as a module file",
 ""
 ],
 "err": [
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

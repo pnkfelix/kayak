@@ -9,7 +9,7 @@
 {
 "code": 1,
 "out": [
-"! <kayak>-snapshot/tests/fx26/programs/control/resume-undelimited.fx:26:20: `handle` is declared a (subr (maxeff (read @globals) spin) ((subr (maxeff (comefrom @ev) (goto @ev) (read @globals)) () int)) int): a (subr (maxeff (read @globals) spin) ((subr (maxeff (comefrom @ev) (goto @ev) (read @globals)) () int)) int) is expected here, and this is a (subr (maxeff (comefrom @ev) (goto @ev) (read @globals) spin) ((subr (maxeff (comefrom @ev) (goto @ev) (read @globals)) () int)) int)",
+"! <programs>/control/resume-undelimited.fx:26:20: `handle` is declared a (subr (maxeff (read @globals) spin) ((subr (maxeff (comefrom @ev) (goto @ev) (read @globals)) () int)) int): a (subr (maxeff (read @globals) spin) ((subr (maxeff (comefrom @ev) (goto @ev) (read @globals)) () int)) int) is expected here, and this is a (subr (maxeff (comefrom @ev) (goto @ev) (read @globals) spin) ((subr (maxeff (comefrom @ev) (goto @ev) (read @globals)) () int)) int)",
 "  beyond what is expected, it has (maxeff (comefrom @ev) (goto @ev))",
 "  a `prompt` masks the control on its tag's region only where no free variable of its body names that region but the tag (a continuation resumed under it does); a `letregion` that makes the region masks it",
 "; both checkers agree",
@@ -19,7 +19,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

@@ -22,8 +22,8 @@
  fixpt-source: crates/fixpt-fx26/src/compile-state.fx@120b70e
  fixpt-source: crates/fixpt-fx26/src/compile-lift.fx@0d933ff
  fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@0d933ff
- fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@06a3666
- fixpt-source: crates/fixpt-fx26/src/parser.fx@c5b5991"
+ fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@3569ce5
+ fixpt-source: crates/fixpt-fx26/src/parser.fx@3569ce5"
 
 "The generator's data lives at `@g`."
 (define-effect gen (maxeff (read @globals) spin (read @g) (write @g) (alloc @g)))
@@ -863,6 +863,8 @@
             ;; `#utf8"…"` (Fixpt 06a3666), read `(#utf8 "…")`: a quote's
             ;; constant, made once and interned by its bytes.
             ((string=? h "#utf8") (utf8-quoted e a))
+            ;; `#u8(…)`, `#u8"…"` (Fixpt 3569ce51; C527): the same, of bytes.
+            ((string=? h "#u8") (bytes-quoted e a))
             ((string=? h "quote") (parse-quoted (second xs) a))
             ((string=? h "product") (x-product (parse-fields (cdr xs)) a))
             ((string=? h "extract")
@@ -1340,6 +1342,18 @@
       "`#utf8\"…\"`: its text made `utf8`, then interned, as a quote's datum."
       (x-app (std-var "%quote" a) (list (x-app (std-var "string->utf8" a) (list (x-str (utf8-literal-text d) a)) a)) a)))
 
+  (bytes-quoted (subr gen (sexp i64) cx)
+    (lambda (d a)
+      "`#u8(…)`: a bytevector made of its bytes, then interned, as a quote's
+       datum (Fixpt's `Heap::intern_datum`, by its bytes)."
+      (let* ((bs (bytes-literal-bytes d)) (b (x-var "%u8-literal" a))
+             (sets (map2 (lambda ((k i64) (i i64)) (x-app (std-var "bytevector-u8-set!" a) (list b (x-int (i64->int i) a) (x-int (i64->int k) a)) a))
+                         bs (counting 0 (size bs)))))
+        (x-app (std-var "%quote" a)
+               (list (x-let (list (cbind "%u8-literal" (x-app (std-var "make-bytevector" a) (list (x-int (i64->int (size bs)) a) (x-int 0 a)) a)))
+                            (x-begin (append sets (list b)) a) a))
+               a))))
+
   (parse-quoted (subr gen (sexp i64) cx)
     (lambda (d a)
       "A quoted datum, as Fixpt's quote rewrite writes it: a symbol, an atom
@@ -1350,6 +1364,7 @@
         (lst (ys f l p)
           (cond ((null? ys) (std-var "nil" a))
                 ((utf8-literal? d) (utf8-quoted d a))
+                ((bytes-literal? d) (bytes-quoted d a))
                 (else (x-app (std-var "%quote" a) (list (quoted-item d a)) a))))
         (else other (parse-x d)))))
 

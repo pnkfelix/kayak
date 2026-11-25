@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: the FX-26 front end: <kayak>-snapshot/tests/fx26/programs/macros/mu-nested-unguarded.fx:7:15: a syntax type: a `mu`'s variable is used where no pair is around it (Herman's types are contractive)",
+"fixpt: the FX-26 front end: <programs>/macros/mu-nested-unguarded.fx:7:15: a syntax type: a `mu`'s variable is used where no pair is around it (Herman's types are contractive)",
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

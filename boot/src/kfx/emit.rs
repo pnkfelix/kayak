@@ -2933,6 +2933,27 @@ pub mod emitter {
         put(str_lit!("\"))"), put_escaped(string_chars(utf8_literal_text(e)), '"', put(str_lit!("kayak_rt::Utf8(str_lit!(\""), acc)))
     }
 
+    /// Each byte `\xHH`, as a Rust byte string writes one.
+    pub fn put_byte_escapes(bs: List<i64>, acc: Chars) -> Chars {
+        if null_p(bs) {
+            acc
+        } else {
+            let b = car(bs);
+            let hex = str_lit!("0123456789abcdef");
+            let acc = put(str_lit!("\\x"), acc);
+            let acc = kayak_rt::heap_cons(string_ref_i64(hex, i64_quotient(b, 16i64)), acc);
+            let acc = kayak_rt::heap_cons(string_ref_i64(hex, i64_remainder(b, 16i64)), acc);
+            put_byte_escapes(cdr(bs), acc)
+        }
+    }
+
+    /// `#u8(…)`, `#u8"…"` (`(#u8 BYTE …)`, read; C527): Rust's `b"…"`, its
+    /// bytevector made once (`bytes_lit!`), frozen.
+    #[inline]
+    pub fn put_bytes_literal(e: kayak_rt::data::DataAt<'static, Sexp>, acc: Chars) -> Chars {
+        put(str_lit!("\")"), put_byte_escapes(bytes_literal_bytes(e), put(str_lit!("kayak_rt::bytes_lit!(b\""), acc)))
+    }
+
     /// A wrapper's boxing of a value, its start (C82).
     pub fn put_box_open(how: Str, acc: Chars) -> Chars {
         if string_eq_p(how, str_lit!("-")) {
@@ -3831,6 +3852,8 @@ pub mod emitter {
                     return put(str_lit!("Str"), acc);
                 } else if string_eq_p(s, str_lit!("utf8")) {
                     return put(str_lit!("Utf8"), acc);
+                } else if (string_eq_p(s, str_lit!("bytevector")) && string_eq_p(opener(string_append(str_lit!("%type "), s), ctx_locals(c)), str_lit!("")) && null_p(desc_type(c, s, ctx_locals(c))) && not(string_member_p(s, ctx_datatypes(c))) && null_p(module_body(c, string_append(str_lit!("%alias "), s)))) {
+                    return put(str_lit!("Bytes"), acc);
                 } else if (string_eq_p(s, str_lit!("io-error")) && string_eq_p(opener(string_append(str_lit!("%type "), s), ctx_locals(c)), str_lit!("")) && null_p(desc_type(c, s, ctx_locals(c))) && not(string_member_p(s, ctx_datatypes(c)))) {
                     t = car(read_all(io_error_text(), str_lit!(""), 1i64));
                     continue;
@@ -6204,6 +6227,8 @@ pub mod emitter {
             } else if string_eq_p(h, str_lit!("#utf8")) {
                 // `#utf8"…"`: its text, a static, made once (`str_lit!`).
                 return put_utf8_literal(e, acc);
+            } else if string_eq_p(h, str_lit!("#u8")) {
+                return put_bytes_literal(e, acc);
             } else if string_eq_p(h, str_lit!("quote")) {
                 let tagcase_ = car(xs);
                 if Sexp::__is_Sym(tagcase_) {
@@ -6223,6 +6248,8 @@ pub mod emitter {
                     let (ys, f, l, p,) = Sexp::__Lst(tagcase_);
                     if utf8_literal_p(car(xs)) {
                         return put_utf8_literal(car(xs), acc);
+                    } else if bytes_literal_p(car(xs)) {
+                        return put_bytes_literal(car(xs), acc);
                     } else {
                         return put_quoted(c, car(xs), acc);
                     }

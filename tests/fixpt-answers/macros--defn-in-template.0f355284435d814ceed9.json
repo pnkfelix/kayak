@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: read error: <kayak>-snapshot/tests/fx26/programs/macros/defn-in-template.fx:5:12: `define` makes a definition, made at the top level by a macro that makes definitions, not where an expression is",
+"fixpt: read error: <programs>/macros/defn-in-template.fx:5:12: `define` makes a definition, made at the top level by a macro that makes definitions, not where an expression is",
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

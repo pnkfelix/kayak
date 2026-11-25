@@ -9,7 +9,7 @@
 {
 "code": 1,
 "out": [
-"! <kayak>-snapshot/tests/fx26/programs/generative/unguarded-cycle.fx:5:1: a recursive type must be built from a constructor, not only from names",
+"! <programs>/generative/unguarded-cycle.fx:5:1: a recursive type must be built from a constructor, not only from names",
 "; both checkers agree",
 ""
 ],
@@ -17,7 +17,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

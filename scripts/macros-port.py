@@ -106,7 +106,29 @@ PATCHES = {
     # `symbol=?` given as a value, the table's sameness (c5b5991): kc
     # calls the primitive but makes no procedure of it, so the shim's
     # `mx-symbol=?`, a lambda, as `mx-symbol-hash` is (C525).
-    "macros-syntax.fx": [("(make-table symbol-hash symbol=?)", "(make-table symbol-hash mx-symbol=?)")],
+    "macros-syntax.fx": [("(make-table symbol-hash symbol=?)", "(make-table symbol-hash mx-symbol=?)"),
+                         # A datum's bytevector (3569ce51): KFX's `datum` has none
+                         # (C527), so a test of one narrows nothing; its arm dropped.
+                         ("          ((bytevector? d)\n"
+                          "           (string-append \"#u8(\" (string-append (show-bytes d (- (bytevector-length d) 1) \"\") \")\")))\n", ""),
+                         # And the arm's helper, called by nothing else, which kc's
+                         # native back end cannot compile yet (`u8->int`): back with
+                         # `bytevector` in KFX's `datum`.
+                         (";; Bytevector `v`'s bytes up to `i`, space-separated, before `acc`.\n"
+                          "(define show-bytes (->* (bytevector int string) string)\n"
+                          "  (lambda (v i acc)\n"
+                          "    (if (< i 0)\n"
+                          "        acc\n"
+                          "        (show-bytes v (- i 1)\n"
+                          "                    (string-append (int->string (u8->int (bytevector-u8-ref v i)))\n"
+                          "                                   (if (string=? acc \"\") \"\" (string-append \" \" acc)))))))\n", "")],
+    "macros-fresh.fx": [("              ((bytevector? d) (bytes-hash d 0 12))\n", ""),
+                        (";; `h` with bytevector `v`'s bytes from `i` mixed in, as `syn_hash`'s.\n"
+                         "(define bytes-hash (->* (bytevector int int) int)\n"
+                         "  (lambda (v i h)\n"
+                         "    (if (< i (bytevector-length v))\n"
+                         "        (bytes-hash v (+ i 1) (mix h (u8->int (bytevector-u8-ref v i))))\n"
+                         "        h)))\n", "")],
     # The parse's prompt allows its delimited computations its host's
     # effect too (C449): an expansion calls the host's asker, of the file's
     # effect parameter `mxe`, where Fixpt's calls a primitive of its

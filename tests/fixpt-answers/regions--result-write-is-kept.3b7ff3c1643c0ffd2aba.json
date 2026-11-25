@@ -9,7 +9,7 @@
 {
 "code": 1,
 "out": [
-"! <kayak>-snapshot/tests/fx26/programs/regions/result-write-is-kept.fx:9:5: a (subr (alloc r) (int) (listof int r)) is expected here, and this is a (subr (maxeff (alloc r) (write r)) (int) (listof int r))",
+"! <programs>/regions/result-write-is-kept.fx:9:5: a (subr (alloc r) (int) (listof int r)) is expected here, and this is a (subr (maxeff (alloc r) (write r)) (int) (listof int r))",
 "  beyond what is expected, it has (write r)",
 "; both checkers agree",
 ""
@@ -18,7 +18,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

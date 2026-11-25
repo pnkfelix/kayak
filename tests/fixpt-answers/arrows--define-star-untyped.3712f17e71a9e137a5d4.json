@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/arrows/define-star-untyped.fx:6:1: `(define* name type lambda)`: `define*` finds what a procedure reads, for a type written; with none written, `define` finds the whole type",
+"fixpt: <programs>/arrows/define-star-untyped.fx:6:1: `(define* name type lambda)`: `define*` finds what a procedure reads, for a type written; with none written, `define` finds the whole type",
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

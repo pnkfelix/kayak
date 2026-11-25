@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: read error: <kayak>-snapshot/tests/fx26/programs/macros/facts-each-bare.fx:6:11: `v` is a repeated part's: `(v ...)`, every repetition's, or a fact under `...`, each repetition's",
+"fixpt: read error: <programs>/macros/facts-each-bare.fx:6:11: `v` is a repeated part's: `(v ...)`, every repetition's, or a fact under `...`, each repetition's",
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

@@ -461,3 +461,24 @@ pub fn utf8_made_x(bv: Bytes) -> i64 {
     u
 }
 
+// A bytevector of `bs`, bytes (`#u8(…)`, C527): table.kfx's quoted
+// constant, made once at loading.
+pub fn literal_bytes_filled_x(mut b: i64, mut bs: List<i64>, mut i: i64) -> () {
+    loop {
+        if null_p(bs) {
+            return ();
+        } else {
+            byte_set_x(b, i, car(bs));
+            (bs, i) = (cdr(bs), i64_plus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+#[inline]
+pub fn literal_bytes_made_x(bs: List<i64>) -> i64 {
+    let b = bytes_alloc_x(size(bs));
+    literal_bytes_filled_x(b, bs, 0i64);
+    b
+}
+

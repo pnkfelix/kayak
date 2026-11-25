@@ -12,13 +12,13 @@
 ""
 ],
 "err": [
-"fixpt: read error: <kayak>-snapshot/tests/fx26/programs/macros/infer-shown-levels.fx:7:88: `define-both` is refused: no signature is written, and the one inferred from its clauses does not fit them: `body` is placed in the scope of `a`, and inside that of `b`, and inside that of `a`, but its signature says it is in the scope of `a`, and inside that of `b`",
+"fixpt: read error: <programs>/macros/infer-shown-levels.fx:7:88: `define-both` is refused: no signature is written, and the one inferred from its clauses does not fit them: `body` is placed in the scope of `a`, and inside that of `b`, and inside that of `a`, but its signature says it is in the scope of `a`, and inside that of `b`",
 "  inferred: (macro (_ a @ bvar expr b @ bvar e2 @ expr body @ (many expr)) (defn a b) (bind a a in e2) (bind a b in body))",
 "  write one: (define-syntax define-both SIGNATURE (syntax-rules …))",
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

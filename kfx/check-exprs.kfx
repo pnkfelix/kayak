@@ -823,9 +823,9 @@
           (lambda (d)
             "Whether a quoted datum is one KFX builds (C77, C80): a `.` only
              before a dotted list's last item, a vector's `#vector` only at its
-             head; no `#utf8\"…\"` within, which KFX's `datum` has not yet."
+             head; no `#utf8\"…\"` nor `#u8(…)` within, which KFX's `datum` has not yet."
             (tagcase d
-              (sym (n f p) (and (not (string=? n ".")) (not (string=? n "#vector")) (not (string=? n "#utf8"))))
+              (sym (n f p) (and (not (string=? n ".")) (not (string=? n "#vector")) (not (string=? n "#utf8")) (not (string=? n "#u8"))))
               (lst (xs f l p) (quotable-items? (if (head-is? d "#vector") (cdr xs) xs)))
               (else other #t))))
         (quotable-items? (subr kfx (sexps) bool)
@@ -3127,6 +3127,11 @@
                  (if (and (i64= (size xs) 1) (tagcase (car xs) (str (x f p) #t) (else other #f)))
                      (res (ty-data "utf8" nil) nil s)
                      (refuse v "`#utf8` is UTF-8 text's, `#utf8\"…\"`")))
+                ((string=? h "#u8")
+                 "`#u8(…)` and `#u8\"…\"` (Fixpt 3569ce51; C527), read as `(#u8 BYTE
+                  …)`: a constant of type `bytevector`, `(bytevectorof const)`, made
+                  once, as a quote's is."
+                 (res (ty-data "%bytes" (list (ty-rconst "const"))) nil s))
                 ((string=? h "quote")
                  "A quoted symbol (C56); a quoted datum of another kind is FX-26's
                   `datum`, which KFX has not yet."
@@ -3146,11 +3151,14 @@
                          (cond ((utf8-literal? (car xs))
                                 "`'#utf8\"…\"`, the text itself, as Fixpt's `quoted` has it."
                                 (res (ty-data "utf8" nil) nil s))
+                               ((bytes-literal? (car xs))
+                                "`'#u8(…)`, the bytes themselves (C527)."
+                                (res (ty-data "%bytes" (list (ty-rconst "const"))) nil s))
                                ((null? ys)
                                 "A bare `'()` is `nil`, an empty list of any type, as Fixpt's
                                  `quoted` has it (C291)."
                                 (synth v s (sym "nil" f p)))
-                               ((not (quotable? (car xs))) (refuse v "a quoted datum KFX does not build: a `.` not before a dotted list's last item, or `#utf8\"…\"` within, which KFX's `datum` has not yet"))
+                               ((not (quotable? (car xs))) (refuse v "a quoted datum KFX does not build: a `.` not before a dotted list's last item, or `#utf8\"…\"` or `#u8(…)` within, which KFX's `datum` has not yet"))
                                (else (res (ty-data "datum" nil) nil s))))
                        (else other (refuse v "a quoted datum KFX does not read")))))
                 ((string=? h "quasiquote")
@@ -3162,7 +3170,7 @@
                      (tagcase (car xs)
                        (lst (ys f l p)
                          (cond ((null? ys) (refuse v "a quasiquote of (), which FX-26 takes as a nil of any type: write nil"))
-                               ((not (quotable? (car xs))) (refuse v "a quasiquoted datum KFX does not build: a `.` not before a dotted list's last item, or `#utf8\"…\"` within, which KFX's `datum` has not yet"))
+                               ((not (quotable? (car xs))) (refuse v "a quasiquoted datum KFX does not build: a `.` not before a dotted list's last item, or `#utf8\"…\"` or `#u8(…)` within, which KFX's `datum` has not yet"))
                                ((head-is? (car xs) "unquote") (check v s (second ys) (ty-data "datum" nil)))
                                (else (tagcase (quasi-items v s ys 1) (res (t es s) (res (ty-data "datum" nil) es s))))))
                        (else other (synth-form v s e "quote" xs)))))
@@ -3365,7 +3373,7 @@
                          (tagcase (region-of v s r)
                            (res (rr rn s) (res expected (effs-union (list (string-append "alloc:" (region-string s rr))) es) s))))))
                    (else other (check-by-synth v s e expected))) "list"))
-                ((or (string=? h "the") (string=? h "and") (string=? h "or") (string=? h "lambda") (string=? h "list") (string=? h "quote") (string=? h "#utf8") (string=? h "quasiquote")
+                ((or (string=? h "the") (string=? h "and") (string=? h "or") (string=? h "lambda") (string=? h "list") (string=? h "quote") (string=? h "#utf8") (string=? h "#u8") (string=? h "quasiquote")
                      (string=? h "extract"))
                  (check-by-synth v s e expected))
                 (else (bytes-placed v (synth-call v s h xs (list expected)) h)))))

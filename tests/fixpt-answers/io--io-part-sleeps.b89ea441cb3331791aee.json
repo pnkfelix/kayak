@@ -12,12 +12,12 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>-snapshot/tests/fx26/programs/io/io-part-sleeps.fx:3:46: `stamp` is declared a (subr (io clock-read) () unit): a (subr (io clock-read) () unit) is expected here, and this is a (subr (io clock) () unit)",
+"fixpt: <programs>/io/io-part-sleeps.fx:3:46: `stamp` is declared a (subr (io clock-read) () unit): a (subr (io clock-read) () unit) is expected here, and this is a (subr (io clock) () unit)",
 "  beyond what is expected, it has (io clock)",
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

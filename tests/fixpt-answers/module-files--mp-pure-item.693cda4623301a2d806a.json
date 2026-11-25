@@ -23,8 +23,8 @@
 {
 "code": 1,
 "out": [
-"; <kayak>-snapshot/tests/fx26/programs/module-files/mp-pure-item.fx, checked as a module file",
-"! <kayak>-snapshot/tests/fx26/programs/module-files/mp-pure-item.fx:1:1: in `mp-pure-item.fx`, 3:1: an expression among a module's items is run for what it does as the module is made, and this one only reads: name its value with `define`",
+"; <programs>/module-files/mp-pure-item.fx, checked as a module file",
+"! <programs>/module-files/mp-pure-item.fx:1:1: in `mp-pure-item.fx`, 3:1: an expression among a module's items is run for what it does as the module is made, and this one only reads: name its value with `define`",
 "; both checkers agree",
 ""
 ],
@@ -32,7 +32,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

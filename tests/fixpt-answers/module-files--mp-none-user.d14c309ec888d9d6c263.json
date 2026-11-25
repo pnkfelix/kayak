@@ -23,8 +23,8 @@
 {
 "code": 0,
 "out": [
-"; <kayak>-snapshot/tests/fx26/programs/module-files/mp-none-user.fx, checked as a module file",
-"(subr pure ((moduleof (val n (ref int @heap)))) (moduleof (val get-n (subr (read @heap) () int)))) ! (read (globals %shared:input:<kayak>-snapshot/tests/fx26/programs/module-files/mp-none-user.fx))",
+"; <programs>/module-files/mp-none-user.fx, checked as a module file",
+"(subr pure ((moduleof (val n (ref int @heap)))) (moduleof (val get-n (subr (read @heap) () int)))) ! (read (globals %shared:input:<programs>/module-files/mp-none-user.fx))",
 "; both checkers agree",
 ""
 ],
@@ -32,7 +32,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

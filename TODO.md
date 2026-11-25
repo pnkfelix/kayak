@@ -1832,7 +1832,9 @@ over its 1664 definitions, 335 of them refused:
   Fixpt makes it a datum (`datum`'s union has no `utf8` in KFX, as no
   `bytevector`); kc's native back end has no `#utf8` form. `#u8(…)` in
   a program, which the user wants (`b"…"` in KFX's Rust), is refused by
-  Fixpt itself (`no_bytevector`): Fixpt's first.
+  Fixpt itself (`no_bytevector`): Fixpt's first. Done at 3569ce51
+  (C527): `#u8"…"`, `#u8(…)`, and `bytevector` as `(bytevectorof const)`;
+  not within quoted data (no `bytevector` in KFX's `datum`), nor in kc.
 - **kfx's reader has no `|…|` symbols** (found at C470): `kfx/read.kfx`,
   kc's and kfx's reader, reads `'||` as the symbol of two bars, Fixpt as
   the empty name (R7RS). The expander's source has none. To be fixed in

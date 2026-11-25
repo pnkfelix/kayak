@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: read error: <kayak>-snapshot/tests/fx26/programs/macros/bind-rib-not-nested.fx:5:53: `body` is placed in the scope of `a`, and inside that of `b`, but its signature says it is in the scope of `a` and `b`",
+"fixpt: read error: <programs>/macros/bind-rib-not-nested.fx:5:53: `body` is placed in the scope of `a`, and inside that of `b`, but its signature says it is in the scope of `a` and `b`",
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

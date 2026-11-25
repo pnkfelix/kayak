@@ -1,0 +1,4 @@
+"`#u8(…)` within quoted data (Fixpt 3569ce51 makes it a datum, a
+ `bytevector`, a member of `datum`): KFX's `datum` has no `bytevector`
+ yet (C527)."
+(define d '(a #u8(1 2) 3))

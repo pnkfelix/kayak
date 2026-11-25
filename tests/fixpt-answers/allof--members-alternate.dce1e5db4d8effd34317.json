@@ -9,7 +9,7 @@
 {
 "code": 1,
 "out": [
-"! <kayak>-snapshot/tests/fx26/programs/allof/members-alternate.fx:8:14: `f` is declared a (allof (subr pure (symbol nat) int) (subr pure (int nat) int)): a (subr pure (symbol nat) int) is expected here, and this is a (subr spin (symbol nat) int)",
+"! <programs>/allof/members-alternate.fx:8:14: `f` is declared a (allof (subr pure (symbol nat) int) (subr pure (int nat) int)): a (subr pure (symbol nat) int) is expected here, and this is a (subr spin (symbol nat) int)",
 "  beyond what is expected, it has spin; it may not end: nothing smaller, or related, is passed by the call of `f` in `f` (it counts up, but nothing fixed bounds the count above)",
 "; both checkers agree",
 ""
@@ -18,7 +18,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

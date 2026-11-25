@@ -25,11 +25,11 @@
 ""
 ],
 "err": [
-"fixpt: the FX-26 front end: <kayak>-snapshot/tests/fx26/programs/processes/pselect-key-arm.fx:4:30: a `pselect` arm is `((icell-get i-cell) name body …)`, `((receive mailbox) name body …)`, `((sleep-until time) name body …)`, `((read-byte) name body …)`, `((process-output process) name body …)`, `((process-exit process) name body …)` or `((process-news) name body …)`",
+"fixpt: the FX-26 front end: <programs>/processes/pselect-key-arm.fx:4:30: a `pselect` arm is `((icell-get i-cell) name body …)`, `((receive mailbox) name body …)`, `((sleep-until time) name body …)`, `((read-byte) name body …)`, `((process-output process) name body …)`, `((process-exit process) name body …)` or `((process-news) name body …)`",
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

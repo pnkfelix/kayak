@@ -16886,3 +16886,61 @@ Carried:
 - **Drift**: `check.rs` (`DATUM`: in the reps, not the checker), `parser-exps.fx`,
   `macros-syntax.fx`, `macros-fresh.fx`; built-in modules copied again.
 - **The full check**: `check: all passed`, 9 min 28 s (the mean of 81 runs 8 min 12 s); the pre-check 2 min 29 s.
+
+## C527. The pin moved to Fixpt 3569ce51; `#u8"…"`, `#u8(…)` and `bytevector` in KFX (2026-11-24)
+
+The user, of mapping `#u8(…)` into Rust's `b"…"`: "I think you're just
+wrong?", "Try quoting the #u8(...)?": Fixpt had just made bytevectors
+constants (3569ce51, "a byte string analogous to `b"abc"` in Rust", the
+user's), where the pin refused them; then "update to latest Fixpt", "Go
+for it". 06a3666 to 3569ce51, one commit: `#u8"…"` (SRFI 207's), each
+character ASCII and its byte, a string's escapes, `\xHH;` any byte; it and
+`#u8(…)`, quoted or not, in quoted data or not, a quote's constant of type
+`bytevector`, `(bytevectorof const)`, made once and interned by its bytes.
+Reviewed first: C526 (`#utf8"…"`, the same road), C267 (kayak-rt's
+`BytesAt`), C482 (its heap's objects), C525 (`bytevector`'s gap).
+
+Carried:
+- **`bytevector`**, `(bytevectorof const)` (Fixpt's since c5b5991, a gap
+  of C525's): `bytevectorof` takes `const`, frozen (`parse-mutable-region`
+  no longer for it), and `bytevector` names it, as `(stringof const)` is
+  `string`; a write at `const` refused, as Fixpt says it ("this writes
+  frozen data, whose region is const"). In KFX's Rust `Bytes`.
+- **The reader**: `#u8(…)` and `#u8"…"` as `(#u8 BYTE …)`, a head no KFX
+  name is; a byte past 255, a character not ASCII, a `\x` past `FF`
+  refused, Fixpt's messages (`bytes-checked`, `byte-text-ascii?`,
+  `text-bytes`); `bytes-literal?`, `bytes-literal-bytes`.
+- **The checker**: the form, and its quote, a `bytevector`; within quoted
+  data refused (`quotable?`; `tests/kfx-stricter/bytes-in-quoted-data.kfx`),
+  KFX's `datum` having no `bytevector`.
+- **KFX's Rust**: `kayak_rt::bytes_lit!(b"\x61…")`, the user's `b"…"`, its
+  object made once on each thread (a thread-local), out of the heap's
+  space (`bytes_lit_made`, leaked, as a string literal's `static` is
+  outside it: a collection never moves or frees it). kayak-rt deepened, a
+  little (flagged): the macro and its maker, beside `str_lit!`.
+- **The engine**: cg's `bytes-quoted`, `(%quote (let ((b (make-bytevector
+  n 0))) (bytevector-u8-set! b i k) … b))`, interned; the IR's lowering a
+  constant at loading (`literal-bytes-made!`, words.kfx); tier 1's
+  interner a bytevector by its bytes (hash 7). kc: "not yet".
+- **The expander** re-ported: the `bytevector?` arms of `show-datum` and
+  `syn-hash` dropped (patches: KFX's datum has none), and their helpers,
+  `show-bytes` and `bytes-hash`, called by nothing else, which kc's native
+  back end could not compile (`u8->int`; found in the check). A stopgap:
+  the user, on hearing of it, "Why wouldn't we add bytevector support to
+  KFX?": the arms come back with `bytevector` in KFX's `datum`.
+- **Tests**: `tests/fx26-kayak/datum/byte-strings.fx` (the engine gives
+  Fixpt's eleven values), `tests/kfx/byte-literals.kfx` (KFX's Rust gives
+  Fixpt's answer, `7 802 same once héllo 0 65`), Fixpt's
+  `run/byte-strings.fx` copied (refused: quoted data, `utf8-length`).
+- **A program's own `bytevector`** (`bidirectional/shadow-standard-type.fx`):
+  its own, as Fixpt's TODO §88 has a standard type's name, the
+  checker's and the emitter's `bytevector` taken only where the program
+  defines none, as `io-error` is.
+- **`run-fixpt-programs.py`'s `forms`**, which pairs Fixpt's lines with
+  the top-level forms: a prefix's list (`'#u8(1 2)`, `'(…)`, `#(…)`) and an
+  atom's string (`#u8"a b"`) one form, where they were two, every line
+  after shifted (found by the pre-check, on the new test).
+- **Drift**: `parser-exps.fx`, `parser.fx`, `macros-syntax.fx`,
+  `macros-fresh.fx` (above); `parser-forms.fx` (the `%datum` refusal
+  dropped: not the generative messages kayak took from it).
+- **The full check**: `check: all passed`, 10 min 14 s (the mean of 82 runs 8 min 13 s); the pre-check passed first.

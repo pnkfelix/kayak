@@ -9,8 +9,8 @@
 {
 "code": 1,
 "out": [
-"! <kayak>-snapshot/tests/fx26/programs/macros/with-value-missing.fx:12:23: `int-order` gives no value `more`, which a template's `(with int-order more)` takes from it alone",
-"  in the expansion of `call-more` at <kayak>-snapshot/tests/fx26/programs/macros/with-value-missing.fx:13:1",
+"! <programs>/macros/with-value-missing.fx:12:23: `int-order` gives no value `more`, which a template's `(with int-order more)` takes from it alone",
+"  in the expansion of `call-more` at <programs>/macros/with-value-missing.fx:13:1",
 "; both checkers agree",
 ""
 ],
@@ -18,7 +18,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]

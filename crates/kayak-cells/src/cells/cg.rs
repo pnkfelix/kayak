@@ -27,8 +27,8 @@ use super::*;
 // fixpt-source: crates/fixpt-fx26/src/compile-state.fx@120b70e
 // fixpt-source: crates/fixpt-fx26/src/compile-lift.fx@0d933ff
 // fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@0d933ff
-// fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@06a3666
-// fixpt-source: crates/fixpt-fx26/src/parser.fx@c5b5991
+// fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@3569ce5
+// fixpt-source: crates/fixpt-fx26/src/parser.fx@3569ce5
 
 // The generator's data lives at `@g`.
 
@@ -4877,6 +4877,8 @@ pub fn parse_form(mut h: Str, mut xs: Sexps, mut e: kayak_rt::data::DataAt<'stat
             return x_proj(parse_x(second(xs)), a);
         } else if string_eq_p(h, str_lit!("#utf8")) {
             return utf8_quoted(e, a);
+        } else if string_eq_p(h, str_lit!("#u8")) {
+            return bytes_quoted(e, a);
         } else if string_eq_p(h, str_lit!("quote")) {
             return parse_quoted(second(xs), a);
         } else if string_eq_p(h, str_lit!("product")) {
@@ -5777,6 +5779,17 @@ pub fn utf8_quoted(d: kayak_rt::data::DataAt<'static, Sexp>, a: i64) -> kayak_rt
     x_app(std_var(str_lit!("%quote"), a), kayak_rt::heap_cons(x_app(std_var(str_lit!("string->utf8"), a), kayak_rt::heap_cons(x_str(utf8_literal_text(d), a), kayak_rt::nil()), a), kayak_rt::nil()), a)
 }
 
+/// `#u8(…)`: a bytevector made of its bytes, then interned, as a quote's
+/// datum (Fixpt's `Heap::intern_datum`, by its bytes).
+pub fn bytes_quoted(d: kayak_rt::data::DataAt<'static, Sexp>, a: i64) -> kayak_rt::data::DataAt<'static, Cx> {
+    let bs = bytes_literal_bytes(d);
+    let b = x_var(str_lit!("%u8-literal"), a);
+    let sets = map2(kayak_rt::as_proc(kayak_rt::closure2s((a, b,), |(a, b,), k: i64, i: i64| {
+        x_app(std_var(str_lit!("bytevector-u8-set!"), a), kayak_rt::heap_cons(b, kayak_rt::heap_cons(x_int(i64_to_int(i), a), kayak_rt::heap_cons(x_int(i64_to_int(k), a), kayak_rt::nil()))), a)
+    })), bs, counting(0i64, size(bs)));
+    x_app(std_var(str_lit!("%quote"), a), kayak_rt::heap_cons(x_let(kayak_rt::heap_cons(cbind(str_lit!("%u8-literal"), x_app(std_var(str_lit!("make-bytevector"), a), kayak_rt::heap_cons(x_int(i64_to_int(size(bs)), a), kayak_rt::heap_cons(x_int(int_lit(0), a), kayak_rt::nil())), a)), kayak_rt::nil()), x_begin(append(sets, kayak_rt::heap_cons(b, kayak_rt::nil())), a), a), kayak_rt::nil()), a)
+}
+
 /// A quoted datum, as Fixpt's quote rewrite writes it: a symbol, an atom
 /// as itself; a list of `cons` and `nil`, a dotted one's tail its last,
 /// a vector `list->vector` of its items' list, interned whole.
@@ -5799,6 +5812,8 @@ pub fn parse_quoted(d: kayak_rt::data::DataAt<'static, Sexp>, a: i64) -> kayak_r
             std_var(str_lit!("nil"), a)
         } else if utf8_literal_p(d) {
             utf8_quoted(d, a)
+        } else if bytes_literal_p(d) {
+            bytes_quoted(d, a)
         } else {
             x_app(std_var(str_lit!("%quote"), a), kayak_rt::heap_cons(quoted_item(d, a), kayak_rt::nil()), a)
         }

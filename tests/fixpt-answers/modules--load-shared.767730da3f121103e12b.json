@@ -19,23 +19,8 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
-]
-},
-{
-"code": 0,
-"out": [
-"define c : (moduleof (desc t shared-counter.fx..t) (val zero shared-counter.fx..t) (val value (subr pure (shared-counter.fx..t) int))) ! (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/shared-counter.fx))",
-"define u : (moduleof (val c (moduleof (desc t shared-counter.fx..t) (val zero shared-counter.fx..t) (val value (subr pure (shared-counter.fx..t) int)))) (val bump (subr pure (shared-counter.fx..t) int))) ! (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/shared-twice.fx))",
-"int ! (read (globals c u))",
-"; both checkers agree",
-""
-],
-"err": [
-""
-],
-"by": [
-"x86_64-linux@06a3666332aa39f8982750336c8acb9d99ab9b51"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
+"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
 ]
 }
 ]
