@@ -1713,9 +1713,9 @@ harness); K2 onward Ghuloum's steps; the service after K2's first steps.
   cancellable, which a database's writes are not). kc's modules (C425): a module as a value (`with` of a
   variable), makers, nested modules, `extend`, and modules in kc's Rust back
   end. kc's types (C423): a product's field by name
-  (`extract p x`, `(product (x ..))`), its position the checker's (kfx's
-  emitter reads an `extract-index` fact; kc's `checked` keeps no facts
-  yet); sums, products and datatypes in kc's Rust back end. `kc build` (C419): objects no longer listed
+  is done (C545), but an `extract` by label inside a quasiquote's unquote
+  isn't placed (`extracts-placed`), and numbered fields out of order are
+  refused; sums, products and datatypes in kc's Rust back end. `kc build` (C419): objects no longer listed
   pruned from `EXE.o.d/` (done, C448); an edited procedure an object of its own (weak
   symbols in its run) should reassembling its run of 64 ever be seen.
 - KFX's datatypes stay nominal (C410, the user's choice after the

@@ -79,6 +79,11 @@ pub mod kc_driver {
     }
 
     #[inline]
+    pub fn q_index() -> kayak_rt::Proc4<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::data::DataAt<'static, Imap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<kayak_rt::data::DataAt<'static, Smap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::data::DataAt<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::data::DataAt<'static, Sexp>>>>, kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::data::DataAt<'static, Imap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<kayak_rt::data::DataAt<'static, Smap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::data::DataAt<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::data::DataAt<'static, Sexp>>>>, kayak_rt::data::DataAt<'static, Sexp>, Str>, Str, Str, Str> {
+        kayak_rt::as_proc(kc_front::q_index)
+    }
+
+    #[inline]
     pub fn q_kfx() -> kayak_rt::Proc4<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::data::DataAt<'static, Imap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<kayak_rt::data::DataAt<'static, Smap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::data::DataAt<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::data::DataAt<'static, Sexp>>>>, kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::data::DataAt<'static, Imap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<kayak_rt::data::DataAt<'static, Smap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::data::DataAt<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::data::DataAt<'static, Sexp>>>>, kayak_rt::data::DataAt<'static, Sexp>, Str>, Str, Str, Str> {
         kayak_rt::as_proc(kc_front::q_kfx)
     }
@@ -1017,6 +1022,8 @@ pub mod kc_driver {
             q_position().call(d, kayak_rt::as_proc(kc_run), a, b)
         } else if string_eq_p(q, str_lit!("type")) {
             q_type().call(d, kayak_rt::as_proc(kc_run), a, b)
+        } else if string_eq_p(q, str_lit!("index")) {
+            q_index().call(d, kayak_rt::as_proc(kc_run), a, b)
         } else if string_eq_p(q, str_lit!("l0-item")) {
             q_l0_item().call(d, kayak_rt::as_proc(kc_run), a, b)
         } else if string_eq_p(q, str_lit!("rust-item")) {

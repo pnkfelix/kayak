@@ -311,6 +311,38 @@ pub mod kc_front {
         }
     }
 
+    /// `e`, each `(extract E LABEL)` in it `(extract E LABEL FILE:POS)`,
+    /// its place as read, a string (C545): where the checker found the
+    /// index of the field it names (`index`), which a form's datum,
+    /// written, does not keep. A quoted datum as it is.
+    pub fn extracts_placed(e: kayak_rt::data::DataAt<'static, Sexp>) -> kayak_rt::data::DataAt<'static, Sexp> {
+        let tagcase_ = e;
+        if Sexp::__is_Lst(tagcase_) {
+            let (xs, f, l, p,) = Sexp::__Lst(tagcase_);
+            if null_p(xs) {
+                e
+            } else if (sym_is_p(car(xs), str_lit!("quote")) || sym_is_p(car(xs), str_lit!("quasiquote"))) {
+                e
+            } else if (sym_is_p(car(xs), str_lit!("extract")) && i64_eq(size(xs), 3i64) && {
+                let tagcase_ = third(xs);
+                if Sexp::__is_Sym(tagcase_) {
+                    let (n, f2, p2,) = Sexp::__Sym(tagcase_);
+                    true
+                } else {
+                    let other = tagcase_;
+                    false
+                }
+            }) {
+                lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(extracts_placed(second(xs)), kayak_rt::heap_cons(third(xs), kayak_rt::heap_cons(str(string_append(datum_file(e), string_append(str_lit!(":"), i64_to_string(datum_pos(e)))), str_lit!(""), 0i64), kayak_rt::nil())))), f, l, p)
+            } else {
+                lst(map(kayak_rt::as_proc(extracts_placed), xs), f, l, p)
+            }
+        } else {
+            let other = tagcase_;
+            e
+        }
+    }
+
     /// Each form as `(KEY DATUM)`, the newest first; `k` how many forms that
     /// are no definition, nor a type's, came before. A datatype's form is
     /// followed by its constructors' (C423), each a form of its own, keyed
@@ -1559,7 +1591,7 @@ pub mod kc_front {
         });
         let keyed = map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), t: Str| {
             car(read_all(t, str_lit!("forms"), 1i64))
-        })), reverse(forms_keyed(modules_expanded(forms, nil::<kayak_rt::data::DataAt<'static, kc_front::Kmod>>(), nil::<kayak_rt::data::DataAt<'static, Sexp>>(), faces_of(forms)), 0i64, nil::<Str>())));
+        })), reverse(forms_keyed(map(kayak_rt::as_proc(extracts_placed), modules_expanded(forms, nil::<kayak_rt::data::DataAt<'static, kc_front::Kmod>>(), nil::<kayak_rt::data::DataAt<'static, Sexp>>(), faces_of(forms))), 0i64, nil::<Str>())));
         let keys = map(kd, keyed);
         let keys_text = string_append(str_lit!("("), string_append(words_of(keys), str_lit!(")")));
         let old = db_node(d, key1(str_lit!("keys"), path));
@@ -1879,14 +1911,39 @@ pub mod kc_front {
             } else {
                 ()
             };
-            check_passed(words_of(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), t: kayak_rt::data::DataAt<'static, Typed>| {
+            check_passed(words_of(append(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), t: kayak_rt::data::DataAt<'static, Typed>| {
                 let tagcase_ = t;
                 if Typed::__is_Typed(tagcase_) {
                     let (n, ty,) = Typed::__Typed(tagcase_);
                     string_list_append(kayak_rt::heap_cons(str_lit!("("), kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(kc_datum(ty), kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil()))))))
                 } else { kayak_rt::data::no_variant() }
-            })), found)), made)
+            })), found), check_indices(cv_facts(done), nil::<Str>()))), made)
         } else { kayak_rt::data::no_variant() }
+    }
+
+    /// Each product's field the checker found by its label (C545,
+    /// `extract-index`, which the engine's lowering reads too), as
+    /// `(%index FILE:POS K)`, the key a string: its index in the product's type, whose
+    /// fields are in the order written.
+    pub fn check_indices(mut fs: Facts, mut acc: Strings) -> Strings {
+        loop {
+            if null_p(fs) {
+                return reverse(acc);
+            } else {
+                (fs, acc) = (cdr(fs), {
+                    let tagcase_ = car(fs);
+                    if Fact::__is_Fact(tagcase_) {
+                        let (file, pos, what,) = Fact::__Fact(tagcase_);
+                        if has_prefix_p(what, str_lit!("extract-index ")) {
+                            kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit!("(%index "), kayak_rt::heap_cons(kc_datum(str(string_append(file, string_append(str_lit!(":"), i64_to_string(pos))), str_lit!(""), 0i64)), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(after_prefix(what, str_lit!("extract-index ")), kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))), acc)
+                        } else {
+                            acc
+                        }
+                    } else { kayak_rt::data::no_variant() }
+                });
+                continue;
+            }
+        }
     }
 
     // `checked PATH`: the file checked, as FX-26, or as KFX for a `.kfx` file:
@@ -1967,6 +2024,31 @@ pub mod kc_front {
             } else {
                 kc_datum(second(items(car(found))))
             }
+        }
+    }
+
+    // `index PATH FILE:POS`: the index the checker found of the field a
+    // product's `extract` at `FILE:POS` names by its label (C545), `-1` if
+    // none; asked by an item that has one (`l0-item`), so that it reads of the
+    // check this, and nothing else of it.
+    pub fn q_index(d: Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::data::DataAt<'static, Imap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<kayak_rt::data::DataAt<'static, Smap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::data::DataAt<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::data::DataAt<'static, Sexp>>>>, run: kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::data::DataAt<'static, Imap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<kayak_rt::data::DataAt<'static, Smap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::data::DataAt<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::data::DataAt<'static, Sexp>>>>, kayak_rt::data::DataAt<'static, Sexp>, Str>, a_path: Str, a_key: Str) -> Str {
+        let found = filter(kayak_rt::as_proc(kayak_rt::closure1s((a_key,), |(a_key,), x: kayak_rt::data::DataAt<'static, Sexp>| {
+            let i = items(x);
+            (sym_is_p(car(i), str_lit!("%index")) && {
+                let tagcase_ = second(i);
+                if Sexp::__is_Str(tagcase_) {
+                    let (t, f, p,) = Sexp::__Str(tagcase_);
+                    string_eq_p(t, a_key)
+                } else {
+                    let other = tagcase_;
+                    false
+                }
+            })
+        })), kc_checked_types(d, run, a_path));
+        if null_p(found) {
+            str_lit!("-1")
+        } else {
+            kc_datum(third(items(car(found))))
         }
     }
 

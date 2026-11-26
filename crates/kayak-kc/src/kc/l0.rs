@@ -417,6 +417,42 @@ pub mod kc_l0 {
         }
     }
 
+    /// The index the checker found of the field an `extract` at `key`
+    /// (`FILE:POS`) names by its label (C545): asked for as a name is
+    /// (`kc-need-index KEY`), its entry `(index KEY K)`, the key a string.
+    pub fn l0_index(mut key: Str, mut scope: Sexps) -> i64 {
+        loop {
+            if null_p(scope) {
+                error(string_append(str_lit!("kc-need-index "), key));
+                return the::<i64>(-1i64);
+            } else {
+                let i = items(car(scope));
+                if (sym_is_p(car(i), str_lit!("index")) && {
+                    let tagcase_ = second(i);
+                    if Sexp::__is_Str(tagcase_) {
+                        let (t, f, p,) = Sexp::__Str(tagcase_);
+                        string_eq_p(t, key)
+                    } else {
+                        let other = tagcase_;
+                        false
+                    }
+                }) {
+                    let tagcase_ = third(i);
+                    if Sexp::__is_Num(tagcase_) {
+                        let (k, f, p,) = Sexp::__Num(tagcase_);
+                        return k;
+                    } else {
+                        let other = tagcase_;
+                        return the::<i64>(-1i64);
+                    }
+                } else {
+                    scope = cdr(scope);
+                    continue;
+                }
+            }
+        }
+    }
+
     // `l0-item PATH KEY`: the form KEY of the checked program as an item of
     // the core language (C407): `(proc NAME ((K NAME) ...) BODY)` of a
     // procedure the program defines (its parameters numbered first), `(global
@@ -877,8 +913,17 @@ pub mod kc_l0 {
                         } else { kayak_rt::data::no_variant() }
                     } else { kayak_rt::data::no_variant() }
                 } else if string_eq_p(h, str_lit!("product")) {
-                    if not(l0_positional_p(cdr(xs), 1i64)) {
-                        return l0_made(not_yet(path, str_lit!("a product's fields by name")), next);
+                    if (not(l0_positional_p(cdr(xs), 1i64)) && any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::data::DataAt<'static, Sexp>| {
+                        let tagcase_ = car(items(f));
+                        if Sexp::__is_Num(tagcase_) {
+                            let (n, f2, p2,) = Sexp::__Num(tagcase_);
+                            true
+                        } else {
+                            let other = tagcase_;
+                            false
+                        }
+                    })), cdr(xs))) {
+                        return l0_made(not_yet(path, str_lit!("a product's numbered fields out of order")), next);
                     } else {
                         let tagcase_ = l0_terms(path, scope, env, next, map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::data::DataAt<'static, Sexp>| {
                             second(items(f))
@@ -902,6 +947,24 @@ pub mod kc_l0 {
                             str_lit!(" ")
                         }, kayak_rt::heap_cons(ts, kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil()))))), n1);
                     } else { kayak_rt::data::no_variant() }
+                } else if (string_eq_p(h, str_lit!("extract")) && i64_eq(size(xs), 4i64)) {
+                    let tagcase_ = fourth(xs);
+                    if Sexp::__is_Str(tagcase_) {
+                        let (key, f2, p2,) = Sexp::__Str(tagcase_);
+                        let k = l0_index(key, scope);
+                        if i64_lt(k, 0i64) {
+                            return l0_made(not_yet(path, string_append(str_lit!("an extract the checker gave no index, at "), key)), next);
+                        } else {
+                            let tagcase_ = l0_of(path, scope, env, next, second(xs));
+                            if L0Made::__is_L0Made(tagcase_) {
+                                let (t, n1,) = L0Made::__L0Made(tagcase_);
+                                return l0_made(string_list_append(kayak_rt::heap_cons(str_lit!("(extract "), kayak_rt::heap_cons(t, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(i64_plus(k, 1i64)), kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))), n1);
+                            } else { kayak_rt::data::no_variant() }
+                        }
+                    } else {
+                        let other = tagcase_;
+                        return l0_made(not_yet(path, str_lit!("a product's field by name")), next);
+                    }
                 } else if (string_eq_p(h, str_lit!("extract")) && i64_eq(size(xs), 3i64)) {
                     let tagcase_ = third(xs);
                     if Sexp::__is_Num(tagcase_) {
@@ -1438,7 +1501,11 @@ pub mod kc_l0 {
             let r = kayak_rt::attempt(|| { l0_item_text(path, f, scope) }, |m: Str| {
                 string_append(str_lit!("%failed "), m)
             });
-            if has_prefix_p(r, str_lit!("%failed kc-need ")) {
+            if has_prefix_p(r, str_lit!("%failed kc-need-index ")) {
+                let key = after_prefix(r, str_lit!("%failed kc-need-index "));
+                scope = kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit!("index"), str_lit!(""), 0i64), kayak_rt::heap_cons(str(key, str_lit!(""), 0i64), kayak_rt::heap_cons(num(string_to_i64(db_get(d, run, key2(str_lit!("index"), path, key))), str_lit!(""), 0i64), kayak_rt::nil()))), str_lit!(""), 0i64, 0i64), scope);
+                continue;
+            } else if has_prefix_p(r, str_lit!("%failed kc-need ")) {
                 scope = kayak_rt::heap_cons(kc_scope_entry().call(d, run, path, at, after_prefix(r, str_lit!("%failed kc-need "))), scope);
                 continue;
             } else if has_prefix_p(r, str_lit!("%failed ")) {

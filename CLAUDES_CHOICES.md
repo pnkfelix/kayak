@@ -17531,3 +17531,41 @@ make-icell`).
   are: `par`'s branches take turns. The plan's step 5 changes with it
   (`docs/research/one-runtime.md`).
 - **The full check**: `check: all passed`, 12 min 11 s (the mean of 108 runs 8 min 36 s; kc-steps 3 min 52 s of it, its new programs each compiling the scheduler); the pre-check passed first.
+
+## C545. kc: a product's fields by label (2026-11-26)
+
+The user, after C544, "Go ahead" (its next step, recommended: a product's
+field by name, which three of Fixpt's task programs need). kc's l0
+refused `(extract e LABEL)` and `(product (LABEL e) ...)`: a field's
+place is its index in the product's type, which only the checker knows
+(the engine reads its `extract-index` fact, C323).
+- **The order**: a product's fields are in the order written, and its
+  type's too: both Fixpt and kayak's checker refuse a `(product (z ..)
+  (x ..) (y ..))` where a `(productof (x ..) (y ..) (z ..))` is wanted. So
+  a labelled `product` is its fields in order, the labels dropped, and only
+  an `extract` needs the checker. Numbered fields out of order (`(product
+  (2 a) (1 b))`) stay refused: an `extract` by number reads its number's
+  place.
+- **The fact, through the database**: `checked`'s value keeps each
+  `extract-index` fact as `(%index "FILE:POS" K)` after the types
+  (`check-indices`; `type` reads only the entries named). A new query,
+  `index PATH FILE:POS`, reads one, `-1` if none. An l0 item asks for an
+  index as it asks for a name (C416): `l0-index` raises `kc-need-index
+  KEY`, and `l0-item` runs again with the entry `(index KEY K)` in its
+  scope. So an item depends on the indices it reads, and on nothing else of
+  the check, as before (an unchanged `index` value stops there).
+- **The place, kept**: a form's input is its datum written (`kc-datum`)
+  and read back, so l0's positions are not the checker's (the first try
+  missed every fact: position 0 against 33). So the forms' inputs are made
+  (`kc-load-forms!`) with each labelled `extract` given its place as read,
+  a fourth element, a string (`extracts-placed`); l0 reads it, never the
+  checker. Not in a quoted datum; in a quasiquote's unquote not yet (a
+  `not yet`). The cost: a form with such an `extract` changes when text
+  before it moves, so its l0 item runs again, its value unchanged.
+- **Tests**: `tests/kc/types/product-labels.fx` (a declared type, one
+  found, a parameter's; Fixpt's answer); Fixpt's `closures`, `reply` and
+  `sendable` in `tests/kc/tasks` (49, 42, 7, built and in process). Of
+  Fixpt's other programs of processes, each refusal kc gives as Fixpt
+  does; `pselect-key` alone is left (`read-byte`, standard input, which
+  kc has none of).
+- **The full check**: `check: all passed`, 10 min 50 s (the mean of 109 runs 8 min 38 s; kc-steps 4 min 39 s of it, 393 programs); the pre-check passed first.

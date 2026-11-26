@@ -44,7 +44,7 @@
 (define kc-driver
   (module
     (hide
-      (import kc-front kc-refusal q-form q-position q-interface q-checked q-type q-kfx)
+      (import kc-front kc-refusal q-form q-position q-interface q-checked q-type q-index q-kfx)
       (import kc-l0 q-l0-item)
       (import kc-rust q-rust-item q-rust)
       (import kc-x64 q-asm-item q-asm q-asm-entry q-objects x64-object-text x64-run-support x64-services)
@@ -418,6 +418,7 @@
                     ((string=? q "interface") (q-interface d kc-run a b))
                     ((string=? q "position") (q-position d kc-run a b))
                     ((string=? q "type") (q-type d kc-run a b))
+                    ((string=? q "index") (q-index d kc-run a b))
                     ((string=? q "l0-item") (q-l0-item d kc-run a b))
                     ((string=? q "rust-item") (q-rust-item d kc-run a b))
                     ((string=? q "rust") (q-rust d kc-run a b))

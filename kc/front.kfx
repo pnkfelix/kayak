@@ -172,6 +172,24 @@
                     (cons (string-list-append (list "(" n " " (kc-datum (lst (cons (sym "define" "" 0) xs) "" 0 0)) (if same " same)" ")"))) acc)))))))
 
       (define-rec
+        (extracts-placed (subr kfx (sexp) sexp)
+          (lambda (e)
+            "`e`, each `(extract E LABEL)` in it `(extract E LABEL FILE:POS)`,
+             its place as read, a string (C545): where the checker found the
+             index of the field it names (`index`), which a form's datum,
+             written, does not keep. A quoted datum as it is."
+            (tagcase e
+              (lst (xs f l p)
+                (cond ((null? xs) e)
+                      ((or (sym-is? (car xs) "quote") (sym-is? (car xs) "quasiquote")) e)
+                      ((and (sym-is? (car xs) "extract") (i64= (size xs) 3) (tagcase (third xs) (sym (n f2 p2) #t) (else other #f)))
+                       (lst (list (car xs) (extracts-placed (second xs)) (third xs)
+                                  (str (string-append (datum-file e) (string-append ":" (i64->string (datum-pos e)))) "" 0))
+                            f l p))
+                      (else (lst (map extracts-placed xs) f l p))))
+              (else other e)))))
+
+      (define-rec
         (forms-keyed (subr kfx (sexps i64 (listof string acyclic)) (listof string acyclic))
           (lambda (fs k acc)
             "Each form as `(KEY DATUM)`, the newest first; `k` how many forms that
@@ -669,7 +687,7 @@
     (define kc-load-forms! (subr qe (db string string sexps string) unit)
       (lambda (d path text forms expanded)
         (let* ((kd (lambda ((x sexp)) (tagcase (car (items x)) (sym (n f p) n) (else other ""))))
-               (keyed (map (lambda ((t string)) (car (read-all t "forms" 1))) (reverse (forms-keyed (modules-expanded forms nil nil (faces-of forms)) 0 nil))))
+               (keyed (map (lambda ((t string)) (car (read-all t "forms" 1))) (reverse (forms-keyed (map extracts-placed (modules-expanded forms nil nil (faces-of forms))) 0 nil))))
                (keys (map kd keyed))
                (keys-text (string-append "(" (string-append (words-of keys) ")")))
                (old (db-node d (key1 "keys" path)))
@@ -810,9 +828,28 @@
             (checked-memo (done found made)
               (begin
                 (if (string=? (kc-language path) "kfx") (with restrictions (restrict forms (cv-facts done))) #u)
-                (check-passed (words-of (map (lambda ((t typed)) (tagcase t (typed (n ty) (string-list-append (list "(" n " " (kc-datum ty) ")")))))
-                                             found))
-                              made)))))))
+                (check-passed (words-of (append (map (lambda ((t typed)) (tagcase t (typed (n ty) (string-list-append (list "(" n " " (kc-datum ty) ")")))))
+                                                     found)
+                                                (check-indices (cv-facts done) nil)))
+                              made))))))
+
+      (define-rec
+        (check-indices (subr kfx (facts strings) strings)
+          (lambda (fs acc)
+            "Each product's field the checker found by its label (C545,
+             `extract-index`, which the engine's lowering reads too), as
+             `(%index FILE:POS K)`, the key a string: its index in the product's type, whose
+             fields are in the order written."
+            (if (null? fs)
+                (reverse acc)
+                (check-indices (cdr fs)
+                               (tagcase (car fs)
+                                 (fact (file pos what)
+                                   (if (has-prefix? what "extract-index ")
+                                       (cons (string-list-append (list "(%index " (kc-datum (str (string-append file (string-append ":" (i64->string pos))) "" 0))
+                                                                       " " (after-prefix what "extract-index ") ")"))
+                                             acc)
+                                       acc)))))))))
 
     "`checked PATH`: the file checked, as FX-26, or as KFX for a `.kfx` file:
      `(ok (NAME TYPE) ...)`, the types the checker found of the definitions
@@ -877,6 +914,18 @@
               (let ((found (filter (lambda ((x sexp)) (sym-is? (car (items x)) name))
                                    (kc-checked-types d run path))))
                 (if (null? found) "()" (kc-datum (second (items (car found))))))))))
+
+    "`index PATH FILE:POS`: the index the checker found of the field a
+     product's `extract` at `FILE:POS` names by its label (C545), `-1` if
+     none; asked by an item that has one (`l0-item`), so that it reads of the
+     check this, and nothing else of it."
+    (define q-index qbody
+      (lambda (d run a-path a-key)
+        (let ((found (filter (lambda ((x sexp))
+                               (let ((i (items x)))
+                                 (and (sym-is? (car i) "%index") (tagcase (second i) (str (t f p) (string=? t a-key)) (else other #f)))))
+                             (kc-checked-types d run a-path))))
+          (if (null? found) "-1" (kc-datum (third (items (car found))))))))
 
     (define kc-type (subr qe (db runner string string) sexp)
       (lambda (d run path name) (car (read-all (db-get d run (key2 "type" path name)) "type" 1))))

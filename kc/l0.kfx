@@ -182,6 +182,19 @@
                       (tagcase (car i) (sym (k f p) (if (string=? k "none") "" k)) (else other ""))
                       (l0-global-kind n (cdr scope))))))))
 
+      (define-rec
+        (l0-index (subr kfx (string sexps) i64)
+          (lambda (key scope)
+            "The index the checker found of the field an `extract` at `key`
+             (`FILE:POS`) names by its label (C545): asked for as a name is
+             (`kc-need-index KEY`), its entry `(index KEY K)`, the key a string."
+            (if (null? scope)
+                (begin (error (string-append "kc-need-index " key)) (the i64 -1))
+                (let ((i (items (car scope))))
+                  (if (and (sym-is? (car i) "index") (tagcase (second i) (str (t f p) (string=? t key)) (else other #f)))
+                      (tagcase (third i) (num (k f p) k) (else other (the i64 -1)))
+                      (l0-index key (cdr scope))))))))
+
       "`l0-item PATH KEY`: the form KEY of the checked program as an item of
        the core language (C407): `(proc NAME ((K NAME) ...) BODY)` of a
        procedure the program defines (its parameters numbered first), `(global
@@ -385,17 +398,31 @@
                                      (l0-made (body n2)
                                        (l0-made (string-list-append (list "(letrec (" ps ") (" vs ") " body ")")) n2)))))))))
                         ;; Products of their fields by position, `(1 E) (2 E) ...`
-                        ;; (C423): a field by name needs its type's order, which
-                        ;; kc has not yet from the checker.
+                        ;; (C423); or by label (C545), in the order written, the
+                        ;; order of the type the checker found of it, of which it
+                        ;; found each `extract`'s index. Numbers in another order
+                        ;; not yet: an `extract` by number reads that number's place.
                         ((string=? h "product")
-                         (if (not (l0-positional? (cdr xs) 1))
-                             (l0-made (not-yet path "a product's fields by name") next)
+                         (if (and (not (l0-positional? (cdr xs) 1))
+                                  (any? (lambda ((f sexp)) (tagcase (car (items f)) (num (n f2 p2) #t) (else other #f))) (cdr xs)))
+                             (l0-made (not-yet path "a product's numbered fields out of order") next)
                              (tagcase (l0-terms path scope env next (map (lambda ((f sexp)) (second (items f))) (cdr xs)) nil)
                                (l0-made (ts n1) (l0-made (string-list-append (list "(product" (if (string=? ts "") "" " ") ts ")")) n1)))))
                         ;; `(tuple E ...)`, Fixpt's `(product (1 E) ...)` (C461; `docs/fx26.md`).
                         ((string=? h "tuple")
                          (tagcase (l0-terms path scope env next (cdr xs) nil)
                            (l0-made (ts n1) (l0-made (string-list-append (list "(product" (if (string=? ts "") "" " ") ts ")")) n1))))
+                        ;; By label (C545), its place as read added
+                        ;; (`extracts-placed`), where the checker found its index.
+                        ((and (string=? h "extract") (i64= (size xs) 4))
+                         (tagcase (fourth xs)
+                           (str (key f2 p2)
+                             (let ((k (l0-index key scope)))
+                               (if (i64< k 0)
+                                   (l0-made (not-yet path (string-append "an extract the checker gave no index, at " key)) next)
+                                   (tagcase (l0-of path scope env next (second xs))
+                                     (l0-made (t n1) (l0-made (string-list-append (list "(extract " t " " (i64->string (i64+ k 1)) ")")) n1))))))
+                           (else other (l0-made (not-yet path "a product's field by name") next))))
                         ((and (string=? h "extract") (i64= (size xs) 3))
                          (tagcase (third xs)
                            (num (k f2 p2)
@@ -718,7 +745,11 @@
             "The item, each name it looks up that `scope` does not say added to
              it, one by one, from the database (C416)."
             (let ((r (attempt (l0-item-text path f scope) (lambda ((m string)) (string-append "%failed " m)))))
-              (cond ((has-prefix? r "%failed kc-need ")
+              (cond ((has-prefix? r "%failed kc-need-index ")
+                     (let ((key (after-prefix r "%failed kc-need-index ")))
+                       (l0-item-of d run path at f
+                                   (cons (lst (list (sym "index" "" 0) (str key "" 0) (num (string->i64 (db-get d run (key2 "index" path key))) "" 0)) "" 0 0) scope))))
+                    ((has-prefix? r "%failed kc-need ")
                      (l0-item-of d run path at f (cons (kc-scope-entry d run path at (after-prefix r "%failed kc-need ")) scope)))
                     ((has-prefix? r "%failed ") (begin (error (after-prefix r "%failed ")) ""))
                     (else r)))))))
