@@ -1395,7 +1395,7 @@ pub mod kc_driver {
                 match fail_with(str_lit!("usage: kc [--db DB] [--stats] [--rt RUNTIME] (--check FILE | --rust FILE OUT | --asm FILE OUT | build FILE EXE | run [--heap WORDS] FILE | serve)"), int_lit(2)) {}
             } else if string_eq_p(car(rest), str_lit!("serve")) {
                 serve(d, dbp, stats, at)
-            } else if (string_eq_p(car(rest), str_lit!("--object")) && not(null_p(cdr(rest))) && string_eq_p(car(cdr(rest)), str_lit!("--as-layout")) && not(null_p(cdr(cdr(rest)))) && not(null_p(cdr(cdr(cdr(rest)))))) {
+            } else if (string_eq_p(car(rest), str_lit!("--object")) && not(null_p(cdr(rest))) && string_eq_p(car(cdr(rest)), str_lit!("--gnu-as-layout")) && not(null_p(cdr(cdr(rest)))) && not(null_p(cdr(cdr(cdr(rest)))))) {
                 let m = bytes_written(car(cdr(cdr(cdr(rest)))), asm_object().call(true, read_text(car(cdr(cdr(rest))))));
                 if string_eq_p(m, str_lit!("")) {
                     int_lit(0)

@@ -1,7 +1,7 @@
 """kc's assembler against the GNU assembler (C450): each assembly file kc's
 native back end made (the objects `kc build` assembles, under
 target/kc-steps/, made by scripts/kc-steps.py first), made an object by kc
-(`kc --object --as-layout FILE OUT`, kc/asm.kfx) and by `as`, the two
+(`kc --object --gnu-as-layout FILE OUT`, kc/asm.kfx) and by `as`, the two
 compared: each section's bytes (`.text`, `.data`, `.rodata`), `.bss`'s
 size, each section's relocations (offset, type, symbol or section,
 addend), and the symbols (name, binding, type, section, value, size), but
@@ -130,9 +130,9 @@ def compare(path):
     """`path`'s difference, and how much shorter kc's layout's `.text` is."""
     with tempfile.TemporaryDirectory() as d:
         mine, own, theirs = os.path.join(d, "kc.o"), os.path.join(d, "own.o"), os.path.join(d, "as.o")
-        r = subprocess.run([KC, "--object", "--as-layout", path, mine], capture_output=True, text=True)
+        r = subprocess.run([KC, "--object", "--gnu-as-layout", path, mine], capture_output=True, text=True)
         if r.returncode != 0:
-            return path, "kc --object --as-layout failed: " + (r.stderr.strip().splitlines() or [""])[-1], 0
+            return path, "kc --object --gnu-as-layout failed: " + (r.stderr.strip().splitlines() or [""])[-1], 0
         r = subprocess.run([KC, "--object", path, own], capture_output=True, text=True)
         if r.returncode != 0:
             return path, "kc --object failed: " + (r.stderr.strip().splitlines() or [""])[-1], 0

@@ -7,7 +7,7 @@ use super::*;
 // to just use the same byte emitter everywhere, as that is the thing that's
 // most likely to expose bugs"). The assembly text kc's native back end
 // makes (x64.kfx), a subset of the GNU assembler's x86-64 syntax, made an
-// ELF relocatable object. Asked (`kc --object --as-layout`), it is as `as`
+// ELF relocatable object. Asked (`kc --object --gnu-as-layout`), it is as `as`
 // makes one of it: each section's bytes, symbols and relocations the same
 // (`scripts/kc-objects.py` compares them, object by object). Otherwise
 // (C549) only its branches' lengths are kc's own (`kc-longs`), so its
@@ -1799,7 +1799,7 @@ pub mod kc_asm {
     // Each branch's length as `as` settles it: every one short at first
     // (as `as` estimates a branch to its own section's symbol), then its
     // passes (`relaxed-pass`) until none grows. kc's own layout is
-    // `kc-longs`; this one is asked for (`--as-layout`, C549), for
+    // `kc-longs`; this one is asked for (`--gnu-as-layout`, C549), for
     // comparing kc's objects with `as`'s byte for byte.
     pub fn relaxed(mut ps: Pieces, mut longs: List<bool>, mut addrs: List<i64>) -> List<bool> {
         loop {
@@ -1962,10 +1962,10 @@ pub mod kc_asm {
         least_longs(ps, grown_longs(ps, longs), most_padding(ps, 0i64))
     }
 
-    // Each branch's length: `as`'s layout if `as-layout`, else kc's.
+    // Each branch's length: `as`'s layout if `gnu-as-layout`, else kc's.
     #[inline]
-    pub fn settled(as_layout: bool, ps: Pieces, longs: List<bool>) -> List<bool> {
-        if as_layout {
+    pub fn settled(gnu_as_layout: bool, ps: Pieces, longs: List<bool>) -> List<bool> {
+        if gnu_as_layout {
             relaxed(ps, longs, addresses(ps, longs, 0i64, nil::<i64>()))
         } else {
             kc_longs(ps, longs)
@@ -2650,18 +2650,18 @@ pub mod kc_asm {
         } else { kayak_rt::data::no_variant() }
     }
 
-    // `asm-object AS-LAYOUT TEXT`: the ELF relocatable object of assembly
-    // `TEXT`, its bytes; as `as` makes it (this file's head) if `AS-LAYOUT`,
+    // `asm-object GNU-AS-LAYOUT TEXT`: the ELF relocatable object of assembly
+    // `TEXT`, its bytes; as `as` makes it (this file's head) if `GNU-AS-LAYOUT`,
     // else its branches laid out as kc lays them (C549, `kc-longs`).
-    pub fn asm_object(as_layout: bool, text: Str) -> List<i64> {
+    pub fn asm_object(gnu_as_layout: bool, text: Str) -> List<i64> {
         let tagcase_ = lines_read(reading(kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::nil()))))), 0i64, nil::<Str>(), nil::<Product_11_12_13<Str, i64, i64>>(), nil::<Product_11_12<Str, i64>>(), nil::<Product_11_12<Str, i64>>()), lines_of(string_chars(text), nil::<char>(), nil::<Str>()));
         if Reading::__is_Reading(tagcase_) {
             let (ss0, cur, gs, commons, sets, labels,) = Reading::__Reading(tagcase_);
             let ss = map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), ps: Pieces| {
                 rev_onto_pieces(ps, nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>())
             })), ss0);
-            let longs = map(kayak_rt::as_proc(kayak_rt::closure1s((as_layout,), |(as_layout,), ps: Pieces| {
-                settled(as_layout, ps, branches_of(ps, nil::<bool>()))
+            let longs = map(kayak_rt::as_proc(kayak_rt::closure1s((gnu_as_layout,), |(gnu_as_layout,), ps: Pieces| {
+                settled(gnu_as_layout, ps, branches_of(ps, nil::<bool>()))
             })), ss);
             let syms = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((gs, ss, longs,), |(gs, ss, longs,), k: i64| {
                 map(kayak_rt::as_proc(kayak_rt::closure1s((gs, k,), |(gs, k,), x: Product_11_12<Str, i64>| {

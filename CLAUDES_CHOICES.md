@@ -17711,7 +17711,7 @@ byte, and C450 and C544 copied `as`'s relaxation (`relax_segment`, its
 estimate of a label not yet reached, its rules past an alignment) to
 keep every object the same. The user: "You can keep as layout
 compatibility as an opt in".
-- **`kc --object --as-layout FILE OUT`**: `as`'s layout (`relaxed`), as
+- **`kc --object --gnu-as-layout FILE OUT`**: `as`'s layout (`relaxed`), as
   before. `kc build`, `kc run`'s image and `kc --object` without it lay
   branches out as kc does (`kc-longs`, kc/asm.kfx).
 - **kc's layout**: every branch short, then passes (`grown`) measuring
@@ -17726,7 +17726,7 @@ compatibility as an opt in".
   alignment gives back the most it may, `most-padding`) is made short,
   grown again, the new layout kept while the section shortens. Each
   short branch fits on the layout made, so no estimate is kept.
-- **scripts/kc-objects.py**: each object made both ways; `--as-layout`'s
+- **scripts/kc-objects.py**: each object made both ways; `--gnu-as-layout`'s
   compared byte for byte with `as`'s, as before; kc's loosely (`.text`
   no longer, `.rodata` and `.bss` the same, `.data`'s size, relocations'
   types and symbols in order, symbols' names, bindings, types and
@@ -17737,4 +17737,12 @@ compatibility as an opt in".
   the same bytes. What it buys is freedom, not bytes yet: the layout
   kc's to change (a worklist, Szymanski's, rather than passes; other
   branch forms).
-- **The full check**: `check: all passed`, 7 min 59 s (the mean of 113 runs 8 min 40 s); kc-steps 2 min 16 s of it; kc-objects 549 as `as` makes them with `--as-layout`, kc's layout no longer in any (shorter in 0); the pre-check passed first.
+- **The full check**: `check: all passed`, 7 min 59 s (the mean of 113 runs 8 min 40 s); kc-steps 2 min 16 s of it; kc-objects 549 as `as` makes them with `--gnu-as-layout`, kc's layout no longer in any (shorter in 0); the pre-check passed first.
+
+## C550. `--as-layout` named `--gnu-as-layout` (2026-11-26)
+
+The user: "Rename `--as-layout` to `--gnu-as-layout` I think". The option
+(`kc --object --gnu-as-layout FILE OUT`), `asm-object`'s parameter, and
+their mentions (scripts/kc-objects.py, TODO.md, C549's entry) renamed;
+nothing else changed.
+- **The full check**: `check: all passed`, 8 min 00 s (the mean of 114 runs 8 min 40 s); the pre-check not run (a rename, kc-objects run alone first).

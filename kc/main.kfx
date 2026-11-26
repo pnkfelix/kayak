@@ -567,7 +567,7 @@
                     ;; An assembly file made an object by kc's assembler (C450),
                     ;; for comparing with `as`'s (scripts/kc-objects.py); its
                     ;; branches as `as` lays them out if asked (C549).
-                    ((and (string=? (car rest) "--object") (not (null? (cdr rest))) (string=? (car (cdr rest)) "--as-layout")
+                    ((and (string=? (car rest) "--object") (not (null? (cdr rest))) (string=? (car (cdr rest)) "--gnu-as-layout")
                           (not (null? (cdr (cdr rest)))) (not (null? (cdr (cdr (cdr rest))))))
                      (let ((m (bytes-written (car (cdr (cdr (cdr rest)))) (asm-object #t (read-text (car (cdr (cdr rest))))))))
                        (if (string=? m "") 0 (begin (fail-with m 1) 1))))

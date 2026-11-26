@@ -2,7 +2,7 @@
  to just use the same byte emitter everywhere, as that is the thing that's
  most likely to expose bugs\"). The assembly text kc's native back end
  makes (x64.kfx), a subset of the GNU assembler's x86-64 syntax, made an
- ELF relocatable object. Asked (`kc --object --as-layout`), it is as `as`
+ ELF relocatable object. Asked (`kc --object --gnu-as-layout`), it is as `as`
  makes one of it: each section's bytes, symbols and relocations the same
  (`scripts/kc-objects.py` compares them, object by object). Otherwise
  (C549) only its branches' lengths are kc's own (`kc-longs`), so its
@@ -613,7 +613,7 @@
       "Each branch's length as `as` settles it: every one short at first
        (as `as` estimates a branch to its own section's symbol), then its
        passes (`relaxed-pass`) until none grows. kc's own layout is
-       `kc-longs`; this one is asked for (`--as-layout`, C549), for
+       `kc-longs`; this one is asked for (`--gnu-as-layout`, C549), for
        comparing kc's objects with `as`'s byte for byte."
       (define-rec
         (relaxed (subr kfx (pieces (listof bool acyclic) (listof i64 acyclic)) (listof bool acyclic))
@@ -711,10 +711,10 @@
       (define kc-longs (subr kfx (pieces (listof bool acyclic)) (listof bool acyclic))
         (lambda (ps longs) (least-longs ps (grown-longs ps longs) (most-padding ps 0))))
 
-      "Each branch's length: `as`'s layout if `as-layout`, else kc's."
+      "Each branch's length: `as`'s layout if `gnu-as-layout`, else kc's."
       (define settled (subr kfx (bool pieces (listof bool acyclic)) (listof bool acyclic))
-        (lambda (as-layout ps longs)
-          (if as-layout (relaxed ps longs (addresses ps longs 0 nil)) (kc-longs ps longs))))
+        (lambda (gnu-as-layout ps longs)
+          (if gnu-as-layout (relaxed ps longs (addresses ps longs 0 nil)) (kc-longs ps longs))))
 
       "A relocation: the offset in its section, its type, its symbol (a
        section's name for a section's), and its addend."
@@ -973,15 +973,15 @@
                             (fix ro-rs r0 ro) (zeros (i64- d0 (i64+ r0 (size ro))) nil)
                             (fix data-rs d0 data) (zeros (i64- (extract cs 2) (i64+ d0 (size data))) nil))))))))
 
-    "`asm-object AS-LAYOUT TEXT`: the ELF relocatable object of assembly
-     `TEXT`, its bytes; as `as` makes it (this file's head) if `AS-LAYOUT`,
+    "`asm-object GNU-AS-LAYOUT TEXT`: the ELF relocatable object of assembly
+     `TEXT`, its bytes; as `as` makes it (this file's head) if `GNU-AS-LAYOUT`,
      else its branches laid out as kc lays them (C549, `kc-longs`)."
     (define asm-object (subr kfx (bool string) (listof i64 acyclic))
-      (lambda (as-layout text)
+      (lambda (gnu-as-layout text)
         (tagcase (lines-read (reading (list nil nil nil nil nil) 0 nil nil nil nil) (lines-of (string-chars text) nil nil))
           (reading (ss0 cur gs commons sets labels)
             (let* ((ss (map (lambda ((ps pieces)) (rev-onto-pieces ps nil)) ss0))
-                   (longs (map (lambda ((ps pieces)) (settled as-layout ps (branches-of ps nil))) ss))
+                   (longs (map (lambda ((ps pieces)) (settled gnu-as-layout ps (branches-of ps nil))) ss))
                    (syms (concat (map (lambda ((k i64))
                                         (map (lambda ((x (tupleof string i64)))
                                                (tuple (extract x 1) k (extract x 2) (string-member? (extract x 1) gs)))
