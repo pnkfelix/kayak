@@ -1486,9 +1486,219 @@ pub mod kc_asm {
         }
     }
 
+    // Labels by name, and symbols (C548): an AVL tree, as `lib/db.kfx`'s
+    // `smap`, each name's two numbers and a flag (a label's address and
+    // region; a symbol's section, offset, and whether it is global); a
+    // lookup logarithmic, not a walk of every name, which made a large
+    // program's assembly quadratic in its labels and symbols (`relaxed-pass`
+    // of C544, `where-of`).
+    #[derive(Clone, Copy)]
+    pub enum Lmap {
+        LmNone(),
+        LmNode(kayak_rt::data::DataAt<'static, Lmap>, Str, i64, i64, bool, i64, kayak_rt::data::DataAt<'static, Lmap>),
+    }
+
+    impl kayak_rt::data::Variant<1> for Lmap {
+        type Fields = ();
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("lm-none")
+        }
+    }
+
+    #[allow(non_snake_case)]
+    impl Lmap {
+        #[inline(always)]
+        pub fn __is_LmNone(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<1>()
+        }
+        #[inline(always)]
+        pub fn __LmNone(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+            w.fields::<1>()
+        }
+    }
+
+    impl kayak_rt::data::Variant<0> for Lmap {
+        type Fields = (kayak_rt::data::DataAt<'static, Lmap>, Str, i64, i64, bool, i64, kayak_rt::data::DataAt<'static, Lmap>,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("lm-node")
+        }
+    }
+
+    #[allow(non_snake_case)]
+    impl Lmap {
+        #[inline(always)]
+        pub fn __is_LmNode(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<0>()
+        }
+        #[inline(always)]
+        pub fn __LmNode(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+            w.fields::<0>()
+        }
+    }
+
+    impl kayak_rt::data::Datatype for Lmap {
+        #[inline]
+        fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+            if w.is::<1>() {
+                let () = w.fields::<1>();
+                Self::LmNone()
+            } else if w.is::<0>() {
+                let (f0, f1, f2, f3, f4, f5, f6,) = w.fields::<0>();
+                Self::LmNode(f0, f1, f2, f3, f4, f5, f6)
+            } else {
+                kayak_rt::data::no_variant()
+            }
+        }
+        fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+            if w.is::<1>() { return t.reach(w.obj::<1>()); }
+            if w.is::<0>() { return t.reach(w.obj::<0>()); }
+        }
+        fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            if w.is::<1>() { return true; }
+            if w.is::<0>() { return true; }
+            let _ = w;
+            false
+        }
+    }
+
+    pub fn lm_none() -> kayak_rt::data::DataAt<'static, Lmap> {
+        kayak_rt::data::data_heap::<Lmap, 1>(())
+    }
+
+    pub fn lm_node(f0: kayak_rt::data::DataAt<'static, Lmap>, f1: Str, f2: i64, f3: i64, f4: bool, f5: i64, f6: kayak_rt::data::DataAt<'static, Lmap>) -> kayak_rt::data::DataAt<'static, Lmap> {
+        kayak_rt::data::data_heap::<Lmap, 0>((f0, f1, f2, f3, f4, f5, f6,))
+    }
+
+    #[inline]
+    pub fn lm_height(t: kayak_rt::data::DataAt<'static, Lmap>) -> i64 {
+        let tagcase_ = t;
+        if Lmap::__is_LmNone(tagcase_) {
+            0i64
+        } else if Lmap::__is_LmNode(tagcase_) {
+            let (l, k, a, g, b, h, r,) = Lmap::__LmNode(tagcase_);
+            h
+        } else { kayak_rt::data::no_variant() }
+    }
+
+    pub fn lm_make(l: kayak_rt::data::DataAt<'static, Lmap>, k: Str, a: i64, g: i64, b: bool, r: kayak_rt::data::DataAt<'static, Lmap>) -> kayak_rt::data::DataAt<'static, Lmap> {
+        lm_node(l, k, a, g, b, i64_plus(1i64, {
+            let (x, y) = (lm_height(l), lm_height(r));
+            if i64_gt(x, y) {
+                x
+            } else {
+                y
+            }
+        }), r)
+    }
+
+    pub fn lm_balanced(l: kayak_rt::data::DataAt<'static, Lmap>, k: Str, a: i64, g: i64, b: bool, r: kayak_rt::data::DataAt<'static, Lmap>) -> kayak_rt::data::DataAt<'static, Lmap> {
+        let (hl, hr) = (lm_height(l), lm_height(r));
+        if i64_gt(hl, i64_plus(hr, 1i64)) {
+            let tagcase_ = l;
+            if Lmap::__is_LmNode(tagcase_) {
+                let (ll, lk, la, lg, lb, lh, lr,) = Lmap::__LmNode(tagcase_);
+                if i64_gt_eq(lm_height(ll), lm_height(lr)) {
+                    lm_make(ll, lk, la, lg, lb, lm_make(lr, k, a, g, b, r))
+                } else {
+                    let tagcase_ = lr;
+                    if Lmap::__is_LmNode(tagcase_) {
+                        let (rl, rk, ra, rg, rb, rh, rr,) = Lmap::__LmNode(tagcase_);
+                        lm_make(lm_make(ll, lk, la, lg, lb, rl), rk, ra, rg, rb, lm_make(rr, k, a, g, b, r))
+                    } else if Lmap::__is_LmNone(tagcase_) {
+                        lm_make(l, k, a, g, b, r)
+                    } else { kayak_rt::data::no_variant() }
+                }
+            } else if Lmap::__is_LmNone(tagcase_) {
+                lm_make(l, k, a, g, b, r)
+            } else { kayak_rt::data::no_variant() }
+        } else if i64_gt(hr, i64_plus(hl, 1i64)) {
+            let tagcase_ = r;
+            if Lmap::__is_LmNode(tagcase_) {
+                let (rl, rk, ra, rg, rb, rh, rr,) = Lmap::__LmNode(tagcase_);
+                if i64_gt_eq(lm_height(rr), lm_height(rl)) {
+                    lm_make(lm_make(l, k, a, g, b, rl), rk, ra, rg, rb, rr)
+                } else {
+                    let tagcase_ = rl;
+                    if Lmap::__is_LmNode(tagcase_) {
+                        let (ml, mk, ma, mg, mb, mh, mr,) = Lmap::__LmNode(tagcase_);
+                        lm_make(lm_make(l, k, a, g, b, ml), mk, ma, mg, mb, lm_make(mr, rk, ra, rg, rb, rr))
+                    } else if Lmap::__is_LmNone(tagcase_) {
+                        lm_make(l, k, a, g, b, r)
+                    } else { kayak_rt::data::no_variant() }
+                }
+            } else if Lmap::__is_LmNone(tagcase_) {
+                lm_make(l, k, a, g, b, r)
+            } else { kayak_rt::data::no_variant() }
+        } else {
+            lm_make(l, k, a, g, b, r)
+        }
+    }
+
+    /// Name `n` with `a`, `g`, `b`; the last put of a name kept.
+    pub fn lm_put(t: kayak_rt::data::DataAt<'static, Lmap>, n: Str, a: i64, g: i64, b: bool) -> kayak_rt::data::DataAt<'static, Lmap> {
+        let tagcase_ = t;
+        if Lmap::__is_LmNone(tagcase_) {
+            lm_node(lm_none(), n, a, g, b, 1i64, lm_none())
+        } else if Lmap::__is_LmNode(tagcase_) {
+            let (l, k, a0, g0, b0, h, r,) = Lmap::__LmNode(tagcase_);
+            if string_eq_p(n, k) {
+                lm_node(l, k, a, g, b, h, r)
+            } else if string_lt_p(n, k) {
+                lm_balanced(lm_put(l, n, a, g, b), k, a0, g0, b0, r)
+            } else {
+                lm_balanced(l, k, a0, g0, b0, lm_put(r, n, a, g, b))
+            }
+        } else { kayak_rt::data::no_variant() }
+    }
+
+    /// Name `n`'s entry, `(NAME A G B)`, if it is in `t`.
+    pub fn lm_get(mut n: Str, mut t: kayak_rt::data::DataAt<'static, Lmap>) -> List<Product_11_12_13_14<Str, i64, i64, bool>> {
+        loop {
+            let tagcase_ = t;
+            if Lmap::__is_LmNone(tagcase_) {
+                return nil::<Product_11_12_13_14<Str, i64, i64, bool>>();
+            } else if Lmap::__is_LmNode(tagcase_) {
+                let (l, k, a, g, b, h, r,) = Lmap::__LmNode(tagcase_);
+                if string_eq_p(n, k) {
+                    return kayak_rt::heap_cons(Product_11_12_13_14(k, a, g, b), kayak_rt::nil());
+                } else if string_lt_p(n, k) {
+                    t = l;
+                    continue;
+                } else {
+                    t = r;
+                    continue;
+                }
+            } else { kayak_rt::data::no_variant() }
+        }
+    }
+
+    #[inline]
+    pub fn label_laid(n: Str, t: kayak_rt::data::DataAt<'static, Lmap>) -> List<Product_11_12_13_14<Str, i64, i64, bool>> {
+        lm_get(n, t)
+    }
+
+    // The symbols' map, of their list: the first of a name kept, as a walk
+    // of the list (`where-of` before C548) found it.
+    pub fn syms_map(mut xs: List<Product_11_12_13_14<Str, i64, i64, bool>>, mut acc: kayak_rt::data::DataAt<'static, Lmap>) -> kayak_rt::data::DataAt<'static, Lmap> {
+        loop {
+            if null_p(xs) {
+                return acc;
+            } else {
+                (xs, acc) = (cdr(xs), if null_p(lm_get(car(xs).0, acc)) {
+                    lm_put(acc, car(xs).0, car(xs).1, car(xs).2, car(xs).3)
+                } else {
+                    acc
+                });
+                continue;
+            }
+        }
+    }
+
     // Each label's address and region (C544): `(NAME ADDRESS REGION)`, a
     // region the pieces between two alignments.
-    pub fn labels_in(mut ps: Pieces, mut addrs: List<i64>, mut region: i64, mut acc: List<Product_11_12_13<Str, i64, i64>>) -> List<Product_11_12_13<Str, i64, i64>> {
+    pub fn labels_in(mut ps: Pieces, mut addrs: List<i64>, mut region: i64, mut acc: kayak_rt::data::DataAt<'static, Lmap>) -> kayak_rt::data::DataAt<'static, Lmap> {
         loop {
             if null_p(ps) {
                 return acc;
@@ -1496,7 +1706,7 @@ pub mod kc_asm {
                 let tagcase_ = car(ps);
                 if Piece::__is_PLabel(tagcase_) {
                     let (n,) = Piece::__PLabel(tagcase_);
-                    (ps, addrs, acc) = (cdr(ps), cdr(addrs), kayak_rt::heap_cons(Product_11_12_13(n, car(addrs), region), acc));
+                    (ps, addrs, acc) = (cdr(ps), cdr(addrs), lm_put(acc, n, car(addrs), region, false));
                     continue;
                 } else if Piece::__is_PAlign(tagcase_) {
                     let (k,) = Piece::__PAlign(tagcase_);
@@ -1511,19 +1721,6 @@ pub mod kc_asm {
         }
     }
 
-    pub fn label_laid(mut n: Str, mut xs: List<Product_11_12_13<Str, i64, i64>>) -> List<Product_11_12_13<Str, i64, i64>> {
-        loop {
-            if null_p(xs) {
-                return nil::<Product_11_12_13<Str, i64, i64>>();
-            } else if string_eq_p(car(xs).0, n) {
-                return kayak_rt::heap_cons(car(xs), kayak_rt::nil());
-            } else {
-                xs = cdr(xs);
-                continue;
-            }
-        }
-    }
-
     // One pass of GNU as's relaxation (C544; `write.c`'s `relax_segment`
     // and `relax_frag`), as kc's code needs it matched byte for byte: each
     // piece moved by what grew before it in this pass (`stretch`); a
@@ -1534,7 +1731,7 @@ pub mod kc_asm {
     // long, the growth added; an alignment's padding made again at its
     // new address, its change added. Each branch's length, each piece's
     // new address, whether any grew.
-    pub fn relaxed_pass(mut ps: Pieces, mut longs: List<bool>, mut olds: List<i64>, mut old_labels: List<Product_11_12_13<Str, i64, i64>>, mut stretch: i64, mut region: i64, mut passed: List<Product_11_12_13<Str, i64, i64>>, mut acc_longs: List<bool>, mut acc_addrs: List<i64>, mut grew: bool) -> Product_11_12_13<List<bool>, List<i64>, bool> {
+    pub fn relaxed_pass(mut ps: Pieces, mut longs: List<bool>, mut olds: List<i64>, mut old_labels: kayak_rt::data::DataAt<'static, Lmap>, mut stretch: i64, mut region: i64, mut passed: kayak_rt::data::DataAt<'static, Lmap>, mut acc_longs: List<bool>, mut acc_addrs: List<i64>, mut grew: bool) -> Product_11_12_13<List<bool>, List<i64>, bool> {
         loop {
             if null_p(ps) {
                 return Product_11_12_13(reverse(acc_longs), reverse(acc_addrs), grew);
@@ -1545,7 +1742,7 @@ pub mod kc_asm {
                 let tagcase_ = car(ps);
                 if Piece::__is_PLabel(tagcase_) {
                     let (n,) = Piece::__PLabel(tagcase_);
-                    (ps, olds, passed, acc_addrs) = (cdr(ps), cdr(olds), kayak_rt::heap_cons(Product_11_12_13(n, addr, region), passed), addrs);
+                    (ps, olds, passed, acc_addrs) = (cdr(ps), cdr(olds), lm_put(passed, n, addr, region, false), addrs);
                     continue;
                 } else if Piece::__is_PAlign(tagcase_) {
                     let (k,) = Piece::__PAlign(tagcase_);
@@ -1555,14 +1752,24 @@ pub mod kc_asm {
                 } else if Piece::__is_PBranch(tagcase_) {
                     let (cc, s,) = Piece::__PBranch(tagcase_);
                     let long = car(longs);
+                    let here = if long {
+                        nil::<Product_11_12_13_14<Str, i64, i64, bool>>()
+                    } else {
+                        label_laid(s, passed)
+                    };
+                    let before = if (long || not(null_p(here))) {
+                        nil::<Product_11_12_13_14<Str, i64, i64, bool>>()
+                    } else {
+                        label_laid(s, old_labels)
+                    };
                     let now = if long {
                         true
-                    } else if not(null_p(label_laid(s, passed))) {
-                        not(fits8_p(i64_minus(car(label_laid(s, passed)).1, i64_plus(addr, 2i64))))
-                    } else if null_p(label_laid(s, old_labels)) {
+                    } else if not(null_p(here)) {
+                        not(fits8_p(i64_minus(car(here).1, i64_plus(addr, 2i64))))
+                    } else if null_p(before) {
                         true
                     } else {
-                        let t = car(label_laid(s, old_labels));
+                        let t = car(before);
                         let target = t.1;
                         let same = i64_eq(t.2, region);
                         if (not(i64_eq(stretch, 0i64)) && (i64_lt(stretch, 0i64) || same)) {
@@ -1590,7 +1797,7 @@ pub mod kc_asm {
     // passes (`relaxed-pass`) until none grows.
     pub fn relaxed(mut ps: Pieces, mut longs: List<bool>, mut addrs: List<i64>) -> List<bool> {
         loop {
-            let r = relaxed_pass(ps, longs, addrs, labels_in(ps, addrs, 0i64, nil::<Product_11_12_13<Str, i64, i64>>()), 0i64, 0i64, nil::<Product_11_12_13<Str, i64, i64>>(), nil::<bool>(), nil::<i64>(), false);
+            let r = relaxed_pass(ps, longs, addrs, labels_in(ps, addrs, 0i64, lm_none()), 0i64, 0i64, lm_none(), nil::<bool>(), nil::<i64>(), false);
             if r.2 {
                 (longs, addrs) = (r.0, r.1);
                 continue;
@@ -1707,16 +1914,12 @@ pub mod kc_asm {
         kayak_rt::data::data_heap::<Where, 0>((f0, f1, f2,))
     }
 
-    pub fn where_of(mut n: Str, mut xs: List<Product_11_12_13_14<Str, i64, i64, bool>>) -> List<kayak_rt::data::DataAt<'static, Where>> {
-        loop {
-            if null_p(xs) {
-                return nil::<kayak_rt::data::DataAt<'static, kc_asm::Where>>();
-            } else if string_eq_p(car(xs).0, n) {
-                return kayak_rt::heap_cons(r#where(car(xs).1, car(xs).2, car(xs).3), kayak_rt::nil());
-            } else {
-                xs = cdr(xs);
-                continue;
-            }
+    pub fn where_of(n: Str, t: kayak_rt::data::DataAt<'static, Lmap>) -> List<kayak_rt::data::DataAt<'static, Where>> {
+        let x = lm_get(n, t);
+        if null_p(x) {
+            nil::<kayak_rt::data::DataAt<'static, kc_asm::Where>>()
+        } else {
+            kayak_rt::heap_cons(r#where(car(x).1, car(x).2, car(x).3), kayak_rt::nil())
         }
     }
 
@@ -1772,7 +1975,7 @@ pub mod kc_asm {
 
     /// The section's bytes (`out`, reversed) and relocations, each
     /// symbol resolved as `as` resolves it (this file's head).
-    pub fn emitted(mut ps: Pieces, mut longs: List<bool>, mut sec: i64, mut off: i64, mut syms: List<Product_11_12_13_14<Str, i64, i64, bool>>, mut commons: Strings, mut sets: List<Product_11_12<Str, i64>>, mut out: Bytes, mut rs: List<kayak_rt::data::DataAt<'static, Reloc>>) -> kayak_rt::data::DataAt<'static, Made> {
+    pub fn emitted(mut ps: Pieces, mut longs: List<bool>, mut sec: i64, mut off: i64, mut syms: kayak_rt::data::DataAt<'static, Lmap>, mut commons: Strings, mut sets: List<Product_11_12<Str, i64>>, mut out: Bytes, mut rs: List<kayak_rt::data::DataAt<'static, Reloc>>) -> kayak_rt::data::DataAt<'static, Made> {
         loop {
             if null_p(ps) {
                 return made(reverse(out), reverse(rs));
@@ -2092,7 +2295,7 @@ pub mod kc_asm {
 
     /// The names relocations name that are no section's, none defined
     /// here, no common: each once, in the order first named.
-    pub fn undefined_names(mut ns: Strings, mut syms: List<Product_11_12_13_14<Str, i64, i64, bool>>, mut commons: Strings, mut acc: Strings) -> Strings {
+    pub fn undefined_names(mut ns: Strings, mut syms: kayak_rt::data::DataAt<'static, Lmap>, mut commons: Strings, mut acc: Strings) -> Strings {
         loop {
             if null_p(ns) {
                 return reverse(acc);
@@ -2108,7 +2311,7 @@ pub mod kc_asm {
 
     // Where a symbol is in the image (C451): its section's place there and
     // its offset in it, or a common's place; none, if neither.
-    pub fn image_at(n: Str, syms: List<Product_11_12_13_14<Str, i64, i64, bool>>, commons: List<Product_11_12<Str, i64>>, bases: List<i64>) -> List<i64> {
+    pub fn image_at(n: Str, syms: kayak_rt::data::DataAt<'static, Lmap>, commons: List<Product_11_12<Str, i64>>, bases: List<i64>) -> List<i64> {
         if string_member_p(n, section_names()) {
             kayak_rt::heap_cons(car(sexps_after_i64s(bases, index_of_symbol(n, section_names(), 0i64))), kayak_rt::nil())
         } else {
@@ -2139,7 +2342,7 @@ pub mod kc_asm {
     // Each of a section's relocations resolved, as a 32-bit field at its
     // offset: `S + A - P`, the image's places; an absolute one or a symbol
     // the image lacks, not yet.
-    pub fn image_fixes(mut rs: List<kayak_rt::data::DataAt<'static, Reloc>>, mut base: i64, mut syms: List<Product_11_12_13_14<Str, i64, i64, bool>>, mut commons: List<Product_11_12<Str, i64>>, mut bases: List<i64>, mut acc: List<Product_11_12<i64, i64>>) -> List<Product_11_12<i64, i64>> {
+    pub fn image_fixes(mut rs: List<kayak_rt::data::DataAt<'static, Reloc>>, mut base: i64, mut syms: kayak_rt::data::DataAt<'static, Lmap>, mut commons: List<Product_11_12<Str, i64>>, mut bases: List<i64>, mut acc: List<Product_11_12<i64, i64>>) -> List<Product_11_12<i64, i64>> {
         loop {
             if null_p(rs) {
                 return reverse(acc);
@@ -2215,8 +2418,9 @@ pub mod kc_asm {
                     Product_11_12_13_14(x.0, k, x.1, string_member_p(x.0, gs))
                 })), offsets(car(sexps_after_sections(ss, k)), car(sexps_after_longs(longs, k)), 0i64, nil::<Product_11_12<Str, i64>>()).0)
             })), the::<List<i64>>(kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::nil())))))));
-            let mades = map(kayak_rt::as_proc(kayak_rt::closure1s((commons, sets, ss, longs, syms,), |(commons, sets, ss, longs, syms,), k: i64| {
-                emitted(car(sexps_after_sections(ss, k)), car(sexps_after_longs(longs, k)), k, 0i64, syms, map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), c: Product_11_12_13<Str, i64, i64>| {
+            let sm = syms_map(syms, lm_none());
+            let mades = map(kayak_rt::as_proc(kayak_rt::closure1s((commons, sets, ss, longs, sm,), |(commons, sets, ss, longs, sm,), k: i64| {
+                emitted(car(sexps_after_sections(ss, k)), car(sexps_after_longs(longs, k)), k, 0i64, sm, map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), c: Product_11_12_13<Str, i64, i64>| {
                     c.0
                 })), commons), sets, nil::<i64>(), nil::<kayak_rt::data::DataAt<'static, kc_asm::Reloc>>())
             })), the::<List<i64>>(kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::nil()))))));
@@ -2279,8 +2483,8 @@ pub mod kc_asm {
             let b0 = aligned(i64_plus(d0, size(data)), 16i64);
             let cs = commons_placed(the::<List<Product_11_12_13<Str, i64, i64>>>(commons), i64_plus(b0, bss_size), nil::<Product_11_12<Str, i64>>());
             let bases = the::<List<i64>>(kayak_rt::heap_cons(t0, kayak_rt::heap_cons(d0, kayak_rt::heap_cons(b0, kayak_rt::heap_cons(r0, kayak_rt::nil())))));
-            let fix = kayak_rt::closure3s((syms, cs, bases,), |(syms, cs, bases,), rs: List<kayak_rt::data::DataAt<'static, Reloc>>, base: i64, bs: Bytes| {
-                patched(bs, 0i64, image_fixes(rs, base, syms, cs.0, bases, nil::<Product_11_12<i64, i64>>()), nil::<i64>())
+            let fix = kayak_rt::closure3s((sm, cs, bases,), |(sm, cs, bases,), rs: List<kayak_rt::data::DataAt<'static, Reloc>>, base: i64, bs: Bytes| {
+                patched(bs, 0i64, image_fixes(rs, base, sm, cs.0, bases, nil::<Product_11_12<i64, i64>>()), nil::<i64>())
             });
             concat(kayak_rt::heap_cons(fix.call(text_rs, t0, code), kayak_rt::heap_cons(zeros(i64_minus(r0, size(code)), nil::<i64>()), kayak_rt::heap_cons(fix.call(ro_rs, r0, ro), kayak_rt::heap_cons(zeros(i64_minus(d0, i64_plus(r0, size(ro))), nil::<i64>()), kayak_rt::heap_cons(fix.call(data_rs, d0, data), kayak_rt::heap_cons(zeros(i64_minus(cs.1, i64_plus(d0, size(data))), nil::<i64>()), kayak_rt::nil())))))))
         } else { kayak_rt::data::no_variant() }
@@ -2303,8 +2507,9 @@ pub mod kc_asm {
                     Product_11_12_13_14(x.0, k, x.1, string_member_p(x.0, gs))
                 })), offsets(car(sexps_after_sections(ss, k)), car(sexps_after_longs(longs, k)), 0i64, nil::<Product_11_12<Str, i64>>()).0)
             })), the::<List<i64>>(kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::nil())))))));
-            let mades = map(kayak_rt::as_proc(kayak_rt::closure1s((commons, sets, ss, longs, syms,), |(commons, sets, ss, longs, syms,), k: i64| {
-                emitted(car(sexps_after_sections(ss, k)), car(sexps_after_longs(longs, k)), k, 0i64, syms, map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), c: Product_11_12_13<Str, i64, i64>| {
+            let sm = syms_map(syms, lm_none());
+            let mades = map(kayak_rt::as_proc(kayak_rt::closure1s((commons, sets, ss, longs, sm,), |(commons, sets, ss, longs, sm,), k: i64| {
+                emitted(car(sexps_after_sections(ss, k)), car(sexps_after_longs(longs, k)), k, 0i64, sm, map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), c: Product_11_12_13<Str, i64, i64>| {
                     c.0
                 })), commons), sets, nil::<i64>(), nil::<kayak_rt::data::DataAt<'static, kc_asm::Reloc>>())
             })), the::<List<i64>>(kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::nil()))))));
@@ -2367,7 +2572,7 @@ pub mod kc_asm {
                     s
                 } else { kayak_rt::data::no_variant() }
             })), onto(text_rs, data_rs));
-            let undefined = undefined_names(named_by_relocs, syms, map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), c: Product_11_12_13<Str, i64, i64>| {
+            let undefined = undefined_names(named_by_relocs, sm, map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), c: Product_11_12_13<Str, i64, i64>| {
                 c.0
             })), commons), nil::<Str>());
             let local_names = map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Product_11_12_13_14<Str, i64, i64, bool>| {

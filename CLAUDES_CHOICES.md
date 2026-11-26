@@ -17665,3 +17665,38 @@ thread, as Fixpt's do): "Do it now. We can deviate from Fixpt here".
   under collection stress (a heap of 64 words in process; every 31st
   allocation built), the cells moving.
 - **The full check**: `check: all passed`, 12 min 41 s (the mean of 111 runs 8 min 41 s; kc-steps 4 min 51 s of it, 395 programs and the parking check); the pre-check passed first (after two clippy fixes, `while let` and one `if`).
+
+## C548. The check's slowdown: kc's assembler's lookups, logarithmic (2026-11-26)
+
+The user, after C547: "speeding up the check sounds good. Do you know if
+compile times are indeed the bulk of the time increase?" I had guessed
+the task programs, each compiling Fixpt's scheduler; I measured instead.
+- **Measured, not the tasks**: each step of kc-steps timed by program
+  (`kc build`, the executable, `kc run`, `kc run --heap 64`, the warm
+  build, Fixpt's `eval`). A task program costs about 0.45 s in all, a
+  plain one about 0.13 s: the 28 task programs together about 13 s. One
+  program was 132 s of kc's 190 s: `tests/kc/loads/expander-facts.fx`,
+  which loads Fixpt's whole expander (a cold build 90 s; each in-process
+  run 61 s, the executable itself 0.00 s).
+- **The cause, by `perf`**: C544's relaxation (GNU as's, `relaxed-pass`)
+  looked each branch's label up in lists of every label, up to four
+  times a branch a pass, a forward one walking all those passed without
+  finding it; and the older `where-of`, the symbols' list walked for
+  each reference. Together about 58% of a cold build, and 88% of an
+  in-process run, which lays the whole program out again each time.
+- **The fix**: an AVL map of names (`lmap`, as `lib/db.kfx`'s `smap`),
+  a label's address and region, a symbol's section, offset and whether
+  it is global: built once a pass (the labels, `labels-in`; those passed
+  put as they are), once an object (the symbols, `syms-map`, the first of
+  a name kept, as the list's walk found it); each branch's label looked
+  up once in each. Pure, as the rest of the assembler (an array would
+  carry a region's effects).
+- **Results**: `expander-facts.fx` built cold in 31 s (90), run in
+  process 7.4 s (61); kc-steps alone 1 min 12 s (3 min 46 s), its
+  answers as before (0 wrong); kc-objects: 549 objects as `as` makes
+  them.
+- **Left**: l0's variables (`l0-number-of`, a walk of the bindings for
+  each reference), now 35% of that cold build, as it was (11 s), older
+  than the slowdown; and `kc run`, which assembles the whole program at
+  each run where `kc build` reuses its objects. Both noted for later.
+- **The full check**: `check: all passed`, 7 min 57 s (the mean of 112 runs 8 min 40 s; the last, C547's, 12 min 41 s); kc-steps 2 min 19 s of it (C547's 4 min 51 s); the pre-check passed first.

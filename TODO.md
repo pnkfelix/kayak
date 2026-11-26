@@ -1725,7 +1725,11 @@ harness); K2 onward Ghuloum's steps; the service after K2's first steps.
   engine's own I/O, and a socket's write past its room (a chunk is a
   pipe's `PIPE_BUF`); once processes' output waits too (46-54), one wait
   over every source (kayak-sys's `Poller`, epoll) rather than `poll` of a
-  list rebuilt each wait. `kc build` (C419): objects no longer listed
+  list rebuilt each wait.
+- kc's compile time (C548): l0's variables are looked up by a walk of
+  every binding (`l0-number-of`), a third of a large program's cold
+  build; `kc run` assembles the whole program each run (its in-process
+  image), where `kc build` reuses each object. `kc build` (C419): objects no longer listed
   pruned from `EXE.o.d/` (done, C448); an edited procedure an object of its own (weak
   symbols in its run) should reassembling its run of 64 ever be seen.
 - KFX's datatypes stay nominal (C410, the user's choice after the

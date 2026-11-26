@@ -489,21 +489,78 @@
                     (p-call (s) (addresses (cdr ps) longs (i64+ off 5) acc))
                     (p-fix (n s a k) (addresses (cdr ps) longs (i64+ off n) acc))))))))
 
+      "Labels by name, and symbols (C548): an AVL tree, as `lib/db.kfx`'s
+       `smap`, each name's two numbers and a flag (a label's address and
+       region; a symbol's section, offset, and whether it is global); a
+       lookup logarithmic, not a walk of every name, which made a large
+       program's assembly quadratic in its labels and symbols (`relaxed-pass`
+       of C544, `where-of`)."
+      (define-datatype lmap (lm-none) (lm-node lmap string i64 i64 bool i64 lmap))
+      (define lm-height (subr kfx (lmap) i64) (lambda (t) (tagcase t (lm-none () 0) (lm-node (l k a g b h r) h))))
+      (define lm-make (subr kfx (lmap string i64 i64 bool lmap) lmap)
+        (lambda (l k a g b r) (lm-node l k a g b (i64+ 1 (let ((x (lm-height l)) (y (lm-height r))) (if (i64> x y) x y))) r)))
+      (define lm-balanced (subr kfx (lmap string i64 i64 bool lmap) lmap)
+        (lambda (l k a g b r)
+          (let ((hl (lm-height l)) (hr (lm-height r)))
+            (cond ((i64> hl (i64+ hr 1))
+                   (tagcase l
+                     (lm-node (ll lk la lg lb lh lr)
+                       (if (i64>= (lm-height ll) (lm-height lr))
+                           (lm-make ll lk la lg lb (lm-make lr k a g b r))
+                           (tagcase lr
+                             (lm-node (rl rk ra rg rb rh rr) (lm-make (lm-make ll lk la lg lb rl) rk ra rg rb (lm-make rr k a g b r)))
+                             (lm-none () (lm-make l k a g b r)))))
+                     (lm-none () (lm-make l k a g b r))))
+                  ((i64> hr (i64+ hl 1))
+                   (tagcase r
+                     (lm-node (rl rk ra rg rb rh rr)
+                       (if (i64>= (lm-height rr) (lm-height rl))
+                           (lm-make (lm-make l k a g b rl) rk ra rg rb rr)
+                           (tagcase rl
+                             (lm-node (ml mk ma mg mb mh mr) (lm-make (lm-make l k a g b ml) mk ma mg mb (lm-make mr rk ra rg rb rr)))
+                             (lm-none () (lm-make l k a g b r)))))
+                     (lm-none () (lm-make l k a g b r))))
+                  (else (lm-make l k a g b r))))))
+      (define-rec
+        (lm-put (subr kfx (lmap string i64 i64 bool) lmap)
+          (lambda (t n a g b)
+            "Name `n` with `a`, `g`, `b`; the last put of a name kept."
+            (tagcase t
+              (lm-none () (lm-node (lm-none) n a g b 1 (lm-none)))
+              (lm-node (l k a0 g0 b0 h r)
+                (cond ((string=? n k) (lm-node l k a g b h r))
+                      ((string<? n k) (lm-balanced (lm-put l n a g b) k a0 g0 b0 r))
+                      (else (lm-balanced l k a0 g0 b0 (lm-put r n a g b))))))))
+        (lm-get (subr kfx (string lmap) (listof (tupleof string i64 i64 bool) acyclic))
+          (lambda (n t)
+            "Name `n`'s entry, `(NAME A G B)`, if it is in `t`."
+            (tagcase t
+              (lm-none () nil)
+              (lm-node (l k a g b h r)
+                (cond ((string=? n k) (list (tuple k a g b))) ((string<? n k) (lm-get n l)) (else (lm-get n r))))))))
+
+      (define label-laid (subr kfx (string lmap) (listof (tupleof string i64 i64 bool) acyclic))
+        (lambda (n t) (lm-get n t)))
+
+      "The symbols' map, of their list: the first of a name kept, as a walk
+       of the list (`where-of` before C548) found it."
+      (define-rec
+        (syms-map (subr kfx ((listof (tupleof string i64 i64 bool) acyclic) lmap) lmap)
+          (lambda (xs acc)
+            (if (null? xs) acc (syms-map (cdr xs) (if (null? (lm-get (extract (car xs) 1) acc)) (lm-put acc (extract (car xs) 1) (extract (car xs) 2) (extract (car xs) 3) (extract (car xs) 4)) acc))))))
+
       "Each label's address and region (C544): `(NAME ADDRESS REGION)`, a
        region the pieces between two alignments."
       (define-rec
-        (labels-in (subr kfx (pieces (listof i64 acyclic) i64 (listof (tupleof string i64 i64) acyclic)) (listof (tupleof string i64 i64) acyclic))
+        (labels-in (subr kfx (pieces (listof i64 acyclic) i64 lmap) lmap)
           (lambda (ps addrs region acc)
             (if (null? ps)
                 acc
                 (tagcase (car ps)
-                  (p-label (n) (labels-in (cdr ps) (cdr addrs) region (cons (tuple n (car addrs) region) acc)))
+                  (p-label (n) (labels-in (cdr ps) (cdr addrs) region (lm-put acc n (car addrs) region #f)))
                   (p-align (k) (labels-in (cdr ps) (cdr addrs) (i64+ region 1) acc))
                   (else other (labels-in (cdr ps) (cdr addrs) region acc)))))))
 
-      (define-rec
-        (label-laid (subr kfx (string (listof (tupleof string i64 i64) acyclic)) (listof (tupleof string i64 i64) acyclic))
-          (lambda (n xs) (cond ((null? xs) nil) ((string=? (extract (car xs) 1) n) (list (car xs))) (else (label-laid n (cdr xs)))))))
 
       "One pass of GNU as's relaxation (C544; `write.c`'s `relax_segment`
        and `relax_frag`), as kc's code needs it matched byte for byte: each
@@ -516,8 +573,8 @@
        new address, its change added. Each branch's length, each piece's
        new address, whether any grew."
       (define-rec
-        (relaxed-pass (subr kfx (pieces (listof bool acyclic) (listof i64 acyclic) (listof (tupleof string i64 i64) acyclic) i64 i64
-                                 (listof (tupleof string i64 i64) acyclic) (listof bool acyclic) (listof i64 acyclic) bool)
+        (relaxed-pass (subr kfx (pieces (listof bool acyclic) (listof i64 acyclic) lmap i64 i64
+                                 lmap (listof bool acyclic) (listof i64 acyclic) bool)
                             (tupleof (listof bool acyclic) (listof i64 acyclic) bool))
           (lambda (ps longs olds old-labels stretch region passed acc-longs acc-addrs grew)
             (if (null? ps)
@@ -525,18 +582,20 @@
                 (let* ((was (car olds)) (addr (i64+ was stretch)) (addrs (cons addr acc-addrs)))
                   (tagcase (car ps)
                     (p-label (n)
-                      (relaxed-pass (cdr ps) longs (cdr olds) old-labels stretch region (cons (tuple n addr region) passed) acc-longs addrs grew))
+                      (relaxed-pass (cdr ps) longs (cdr olds) old-labels stretch region (lm-put passed n addr region #f) acc-longs addrs grew))
                     (p-align (k)
                       (let ((growth (i64- (padding addr k) (padding was k))))
                         (relaxed-pass (cdr ps) longs (cdr olds) old-labels (i64+ stretch growth) (i64+ region 1) passed acc-longs addrs
                                       (or grew (not (i64= growth 0))))))
                     (p-branch (cc s)
                       (let* ((long (car longs))
+                             (here (if long nil (label-laid s passed)))
+                             (before (if (or long (not (null? here))) nil (label-laid s old-labels)))
                              (now (cond (long #t)
-                                        ((not (null? (label-laid s passed))) (not (fits8? (i64- (extract (car (label-laid s passed)) 2) (i64+ addr 2)))))
-                                        ((null? (label-laid s old-labels)) #t)
+                                        ((not (null? here)) (not (fits8? (i64- (extract (car here) 2) (i64+ addr 2)))))
+                                        ((null? before) #t)
                                         (else
-                                         (let* ((t (car (label-laid s old-labels))) (target (extract t 2)) (same (i64= (extract t 3) region)))
+                                         (let* ((t (car before)) (target (extract t 2)) (same (i64= (extract t 3) region)))
                                            (cond ((and (not (i64= stretch 0)) (or (i64< stretch 0) same))
                                                   (not (fits8? (i64- (i64+ target stretch) (i64+ addr 2)))))
                                                  ((and (i64> stretch 0) (i64< target addr)) #f)
@@ -553,7 +612,7 @@
       (define-rec
         (relaxed (subr kfx (pieces (listof bool acyclic) (listof i64 acyclic)) (listof bool acyclic))
           (lambda (ps longs addrs)
-            (let ((r (relaxed-pass ps longs addrs (labels-in ps addrs 0 nil) 0 0 nil nil nil #f)))
+            (let ((r (relaxed-pass ps longs addrs (labels-in ps addrs 0 (lm-none)) 0 0 (lm-none) nil nil #f)))
               (if (extract r 3) (relaxed ps (extract r 1) (extract r 2)) longs)))))
 
       (define settled (subr kfx (pieces (listof bool acyclic)) (listof bool acyclic))
@@ -568,17 +627,16 @@
       (define-datatype where (where i64 i64 bool))
 
       (define-rec
-        (where-of (subr kfx (string (listof (tupleof string i64 i64 bool) acyclic)) (listof where acyclic))
-          (lambda (n xs)
-            (cond ((null? xs) nil)
-                  ((string=? (extract (car xs) 1) n) (list (where (extract (car xs) 2) (extract (car xs) 3) (extract (car xs) 4))))
-                  (else (where-of n (cdr xs)))))))
+        (where-of (subr kfx (string lmap) (listof where acyclic))
+          (lambda (n t)
+            (let ((x (lm-get n t)))
+              (if (null? x) nil (list (where (extract (car x) 2) (extract (car x) 3) (extract (car x) 4))))))))
 
       "A section made: its bytes and its relocations."
       (define-datatype made (made bytes (listof reloc acyclic)))
 
       (define-rec
-        (emitted (subr kfx (pieces (listof bool acyclic) i64 i64 (listof (tupleof string i64 i64 bool) acyclic) strings (listof (tupleof string i64) acyclic) bytes (listof reloc acyclic)) made)
+        (emitted (subr kfx (pieces (listof bool acyclic) i64 i64 lmap strings (listof (tupleof string i64) acyclic) bytes (listof reloc acyclic)) made)
           (lambda (ps longs sec off syms commons sets out rs)
             "The section's bytes (`out`, reversed) and relocations, each
              symbol resolved as `as` resolves it (this file's head)."
@@ -717,7 +775,7 @@
           (lambda (xs k) (if (i64<= k 0) xs (sexps-after-longs (cdr xs) (i64- k 1))))))
 
       (define-rec
-        (undefined-names (subr kfx (strings (listof (tupleof string i64 i64 bool) acyclic) strings strings) strings)
+        (undefined-names (subr kfx (strings lmap strings strings) strings)
           (lambda (ns syms commons acc)
             "The names relocations name that are no section's, none defined
              here, no common: each once, in the order first named."
@@ -733,7 +791,7 @@
       "Where a symbol is in the image (C451): its section's place there and
        its offset in it, or a common's place; none, if neither."
       (define-rec
-        (image-at (subr kfx (string (listof (tupleof string i64 i64 bool) acyclic) (listof (tupleof string i64) acyclic) (listof i64 acyclic)) (listof i64 acyclic))
+        (image-at (subr kfx (string lmap (listof (tupleof string i64) acyclic) (listof i64 acyclic)) (listof i64 acyclic))
           (lambda (n syms commons bases)
             (cond ((string-member? n section-names)
                    (list (car (sexps-after-i64s bases (index-of-symbol n section-names 0)))))
@@ -751,7 +809,7 @@
        offset: `S + A - P`, the image's places; an absolute one or a symbol
        the image lacks, not yet."
       (define-rec
-        (image-fixes (subr kfx ((listof reloc acyclic) i64 (listof (tupleof string i64 i64 bool) acyclic) (listof (tupleof string i64) acyclic) (listof i64 acyclic) (listof (tupleof i64 i64) acyclic)) (listof (tupleof i64 i64) acyclic))
+        (image-fixes (subr kfx ((listof reloc acyclic) i64 lmap (listof (tupleof string i64) acyclic) (listof i64 acyclic) (listof (tupleof i64 i64) acyclic)) (listof (tupleof i64 i64) acyclic))
           (lambda (rs base syms commons bases acc)
             (if (null? rs)
                 (reverse acc)
@@ -797,7 +855,8 @@
                                                (tuple (extract x 1) k (extract x 2) (string-member? (extract x 1) gs)))
                                              (extract (offsets (car (sexps-after-sections ss k)) (car (sexps-after-longs longs k)) 0 nil) 1)))
                                       (the (listof i64 acyclic) (list 0 1 2 3)))))
-                   (mades (map (lambda ((k i64)) (emitted (car (sexps-after-sections ss k)) (car (sexps-after-longs longs k)) k 0 syms (map (lambda ((c (tupleof string i64 i64))) (extract c 1)) commons) sets nil nil))
+                   (sm (syms-map syms (lm-none)))
+                   (mades (map (lambda ((k i64)) (emitted (car (sexps-after-sections ss k)) (car (sexps-after-longs longs k)) k 0 sm (map (lambda ((c (tupleof string i64 i64))) (extract c 1)) commons) sets nil nil))
                                (the (listof i64 acyclic) (list 0 1 2 3))))
                    (text-m (car mades)) (data-m (car (cdr mades))) (bss-m (car (cdr (cdr mades)))) (ro-m (car (cdr (cdr (cdr mades)))))
                    (code (tagcase text-m (made (b r) b))) (text-rs (tagcase text-m (made (b r) r)))
@@ -811,7 +870,7 @@
                    (cs (commons-placed (the (listof (tupleof string i64 i64) acyclic) commons) (i64+ b0 bss-size) nil))
                    (bases (the (listof i64 acyclic) (list t0 d0 b0 r0)))
                    (fix (lambda ((rs (listof reloc acyclic)) (base i64) (bs bytes))
-                          (patched bs 0 (image-fixes rs base syms (extract cs 1) bases nil) nil))))
+                          (patched bs 0 (image-fixes rs base sm (extract cs 1) bases nil) nil))))
               (concat (list (fix text-rs t0 code) (zeros (i64- r0 (size code)) nil)
                             (fix ro-rs r0 ro) (zeros (i64- d0 (i64+ r0 (size ro))) nil)
                             (fix data-rs d0 data) (zeros (i64- (extract cs 2) (i64+ d0 (size data))) nil))))))))
@@ -829,7 +888,8 @@
                                                (tuple (extract x 1) k (extract x 2) (string-member? (extract x 1) gs)))
                                              (extract (offsets (car (sexps-after-sections ss k)) (car (sexps-after-longs longs k)) 0 nil) 1)))
                                       (the (listof i64 acyclic) (list 0 1 2 3)))))
-                   (mades (map (lambda ((k i64)) (emitted (car (sexps-after-sections ss k)) (car (sexps-after-longs longs k)) k 0 syms (map (lambda ((c (tupleof string i64 i64))) (extract c 1)) commons) sets nil nil))
+                   (sm (syms-map syms (lm-none)))
+                   (mades (map (lambda ((k i64)) (emitted (car (sexps-after-sections ss k)) (car (sexps-after-longs longs k)) k 0 sm (map (lambda ((c (tupleof string i64 i64))) (extract c 1)) commons) sets nil nil))
                                (the (listof i64 acyclic) (list 0 1 2 3))))
                    (text-m (car mades)) (data-m (car (cdr mades))) (bss-m (car (cdr (cdr mades)))) (ro-m (car (cdr (cdr (cdr mades)))))
                    (code (tagcase text-m (made (b r) b))) (text-rs (tagcase text-m (made (b r) r)))
@@ -841,7 +901,7 @@
                    (locals (filter (lambda ((x (tupleof string i64 i64 bool))) (and (not (extract x 4)) (not (has-prefix? (extract x 1) ".L")))) syms))
                    (defined (filter (lambda ((x (tupleof string i64 i64 bool))) (extract x 4)) syms))
                    (named-by-relocs (map (lambda ((r reloc)) (tagcase r (reloc (o t s a) s))) (onto text-rs data-rs)))
-                   (undefined (undefined-names named-by-relocs syms (map (lambda ((c (tupleof string i64 i64))) (extract c 1)) commons) nil))
+                   (undefined (undefined-names named-by-relocs sm (map (lambda ((c (tupleof string i64 i64))) (extract c 1)) commons) nil))
                    (local-names (map (lambda ((x (tupleof string i64 i64 bool))) (extract x 1)) locals))
                    (global-names (onto (map (lambda ((x (tupleof string i64 i64 bool))) (extract x 1)) defined)
                                        (onto (map (lambda ((c (tupleof string i64 i64))) (extract c 1)) commons) undefined)))
