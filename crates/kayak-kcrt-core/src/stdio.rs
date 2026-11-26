@@ -12,6 +12,11 @@
 //! reads none in `kc run`; `kc serve` does, a program's read there takes
 //! from its requests). Sharing one is the plan's (`one-runtime.md`).
 //!
+//! A task's read or write never blocks the thread (C547): what would is
+//! parked, its task waiting on an I-cell the scheduler fills once the
+//! descriptor is ready (`sched.rs`), the thread's one wait a `poll` of all
+//! that is waited for ([`wait_any`]).
+//!
 //! A failure is answered as a fixnum, `-2 - KIND` (`KIND` an `io-error`'s
 //! kind's place in [`KINDS`]), its words kept for [`detail`]; kc's l0 makes
 //! the `io-error` of them (`kc/l0.kfx`'s `l0-io`).
@@ -45,7 +50,7 @@ std::thread_local! {
 }
 
 /// A failure's number, its words kept.
-fn failed(e: &std::io::Error) -> i64 {
+pub(crate) fn failed(e: &std::io::Error) -> i64 {
     let name = match e.kind() {
         ErrorKind::NotFound => "not-found",
         ErrorKind::PermissionDenied => "permission-denied",
@@ -99,22 +104,10 @@ pub fn ready() -> bool {
     }) || ready_within(0)
 }
 
-/// Waits until a read of the standard input would not, or until the clock
-/// reaches `until` (`clock_ns`), if given; whether it would not.
-pub fn wait(until: Option<i64>) -> bool {
-    if ready() {
-        return true;
-    }
-    let ms = until.map_or(-1, |t| {
-        ((t - crate::sched::clock_ns()).max(0) as u64)
-            .div_ceil(1_000_000)
-            .min(i32::MAX as u64) as i32
-    });
-    ready_within(ms)
-}
-
 /// The next byte, waiting for one: `0..=255`, `-1` at the end, a
-/// failure's number.
+/// failure's number. It waits only if nothing is buffered and the
+/// descriptor is not [`ready`]: a task's read asks first, and parks if
+/// not (C547, `sched.rs`'s `READ_BYTE`).
 pub fn read_byte() -> i64 {
     INPUT.with(|i| {
         let mut i = i.borrow_mut();
@@ -146,24 +139,105 @@ pub fn read_byte() -> i64 {
     })
 }
 
-/// `s` written to the standard output (`err` false) or error: 0, or a
-/// failure's number. In process (`here`), the output kc's code's values
-/// go to (`OUTPUT`), so that they keep their order.
-pub fn write(s: &str, err: bool, here: bool) -> i64 {
-    use std::io::Write;
-    if here && !err {
-        crate::output_push(s);
-        return 0;
-    }
-    let r = if err {
-        let mut e = std::io::stderr().lock();
-        e.write_all(s.as_bytes()).and_then(|()| e.flush())
-    } else {
-        let mut o = std::io::stdout().lock();
-        o.write_all(s.as_bytes()).and_then(|()| o.flush())
+/// Whether a write to `fd` of at most [`CHUNK`] bytes would not block.
+pub fn writable(fd: i32) -> bool {
+    let mut p = libc::pollfd {
+        fd,
+        events: libc::POLLOUT,
+        revents: 0,
     };
-    match r {
-        Ok(()) => 0,
-        Err(e) => failed(&e),
+    loop {
+        // SAFETY: one `pollfd`, valid for the call.
+        let n = unsafe { libc::poll(&mut p, 1, 0) };
+        if n >= 0 {
+            return n > 0;
+        }
+        if std::io::Error::last_os_error().kind() != ErrorKind::Interrupted {
+            return true;
+        }
+    }
+}
+
+/// The most written at once to a descriptor `poll` says is writable: a
+/// pipe's atomic write (`PIPE_BUF`), which then does not block. No
+/// descriptor is made non-blocking (`O_NONBLOCK`), which its other users
+/// (a shell's terminal) would see.
+pub const CHUNK: usize = 4096;
+
+/// One write of `bytes` to `fd`, perhaps short; retried if interrupted.
+fn write_once(fd: i32, bytes: &[u8]) -> std::io::Result<usize> {
+    loop {
+        // SAFETY: `bytes` is readable for its length.
+        let n = unsafe { libc::write(fd, bytes.as_ptr().cast(), bytes.len()) };
+        if n >= 0 {
+            return Ok(n as usize);
+        }
+        let e = std::io::Error::last_os_error();
+        if e.kind() != ErrorKind::Interrupted {
+            return Err(e);
+        }
+    }
+}
+
+/// As much of `bytes` written to `fd` as it takes without blocking, a
+/// chunk at a time while it is writable: how much.
+pub fn write_some(fd: i32, bytes: &[u8]) -> std::io::Result<usize> {
+    let mut at = 0;
+    while at < bytes.len() && writable(fd) {
+        let n = write_once(fd, &bytes[at..(at + CHUNK).min(bytes.len())])?;
+        if n == 0 {
+            break;
+        }
+        at += n;
+    }
+    Ok(at)
+}
+
+/// All of `bytes` written to `fd`, waiting as it must: 0, or a failure's
+/// number.
+pub fn write_all(fd: i32, bytes: &[u8]) -> i64 {
+    let mut at = 0;
+    while at < bytes.len() {
+        match write_once(fd, &bytes[at..]) {
+            Ok(n) => at += n,
+            Err(e) => return failed(&e),
+        }
+    }
+    0
+}
+
+/// Waits until the standard input is ready (if `input`), or one of `outs`
+/// writable, or the clock reaches `until`, if given: one `poll` of them
+/// all, the thread's one wait when no task can run (C547).
+pub fn wait_any(until: Option<i64>, input: bool, outs: &[i32]) {
+    if input && ready() {
+        return;
+    }
+    let mut ps: Vec<libc::pollfd> = Vec::new();
+    if input {
+        ps.push(libc::pollfd {
+            fd: 0,
+            events: libc::POLLIN,
+            revents: 0,
+        });
+    }
+    for &fd in outs {
+        ps.push(libc::pollfd {
+            fd,
+            events: libc::POLLOUT,
+            revents: 0,
+        });
+    }
+    let ms = until.map_or(-1, |t| {
+        ((t - crate::sched::clock_ns()).max(0) as u64)
+            .div_ceil(1_000_000)
+            .min(i32::MAX as u64) as i32
+    });
+    loop {
+        // SAFETY: `ps` holds `ps.len()` `pollfd`s, valid for the call.
+        let n = unsafe { libc::poll(ps.as_mut_ptr(), ps.len() as libc::nfds_t, ms) };
+        if n >= 0 || std::io::Error::last_os_error().kind() != ErrorKind::Interrupted {
+            return;
+        }
     }
 }

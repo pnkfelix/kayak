@@ -311,6 +311,91 @@ pub mod kc_front {
         }
     }
 
+    // A task's read or write, parked if it would block (C547): it gives
+    // the runtime an I-cell, which the runtime fills once the descriptor is
+    // ready if it answers `-100`, parked; the task waits for it as for any
+    // (`icell-get`, the scheduler's). `%io-arg` the write's string; `%io-read`
+    // and `%io-write` make l0 the sum FX-26 gives of the answer.
+    #[inline]
+    pub fn io_read_parked() -> Str {
+        str_lit!("(%io-read (let ((%io-c (make-icell))) (let ((%io-k (%sched 103 %io-c #u))) (if (= %io-k -100) (icell-get %io-c) %io-k))))")
+    }
+
+    #[inline]
+    pub fn io_write_out_parked() -> Str {
+        str_lit!("(%io-write (let ((%io-s %io-arg)) (let ((%io-c (make-icell))) (let ((%io-k (%sched 104 %io-s %io-c))) (if (= %io-k -100) (icell-get %io-c) %io-k)))))")
+    }
+
+    #[inline]
+    pub fn io_write_err_parked() -> Str {
+        str_lit!("(%io-write (let ((%io-s %io-arg)) (let ((%io-c (make-icell))) (let ((%io-k (%sched 105 %io-s %io-c))) (if (= %io-k -100) (icell-get %io-c) %io-k)))))")
+    }
+
+    /// `e`, `%io-arg` in it `x`.
+    pub fn io_put(e: kayak_rt::data::DataAt<'static, Sexp>, x: kayak_rt::data::DataAt<'static, Sexp>) -> kayak_rt::data::DataAt<'static, Sexp> {
+        let tagcase_ = e;
+        if Sexp::__is_Sym(tagcase_) {
+            let (n, f, p,) = Sexp::__Sym(tagcase_);
+            if string_eq_p(n, str_lit!("%io-arg")) {
+                x
+            } else {
+                e
+            }
+        } else if Sexp::__is_Lst(tagcase_) {
+            let (xs, f, l, p,) = Sexp::__Lst(tagcase_);
+            lst(map(kayak_rt::as_proc(kayak_rt::closure1s((x,), |(x,), y: kayak_rt::data::DataAt<'static, Sexp>| {
+                io_put(y, x)
+            })), xs), f, l, p)
+        } else {
+            let other = tagcase_;
+            e
+        }
+    }
+
+    /// `e`, a program of tasks' form, each `(read-byte)`, `(write-out s)`
+    /// and `(write-err s)` in it a task's, parked if it would block
+    /// (C547): not in a quoted datum, nor a `pselect` arm's event, which
+    /// is read once it is ready.
+    pub fn io_parked(e: kayak_rt::data::DataAt<'static, Sexp>) -> kayak_rt::data::DataAt<'static, Sexp> {
+        let tagcase_ = e;
+        if Sexp::__is_Lst(tagcase_) {
+            let (xs, f, l, p,) = Sexp::__Lst(tagcase_);
+            if null_p(xs) {
+                e
+            } else if (sym_is_p(car(xs), str_lit!("quote")) || sym_is_p(car(xs), str_lit!("quasiquote"))) {
+                e
+            } else if (sym_is_p(car(xs), str_lit!("read-byte")) && null_p(cdr(xs))) {
+                car(read_all(io_read_parked(), f, 1i64))
+            } else if ((sym_is_p(car(xs), str_lit!("write-out")) || sym_is_p(car(xs), str_lit!("write-err"))) && i64_eq(size(xs), 2i64)) {
+                io_put(car(read_all(if sym_is_p(car(xs), str_lit!("write-out")) {
+                    io_write_out_parked()
+                } else {
+                    io_write_err_parked()
+                }, f, 1i64)), io_parked(second(xs)))
+            } else if sym_is_p(car(xs), str_lit!("pselect")) {
+                lst(kayak_rt::heap_cons(car(xs), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), arm: kayak_rt::data::DataAt<'static, Sexp>| {
+                    let tagcase_ = arm;
+                    if Sexp::__is_Lst(tagcase_) {
+                        let (ys, f2, l2, p2,) = Sexp::__Lst(tagcase_);
+                        if null_p(ys) {
+                            arm
+                        } else {
+                            lst(kayak_rt::heap_cons(car(ys), map(kayak_rt::as_proc(io_parked), cdr(ys))), f2, l2, p2)
+                        }
+                    } else {
+                        let other = tagcase_;
+                        arm
+                    }
+                })), cdr(xs))), f, l, p)
+            } else {
+                lst(map(kayak_rt::as_proc(io_parked), xs), f, l, p)
+            }
+        } else {
+            let other = tagcase_;
+            e
+        }
+    }
+
     /// `e`, each `(extract E LABEL)` in it `(extract E LABEL FILE:POS)`,
     /// its place as read, a string (C545): where the checker found the
     /// index of the field it names (`index`), which a form's datum,
@@ -1591,7 +1676,22 @@ pub mod kc_front {
         });
         let keyed = map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), t: Str| {
             car(read_all(t, str_lit!("forms"), 1i64))
-        })), reverse(forms_keyed(map(kayak_rt::as_proc(extracts_placed), modules_expanded(forms, nil::<kayak_rt::data::DataAt<'static, kc_front::Kmod>>(), nil::<kayak_rt::data::DataAt<'static, Sexp>>(), faces_of(forms))), 0i64, nil::<Str>())));
+        })), reverse(forms_keyed(map(kayak_rt::as_proc(extracts_placed), modules_expanded(if any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::data::DataAt<'static, Sexp>| {
+            (head_is_p(f, str_lit!("define")) && {
+                let tagcase_ = f;
+                if Sexp::__is_Lst(tagcase_) {
+                    let (ys, f2, l2, p2,) = Sexp::__Lst(tagcase_);
+                    (not(null_p(cdr(ys))) && sym_is_p(second(ys), str_lit!("%processes")))
+                } else {
+                    let other = tagcase_;
+                    false
+                }
+            })
+        })), forms) {
+            map(kayak_rt::as_proc(io_parked), forms)
+        } else {
+            forms
+        }, nil::<kayak_rt::data::DataAt<'static, kc_front::Kmod>>(), nil::<kayak_rt::data::DataAt<'static, Sexp>>(), faces_of(forms))), 0i64, nil::<Str>())));
         let keys = map(kd, keyed);
         let keys_text = string_append(str_lit!("("), string_append(words_of(keys), str_lit!(")")));
         let old = db_node(d, key1(str_lit!("keys"), path));

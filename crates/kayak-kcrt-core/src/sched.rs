@@ -58,6 +58,19 @@ pub(crate) const READ_BYTE: i64 = 103;
 pub(crate) const WRITE_OUT: i64 = 104;
 pub(crate) const WRITE_ERR: i64 = 105;
 pub(crate) const IO_DETAIL: i64 = 106;
+/// What a read or write given an I-cell answers when it would block
+/// (C547): parked, the I-cell filled with its answer once the descriptor
+/// is ready, which its task waits for (`icell-get`).
+const PARKED: i64 = -100;
+
+/// A write parked (C547): its descriptor, its bytes, how many written,
+/// and the I-cell its answer goes to.
+struct Pending {
+    fd: i32,
+    bytes: Vec<u8>,
+    at: usize,
+    cell: u64,
+}
 
 pub(crate) fn unit() -> u64 {
     (super::IMM_UNIT << super::IMM_SHIFT) | super::TAG_IMMEDIATE
@@ -104,6 +117,10 @@ struct Sched {
     /// Wakers run once a read of the standard input would not wait,
     /// newest first (Fixpt's `STDIN_WAITERS`).
     stdin_waiters: Vec<u64>,
+    /// Reads parked, oldest first: each I-cell given the next byte (C547).
+    reads: VecDeque<u64>,
+    /// Writes parked, oldest first, each descriptor's in order.
+    writes: Vec<Pending>,
 }
 
 impl Sched {
@@ -133,6 +150,13 @@ impl Sched {
         }
         for w in &self.stdin_waiters {
             f(std::ptr::from_ref(w).addr());
+        }
+        let (a, b) = self.reads.as_slices();
+        for w in a.iter().chain(b) {
+            f(std::ptr::from_ref(w).addr());
+        }
+        for p in &self.writes {
+            f(std::ptr::from_ref(&p.cell).addr());
         }
     }
 
@@ -430,7 +454,7 @@ pub(crate) fn op(args: *const u64, block: *mut u64) -> Result<u64, String> {
             with(|s| s.timers.retain(|&(_, w)| w != a));
             unit()
         }
-        21 => timers_wait(true),
+        21 => timers_wait(true)?,
         22 => {
             let ws = list_items(slot(a, ICELL_WAITERS));
             if ws.contains(&b) {
@@ -476,7 +500,7 @@ pub(crate) fn op(args: *const u64, block: *mut u64) -> Result<u64, String> {
             with(|s| s.running = (s.running + if a & TAG_MASK == 0 { task } else { 0 }).max(0));
             unit()
         }
-        30 => timers_wait(false),
+        30 => timers_wait(false)?,
         // PREEMPT_WANTED: kc's code is not preempted yet.
         31 => falsity(),
         32 => {
@@ -573,16 +597,18 @@ pub(crate) fn op(args: *const u64, block: *mut u64) -> Result<u64, String> {
             with(|s| s.stdin_waiters.retain(|&w| w != a));
             unit()
         }
-        READ_BYTE => fixnum(crate::stdio::read_byte()),
-        WRITE_OUT | WRITE_ERR => fixnum(crate::stdio::write(
-            &String::from_iter(
-                super::string_points(a)
-                    .iter()
-                    .map(|&c| char::from_u32(c).unwrap_or('\u{fffd}')),
-            ),
-            n == WRITE_ERR,
-            crate::here(),
-        )),
+        // A read given an I-cell (`a`) parks if it would wait (C547); given
+        // unit, a program's with no tasks, it waits.
+        READ_BYTE => fixnum(
+            if a == unit() || (with(|s| s.reads.is_empty()) && crate::stdio::ready()) {
+                crate::stdio::read_byte()
+            } else {
+                with(|s| s.reads.push_back(a));
+                PARKED
+            },
+        ),
+        // A write of `a`; given an I-cell (`b`), parked if it would wait.
+        WRITE_OUT | WRITE_ERR => fixnum(written(a, if n == WRITE_ERR { 2 } else { 1 }, b)),
         IO_DETAIL => super::string_in(block, &crate::stdio::detail())?,
         46..=54 => return Err("kc: not yet: a task that waits for a process".to_string()),
         55 => {
@@ -606,10 +632,82 @@ pub(crate) fn op(args: *const u64, block: *mut u64) -> Result<u64, String> {
     })
 }
 
-/// I-cell `c` given `v`, its one write; the tasks waiting for it run, in
-/// the order they began to wait.
+/// `(icell-put! c v)`: [`icell_fill`].
 fn icell_put(args: *const u64, _block: *mut u64) -> Result<u64, String> {
     let (c, v) = (arg(args, 1), arg(args, 2));
+    icell_fill(c, v)?;
+    Ok(unit())
+}
+
+/// String `s` written to `fd` (C546, C547): in process, the standard
+/// output the values' (`OUTPUT`), so that they keep their order; else as
+/// much as it takes without blocking, the rest parked with I-cell `cell`
+/// (`PARKED`), or, given no cell (unit), written waiting. Behind writes
+/// parked before it, it is parked too, so that each descriptor's keep
+/// their order.
+fn written(s: u64, fd: i32, cell: u64) -> i64 {
+    let text: String = super::string_points(s)
+        .iter()
+        .map(|&c| char::from_u32(c).unwrap_or('\u{fffd}'))
+        .collect();
+    if fd == 1 && crate::here() {
+        crate::output_push(&text);
+        return 0;
+    }
+    let bytes = text.into_bytes();
+    if cell == unit() {
+        drained(Some(fd));
+        return crate::stdio::write_all(fd, &bytes);
+    }
+    if with(|s| s.writes.iter().any(|p| p.fd == fd)) {
+        with(|s| {
+            s.writes.push(Pending {
+                fd,
+                bytes,
+                at: 0,
+                cell,
+            })
+        });
+        return PARKED;
+    }
+    match crate::stdio::write_some(fd, &bytes) {
+        Err(e) => crate::stdio::failed(&e),
+        Ok(n) if n == bytes.len() => 0,
+        Ok(n) => {
+            with(|s| {
+                s.writes.push(Pending {
+                    fd,
+                    bytes,
+                    at: n,
+                    cell,
+                })
+            });
+            PARKED
+        }
+    }
+}
+
+/// Each write parked (to `fd`, or to any) written, waiting as it must,
+/// its I-cell not filled: before a value is written on the standard output
+/// (`kc_show`), and as the run ends, what its tasks wrote not lost.
+pub(crate) fn drained(fd: Option<i32>) {
+    let ps: Vec<(i32, Vec<u8>)> = with(|s| {
+        let (go, keep): (Vec<_>, Vec<_>) = std::mem::take(&mut s.writes)
+            .into_iter()
+            .partition(|p| fd.is_none_or(|f| f == p.fd));
+        s.writes = keep;
+        go.into_iter()
+            .map(|p| (p.fd, p.bytes[p.at..].to_vec()))
+            .collect()
+    });
+    for (f, b) in ps {
+        crate::stdio::write_all(f, &b);
+    }
+}
+
+/// I-cell `c` given `v`, its one write; the tasks waiting for it run, in
+/// the order they began to wait.
+fn icell_fill(c: u64, v: u64) -> Result<(), String> {
     if slot(c, ICELL_FULL) != falsity() {
         return Err("an i-cell written twice".to_string());
     }
@@ -622,28 +720,75 @@ fn icell_put(args: *const u64, _block: *mut u64) -> Result<u64, String> {
             s.queue.push_back(w);
         }
     });
-    Ok(unit())
+    Ok(())
+}
+
+/// What is parked and now ready done (C547): the reads, while the input
+/// is ready, each I-cell given its byte; each descriptor's first writes, as
+/// much as it takes, each I-cell given 0 (or a failure's number) once its
+/// bytes are all written.
+fn io_done() -> Result<(), String> {
+    let mut filled: Vec<(u64, i64)> = Vec::new();
+    while let Some(c) = with(|s| s.reads.front().copied()) {
+        if !crate::stdio::ready() {
+            break;
+        }
+        with(|s| s.reads.pop_front());
+        filled.push((c, crate::stdio::read_byte()));
+    }
+    let fds: Vec<i32> = with(|s| {
+        let mut f: Vec<i32> = s.writes.iter().map(|p| p.fd).collect();
+        f.dedup();
+        f
+    });
+    for fd in fds {
+        while let Some(k) = with(|s| s.writes.iter().position(|p| p.fd == fd)) {
+            let (bytes, at) = with(|s| (s.writes[k].bytes.clone(), s.writes[k].at));
+            match crate::stdio::write_some(fd, &bytes[at..]) {
+                Err(e) => {
+                    let p = with(|s| s.writes.remove(k));
+                    filled.push((p.cell, crate::stdio::failed(&e)));
+                }
+                Ok(n) if at + n == bytes.len() => {
+                    let p = with(|s| s.writes.remove(k));
+                    filled.push((p.cell, 0));
+                }
+                Ok(n) => {
+                    with(|s| s.writes[k].at += n);
+                    break;
+                }
+            }
+        }
+    }
+    for (c, v) in filled {
+        icell_fill(c, fixnum(v))?;
+    }
+    Ok(())
 }
 
 /// When no task can run and the first waits: `#f` if no timer is set and
-/// no waker waits for the standard input; else, having slept until the
-/// earliest timer, or until the input is ready, whichever is first (if
-/// `sleep`; a wait in `poll`, no spin), the input's wakers run if it is
-/// ready, and each timer due taken, its waker run, in the order of their
-/// times, and `#t` (Fixpt's `timers_wait`, C546).
-fn timers_wait(sleep: bool) -> u64 {
-    let (earliest, input) = with(|s| {
+/// nothing waits for the standard input or a write (C547); else, having
+/// slept (if `sleep`) until the earliest timer, or until the input is
+/// ready or a descriptor written to writable, whichever is first, in one
+/// `poll` (no spin), what is parked and ready done (`io_done`), the
+/// input's wakers run if it is ready, and each timer due taken, its waker
+/// run (in the order of their times), and `#t` (Fixpt's `timers_wait`).
+fn timers_wait(sleep: bool) -> Result<u64, String> {
+    let (earliest, input, outs) = with(|s| {
+        let mut outs: Vec<i32> = s.writes.iter().map(|p| p.fd).collect();
+        outs.dedup();
         (
             s.timers.iter().map(|&(t, _)| t).min(),
-            !s.stdin_waiters.is_empty(),
+            !s.stdin_waiters.is_empty() || !s.reads.is_empty(),
+            outs,
         )
     });
-    if earliest.is_none() && !input {
-        return falsity();
+    if earliest.is_none() && !input && outs.is_empty() {
+        return Ok(falsity());
     }
     if sleep {
-        if input {
-            crate::stdio::wait(earliest);
+        if input || !outs.is_empty() {
+            crate::stdio::wait_any(earliest, input, &outs);
         } else if let Some(t) = earliest {
             let now = clock_ns();
             if t > now {
@@ -651,7 +796,8 @@ fn timers_wait(sleep: bool) -> u64 {
             }
         }
     }
-    if input && crate::stdio::ready() {
+    io_done()?;
+    if with(|s| !s.stdin_waiters.is_empty()) && crate::stdio::ready() {
         with(|s| {
             let ws = std::mem::take(&mut s.stdin_waiters);
             for w in ws.into_iter().rev() {
@@ -668,7 +814,7 @@ fn timers_wait(sleep: bool) -> u64 {
             s.queue.push_back(w);
         }
     });
-    boolean(true)
+    Ok(boolean(true))
 }
 
 /// Whether a message shares `v` with its sender rather than copies it:

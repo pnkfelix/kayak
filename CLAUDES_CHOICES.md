@@ -17623,3 +17623,45 @@ for `(read-byte)`, and kc had no I/O primitive at all (not even
   scheduler's wait in `poll`), all built and in process.
 - **The full check**: `check: all passed`, 10 min 13 s (the mean of 110 runs 8 min 39 s; kc-steps 3 min 58 s of it, 395 programs); the pre-check passed first. A first run failed on the new test alone (its `write-err` text, which kc-steps took as Fixpt's answer), fixed as above.
 - **Next, asked of the user**: the async form (a read or write that would block parks its task instead), as C547, waiting for their word.
+
+## C547. A task's read or write parks, never blocks the thread (2026-11-26)
+
+The user, asked after C546 ("Okay so you're making a small set of
+*async-pilled* IO primitives, right?"; I said no, half: readiness and a
+`pselect`'s wait were, a bare `read-byte` and every write blocked the
+thread, as Fixpt's do): "Do it now. We can deviate from Fixpt here".
+- **What changes from Fixpt**: a read or write that would block parks its
+  task; the thread runs the others, and waits only when none can run, in
+  one `poll` of all that is waited for (the input, each descriptor with
+  bytes parked, the earliest timer). Every answer is still one Fixpt could
+  give; what differs is what runs meanwhile. Shown: a ticker task sleeping
+  100 ms beside a read of a byte 0.3 s late, or a write of 1 MB to a pipe
+  read 0.5 s late, wakes in time under kc (1), late under Fixpt (0).
+- **Parking through an I-cell**: tasks are continuations in FX-26, which
+  Rust cannot park, so the waiting is FX-26's. In a program of tasks
+  (`%processes` defined, C544), kc's front end (`io-parked`, before the
+  processes' rewrite, so that its `icell-get` is a task's wait) makes each
+  `(read-byte)`, `(write-out s)`, `(write-err s)` give the runtime a new
+  I-cell: it answers at once if it can, else `-100`, parked, keeping the
+  cell (an exact root, `slots`), and fills it with the answer once the
+  descriptor is ready (`io_done`, from `timers_wait`); the task waits in
+  `icell-get`. A `pselect` arm's event is left as it is: it is read once
+  ready. With no tasks, unit is given for the cell, and it waits as before
+  (C546): parking with nobody else to run is waiting.
+- **Writes without `O_NONBLOCK`**, which the descriptor's other users (a
+  shell's terminal) would see: written a chunk at a time, at most a pipe's
+  `PIPE_BUF` (4096), while `poll` says it is writable, which then does not
+  block; the rest parked, each descriptor's writes in order (a write behind
+  parked ones parks too). A socket may take less than a chunk and block
+  (TODO). What is parked is written, waiting, before a top-level value's
+  line (`kc_show`, so that no line lands inside a write's bytes) and as the
+  run ends (built `io_drained`, in process `done`), so nothing is lost. In
+  process the standard output stays kc's buffer (`OUTPUT`), never parked.
+- **l0**: `(%io-read E)`, `(%io-write E)` make the sum of an answer `E`
+  (C546's texts, over `%io-k`), whether the operation's or the I-cell's.
+- **Checked**: kc-steps' new `parking` check (the read and the write, built
+  and in process, a producer and a consumer 0.8 s late, the ticker's
+  margin 400 ms), not against Fixpt, which differs by design. By hand also
+  under collection stress (a heap of 64 words in process; every 31st
+  allocation built), the cells moving.
+- **The full check**: `check: all passed`, 12 min 41 s (the mean of 111 runs 8 min 41 s; kc-steps 4 min 51 s of it, 395 programs and the parking check); the pre-check passed first (after two clippy fixes, `while let` and one `if`).

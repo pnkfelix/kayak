@@ -171,6 +171,50 @@
                   (rec-members-keyed (cdr ms) #t
                     (cons (string-list-append (list "(" n " " (kc-datum (lst (cons (sym "define" "" 0) xs) "" 0 0)) (if same " same)" ")"))) acc)))))))
 
+      "A task's read or write, parked if it would block (C547): it gives
+       the runtime an I-cell, which the runtime fills once the descriptor is
+       ready if it answers `-100`, parked; the task waits for it as for any
+       (`icell-get`, the scheduler's). `%io-arg` the write's string; `%io-read`
+       and `%io-write` make l0 the sum FX-26 gives of the answer."
+      (define io-read-parked string "(%io-read (let ((%io-c (make-icell))) (let ((%io-k (%sched 103 %io-c #u))) (if (= %io-k -100) (icell-get %io-c) %io-k))))")
+      (define io-write-out-parked string "(%io-write (let ((%io-s %io-arg)) (let ((%io-c (make-icell))) (let ((%io-k (%sched 104 %io-s %io-c))) (if (= %io-k -100) (icell-get %io-c) %io-k)))))")
+      (define io-write-err-parked string "(%io-write (let ((%io-s %io-arg)) (let ((%io-c (make-icell))) (let ((%io-k (%sched 105 %io-s %io-c))) (if (= %io-k -100) (icell-get %io-c) %io-k)))))")
+
+      (define-rec
+        (io-put (subr kfx (sexp sexp) sexp)
+          (lambda (e x)
+            "`e`, `%io-arg` in it `x`."
+            (tagcase e
+              (sym (n f p) (if (string=? n "%io-arg") x e))
+              (lst (xs f l p) (lst (map (lambda ((y sexp)) (io-put y x)) xs) f l p))
+              (else other e)))))
+
+      (define-rec
+        (io-parked (subr kfx (sexp) sexp)
+          (lambda (e)
+            "`e`, a program of tasks' form, each `(read-byte)`, `(write-out s)`
+             and `(write-err s)` in it a task's, parked if it would block
+             (C547): not in a quoted datum, nor a `pselect` arm's event, which
+             is read once it is ready."
+            (tagcase e
+              (lst (xs f l p)
+                (cond ((null? xs) e)
+                      ((or (sym-is? (car xs) "quote") (sym-is? (car xs) "quasiquote")) e)
+                      ((and (sym-is? (car xs) "read-byte") (null? (cdr xs)))
+                       (car (read-all io-read-parked f 1)))
+                      ((and (or (sym-is? (car xs) "write-out") (sym-is? (car xs) "write-err")) (i64= (size xs) 2))
+                       (io-put (car (read-all (if (sym-is? (car xs) "write-out") io-write-out-parked io-write-err-parked) f 1)) (io-parked (second xs))))
+                      ((sym-is? (car xs) "pselect")
+                       (lst (cons (car xs)
+                                  (map (lambda ((arm sexp))
+                                         (tagcase arm
+                                           (lst (ys f2 l2 p2) (if (null? ys) arm (lst (cons (car ys) (map io-parked (cdr ys))) f2 l2 p2)))
+                                           (else other arm)))
+                                       (cdr xs)))
+                            f l p))
+                      (else (lst (map io-parked xs) f l p))))
+              (else other e)))))
+
       (define-rec
         (extracts-placed (subr kfx (sexp) sexp)
           (lambda (e)
@@ -687,7 +731,10 @@
     (define kc-load-forms! (subr qe (db string string sexps string) unit)
       (lambda (d path text forms expanded)
         (let* ((kd (lambda ((x sexp)) (tagcase (car (items x)) (sym (n f p) n) (else other ""))))
-               (keyed (map (lambda ((t string)) (car (read-all t "forms" 1))) (reverse (forms-keyed (map extracts-placed (modules-expanded forms nil nil (faces-of forms))) 0 nil))))
+               (keyed (map (lambda ((t string)) (car (read-all t "forms" 1))) (reverse (forms-keyed (map extracts-placed (modules-expanded (if (any? (lambda ((f sexp)) (and (head-is? f "define") (tagcase f (lst (ys f2 l2 p2) (and (not (null? (cdr ys))) (sym-is? (second ys) "%processes"))) (else other #f)))) forms)
+                                                                                  (map io-parked forms)
+                                                                                  forms)
+                                                                              nil nil (faces-of forms))) 0 nil))))
                (keys (map kd keyed))
                (keys-text (string-append "(" (string-append (words-of keys) ")")))
                (old (db-node d (key1 "keys" path)))

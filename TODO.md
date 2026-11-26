@@ -1719,11 +1719,13 @@ harness); K2 onward Ghuloum's steps; the service after K2's first steps.
   standard I/O (C546): `read-line`, `read-bytes`, the terminal's and the
   file system's primitives not yet; kcrt-core's input a buffer of its own
   beside kayak-rt's (`world.rs`'s `Input`), to share (`one-runtime.md`);
-  a bare `read-byte` (outside a `pselect`) blocks the thread, every task
-  with it, as Fixpt's does: a task's read waiting through the scheduler
-  (operation 44, then the read) is the async way; once processes' output
-  waits too (46-54), one wait over every source (kayak-sys's `Poller`)
-  rather than `poll` of one descriptor. `kc build` (C419): objects no longer listed
+  a task's read or write parks rather than blocks (C547, unlike Fixpt's;
+  a program with no tasks waits, one task the same); still blocking: a
+  top-level value's line (`kc_show`, after what is parked), kayak-rt's
+  engine's own I/O, and a socket's write past its room (a chunk is a
+  pipe's `PIPE_BUF`); once processes' output waits too (46-54), one wait
+  over every source (kayak-sys's `Poller`, epoll) rather than `poll` of a
+  list rebuilt each wait. `kc build` (C419): objects no longer listed
   pruned from `EXE.o.d/` (done, C448); an edited procedure an object of its own (weak
   symbols in its run) should reassembling its run of 64 ever be seen.
 - KFX's datatypes stay nominal (C410, the user's choice after the

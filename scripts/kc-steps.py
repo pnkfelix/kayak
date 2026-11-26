@@ -330,6 +330,39 @@ CONVENTION = {
 }
 
 
+# A task's read or write parked, not the thread blocked (C547): a ticker
+# task sleeping 100 ms wakes in time (1) though another task reads a byte
+# that comes 0.8 s late, or writes 1 MB to a pipe not read for 0.8 s.
+# Fixpt's block the thread (it gives 0); kc's is the async form, the
+# user's choice, so these are checked here, not against Fixpt.
+PARKING = {
+    "read": ('(define-type byte-result (sumof (byte u8) (eof unit) (failed io-error)))\n(define* code (subr pure (byte-result) int)\n  (lambda (b) (tagcase b (byte k (u8->int k)) (eof u -1) (failed e -2))))\n(define start i64 (clock))\n(define got (icell int @g) (make-icell))\n(define woke (icell i64 @w) (make-icell))\n(define reader (addr int @p) (spawn (box int r) (icell-put! got (code (read-byte)))))\n(define ticker (addr int @p) (spawn (box int r) (begin (sleep-until (i64+ start (int->i64 100000000))) (icell-put! woke (i64- (clock) start)))))\n(let* ((w (icell-get woke)) (b (icell-get got)))\n  (list b (if (i64< w (int->i64 400000000)) 1 0)))\n', "(90 1)"),
+    "write": ('(define* done? (subr pure ((sumof (done unit) (failed io-error))) int)\n  (lambda (r) (tagcase r (done u 1) (failed e 0))))\n(define* doubled (subr spin (string int) string) (lambda (s n) (if (= n 0) s (doubled (string-append s s) (- n 1)))))\n(define big string (doubled "0123456789abcdef" 16))\n(define start i64 (clock))\n(define wrote (icell int @g) (make-icell))\n(define woke (icell i64 @w) (make-icell))\n(define writer (addr int @p) (spawn (box int r) (icell-put! wrote (done? (write-err big)))))\n(define ticker (addr int @p) (spawn (box int r) (begin (sleep-until (i64+ start (int->i64 100000000))) (icell-put! woke (i64- (clock) start)))))\n(let* ((w (icell-get woke)) (b (icell-get wrote)))\n  (list b (if (i64< w (int->i64 400000000)) 1 0) (string-length big)))\n', "(1 1 1048576)"),
+}
+
+
+def parking():
+    import time
+    wrong = []
+    for name, (text, want) in PARKING.items():
+        src = os.path.join(WORK, "parking-%s.fx" % name)
+        open(src, "w").write(text)
+        exe = src[:-3]
+        r = run([KC, "--rt", RT, "build", src, exe])
+        if r.returncode != 0:
+            wrong.append("parking %s: kc build: %s" % (name, r.stderr.strip()))
+            continue
+        for how, args in (("built", [exe]), ("kc run", [KC, "run", src])):
+            p = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            time.sleep(0.8)
+            out, err = p.communicate(b"Z" if name == "read" else b"", timeout=120)
+            got = (out.decode().strip().splitlines() or [""])[-1]
+            if got != want or (name == "write" and len(err) != 1048576):
+                wrong.append("parking %s: %s gives %r and %d bytes of error, not %r"
+                             % (name, how, got, len(err), want))
+    return wrong
+
+
 def convention():
     """kc's own convention (C451), in a built program and in process: a
     stack's limit checked at each entry, and fuel."""
@@ -454,6 +487,7 @@ def main():
     wrong += cutoff()
     wrong += expansions()
     wrong += convention()
+    wrong += parking()
     for w in wrong:
         print("kc-steps: " + w)
     print("kc-steps: %d programs, %d by native code (%d of them in process as their executables, %d with a heap of %d words, %d built again warm, no body run), %d by Rust; %d wrong; %d query bodies ran%s"

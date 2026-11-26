@@ -188,6 +188,7 @@ fn program() -> i32 {
     // word and its end and the state, and writes each top-level
     // expression's value.
     unsafe { kc_entry(start, start, state) };
+    kayak_kcrt_core::io_drained();
     if apply {
         give(&input);
         // SAFETY: kc's entry object's, on the state `kc_entry` ran on, the

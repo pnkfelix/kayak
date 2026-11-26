@@ -199,10 +199,11 @@
        operations (`stdio.rs`): a byte, `-1` at its end, 0 written, or a
        failure's number, `-2 - KIND`, its kind an `io-error`'s by its place
        (`stdio.rs`'s `KINDS`), its words operation 106's; the sum FX-26
-       gives made of it here."
-      (define l0-read-byte-text string "(let ((%io-k (%sched 103 #u #u))) (if (>= %io-k 0) (sum byte %io-k) (if (= %io-k -1) (sum eof #u) (sum failed (product (kind (if (= %io-k -2) (sum not-found #u) (if (= %io-k -3) (sum permission-denied #u) (if (= %io-k -4) (sum already-exists #u) (if (= %io-k -5) (sum not-a-directory #u) (if (= %io-k -6) (sum is-a-directory #u) (if (= %io-k -7) (sum broken-pipe #u) (if (= %io-k -8) (sum invalid-data #u) (sum other #u))))))))) (detail (%sched 106 #u #u)))))))")
-      (define l0-write-out-text string "(let ((%io-k (%sched 104 %io-s #u))) (if (= %io-k 0) (sum done #u) (sum failed (product (kind (if (= %io-k -2) (sum not-found #u) (if (= %io-k -3) (sum permission-denied #u) (if (= %io-k -4) (sum already-exists #u) (if (= %io-k -5) (sum not-a-directory #u) (if (= %io-k -6) (sum is-a-directory #u) (if (= %io-k -7) (sum broken-pipe #u) (if (= %io-k -8) (sum invalid-data #u) (sum other #u))))))))) (detail (%sched 106 #u #u))))))")
-      (define l0-write-err-text string "(let ((%io-k (%sched 105 %io-s #u))) (if (= %io-k 0) (sum done #u) (sum failed (product (kind (if (= %io-k -2) (sum not-found #u) (if (= %io-k -3) (sum permission-denied #u) (if (= %io-k -4) (sum already-exists #u) (if (= %io-k -5) (sum not-a-directory #u) (if (= %io-k -6) (sum is-a-directory #u) (if (= %io-k -7) (sum broken-pipe #u) (if (= %io-k -8) (sum invalid-data #u) (sum other #u))))))))) (detail (%sched 106 #u #u))))))")
+       gives made of it here, of `%io-k` (`(%io-read E)`, `(%io-write E)`,
+       `E` the answer: the operation's, or, a task's parked (C547,
+       `kc/front.kfx`'s `io-parked`), its I-cell's)."
+      (define l0-read-rest string "(if (>= %io-k 0) (sum byte %io-k) (if (= %io-k -1) (sum eof #u) (sum failed (product (kind (if (= %io-k -2) (sum not-found #u) (if (= %io-k -3) (sum permission-denied #u) (if (= %io-k -4) (sum already-exists #u) (if (= %io-k -5) (sum not-a-directory #u) (if (= %io-k -6) (sum is-a-directory #u) (if (= %io-k -7) (sum broken-pipe #u) (if (= %io-k -8) (sum invalid-data #u) (sum other #u))))))))) (detail (%sched 106 #u #u))))))")
+      (define l0-write-rest string "(if (= %io-k 0) (sum done #u) (sum failed (product (kind (if (= %io-k -2) (sum not-found #u) (if (= %io-k -3) (sum permission-denied #u) (if (= %io-k -4) (sum already-exists #u) (if (= %io-k -5) (sum not-a-directory #u) (if (= %io-k -6) (sum is-a-directory #u) (if (= %io-k -7) (sum broken-pipe #u) (if (= %io-k -8) (sum invalid-data #u) (sum other #u))))))))) (detail (%sched 106 #u #u)))))")
 
       "`l0-item PATH KEY`: the form KEY of the checked program as an item of
        the core language (C407): `(proc NAME ((K NAME) ...) BODY)` of a
@@ -507,15 +508,22 @@
                          (l0-of path scope env next (lst (list (sym "%sched" f p) (num 102 f p) (second xs) (sym "#u" f p)) f l p)))
                         ;; The standard input and output (C546): operations of
                         ;; kc's scheduler's, the sums FX-26 gives made of what
-                        ;; they answer (`l0-read-byte-text`, `l0-write-out-text`).
+                        ;; they answer (`l0-read-rest`, `l0-write-rest`).
+                        ((and (i64= (size xs) 2) (or (string=? h "%io-read") (string=? h "%io-write")))
+                         (l0-of path scope env next
+                                (lst (list (sym "let" f p) (lst (list (lst (list (sym "%io-k" f p) (second xs)) f l p)) f l p)
+                                           (car (read-all (if (string=? h "%io-read") l0-read-rest l0-write-rest) f 1)))
+                                     f l p)))
+                        ;; Given no I-cell (unit), a program's with no tasks: it waits.
                         ((and (null? (cdr xs)) (string=? h "read-byte"))
-                         (l0-of path scope env next (car (read-all l0-read-byte-text f 1))))
+                         (l0-of path scope env next (car (read-all "(%io-read (%sched 103 #u #u))" f 1))))
                         ((and (null? (cdr xs)) (string=? h "stdin-ready?"))
                          (l0-made "(prim %sched (int 43) (unit) (unit))" next))
                         ((and (i64= (size xs) 2) (or (string=? h "write-out") (string=? h "write-err")))
-                         (let ((body (car (read-all (if (string=? h "write-out") l0-write-out-text l0-write-err-text) f 1))))
-                           (l0-of path scope env next
-                                  (lst (list (sym "let" f p) (lst (list (lst (list (sym "%io-s" f p) (second xs)) f l p)) f l p) body) f l p))))
+                         (l0-of path scope env next
+                                (lst (list (sym "%io-write" f p)
+                                           (lst (list (sym "%sched" f p) (num (if (string=? h "write-out") 104 105) f p) (second xs) (sym "#u" f p)) f l p))
+                                     f l p)))
                         ;; The clock (C544): nanoseconds since the run began, as
                         ;; Fixpt's `clock_ns`, the scheduler's operation 101, kc's own.
                         ((and (null? (cdr xs)) (string=? h "clock"))

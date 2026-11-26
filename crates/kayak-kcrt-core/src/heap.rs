@@ -161,6 +161,8 @@ pub fn collections() -> u64 {
 /// left a dead noted object of the run pointing into words made again with
 /// no collection between (C540).
 pub fn done() {
+    // What its tasks' writes left parked written (C547), not lost.
+    crate::sched::drained(None);
     if let Some(l) = LENT.take()
         && !l.large
     {

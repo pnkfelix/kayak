@@ -1360,7 +1360,16 @@ fn raised_here(message: String, state: *const u64) -> Raised {
 /// `fixpt eval` writes each (C407).
 #[unsafe(no_mangle)]
 pub extern "C" fn kc_show(v: u64) {
+    // What a task's writes left parked written first (C547), so that no
+    // value's line comes inside a write's bytes.
+    sched::drained(Some(1));
     println!("{}", written(v));
+}
+
+/// A built run over (C547): what its tasks' writes left parked written,
+/// not lost.
+pub fn io_drained() {
+    sched::drained(None);
 }
 
 #[cfg(test)]
