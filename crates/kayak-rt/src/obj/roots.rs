@@ -118,8 +118,11 @@ unsafe fn free_boxed<T>(at: usize, poison: bool) {
     }
 }
 
+pub(super) use kayak_heap::roots::spill;
 /// How a kept object is scanned: its bytes, or by its type.
-use kayak_heap::roots::{Gathered as Roots, KeptAt, KeptIndex, Scan, scan_words};
+use kayak_heap::roots::{
+    Gathered as Roots, KeptAt, KeptIndex, Scan, native_cells_run, scan_words, stack_base,
+};
 
 impl Registry {
     fn lock(&self) -> MutexGuard<'_, Inner> {
@@ -658,82 +661,6 @@ pub(crate) fn constant<T: Copy + 'static, S: crate::once::OnceSlot<T> + 'static>
     }
 }
 
-/// The thread's stack's base, its highest address (as the OS gives it,
-/// so that a frame's words before kayak-rt was first called are counted).
-fn stack_base() -> usize {
-    thread_local!(static BASE: Cell<usize> = const { Cell::new(0) });
-    BASE.with(|b| {
-        if b.get() == 0 {
-            b.set(os_stack_base());
-        }
-        b.get()
-    })
-}
-
-#[cfg(target_os = "linux")]
-fn os_stack_base() -> usize {
-    // SAFETY: the calling thread's attributes, read into memory of their
-    // size, and destroyed after.
-    unsafe {
-        let mut attr: libc::pthread_attr_t = std::mem::zeroed();
-        assert_eq!(
-            libc::pthread_getattr_np(libc::pthread_self(), &raw mut attr),
-            0,
-            "the thread's stack"
-        );
-        let (mut addr, mut size) = (std::ptr::null_mut(), 0usize);
-        assert_eq!(
-            libc::pthread_attr_getstack(&raw const attr, &raw mut addr, &raw mut size),
-            0,
-            "the thread's stack"
-        );
-        libc::pthread_attr_destroy(&raw mut attr);
-        addr.addr() + size
-    }
-}
-
-#[cfg(target_os = "macos")]
-fn os_stack_base() -> usize {
-    // SAFETY: the calling thread's own stack's address.
-    unsafe { libc::pthread_get_stackaddr_np(libc::pthread_self()) }.addr()
-}
-
-/// The registers a caller may keep a value in across a call (its
-/// callee-saved ones), spilled into `saved`.
-#[inline(always)]
-pub(super) fn spill(saved: &mut [usize; 12]) {
-    #[cfg(target_arch = "x86_64")]
-    // SAFETY: stores of the callee-saved registers into `saved`, twelve
-    // words, of which six are written.
-    unsafe {
-        std::arch::asm!(
-            "mov [{0}], rbx",
-            "mov [{0} + 8], rbp",
-            "mov [{0} + 16], r12",
-            "mov [{0} + 24], r13",
-            "mov [{0} + 32], r14",
-            "mov [{0} + 40], r15",
-            in(reg) saved.as_mut_ptr(),
-            options(nostack, preserves_flags)
-        );
-    }
-    #[cfg(target_arch = "aarch64")]
-    // SAFETY: stores of the callee-saved registers into `saved`, twelve
-    // words, each written.
-    unsafe {
-        std::arch::asm!(
-            "stp x19, x20, [{0}]",
-            "stp x21, x22, [{0}, #16]",
-            "stp x23, x24, [{0}, #32]",
-            "stp x25, x26, [{0}, #48]",
-            "stp x27, x28, [{0}, #64]",
-            "stp x29, x30, [{0}, #80]",
-            in(reg) saved.as_mut_ptr(),
-            options(nostack, preserves_flags)
-        );
-    }
-}
-
 /// What a mark by the roots found (`reached`).
 #[cfg_attr(not(any(test, feature = "heap-stats")), allow(dead_code))]
 #[derive(Default, Debug)]
@@ -896,26 +823,13 @@ fn reached_from(saved: &[usize; 12], from: usize) -> Reached {
     r
 }
 
-std::thread_local! {
-    /// The globals' cells of the native code running on this thread with
-    /// room in its heap (C538, `obj::kc_heap`), `[lo, hi)`: roots, as its
-    /// frames on this stack are, while it runs.
-    static NATIVE_CELLS: std::cell::Cell<(usize, usize)> = const { std::cell::Cell::new((0, 0)) };
-}
-
-/// The globals' cells of the native code now running, `[lo, hi)`; `(0, 0)`,
-/// none.
-pub(crate) fn native_cells(run: (usize, usize)) {
-    NATIVE_CELLS.set(run);
-}
-
 pub(super) fn roots_from(saved: &[usize; 12], from: usize) -> Roots {
     let mut words: Vec<usize> = saved.to_vec();
     let base = stack_base();
     // SAFETY: this thread's own stack, from its caller's frame to its
     // base, which the thread is running on.
     unsafe { scan_words(from, base.saturating_sub(from), &mut |w| words.push(w)) };
-    let (lo, hi) = NATIVE_CELLS.get();
+    let (lo, hi) = native_cells_run();
     // SAFETY: the cells of the native code running on this thread, its
     // image's, alive while it runs (`native_cells`).
     unsafe { scan_words(lo, hi.saturating_sub(lo), &mut |w| words.push(w)) };

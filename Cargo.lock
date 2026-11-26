@@ -35,6 +35,7 @@ name = "kayak-heap"
 version = "0.1.0"
 dependencies = [
  "kayak-layout",
+ "libc",
 ]
 
 [[package]]
@@ -56,6 +57,7 @@ dependencies = [
 name = "kayak-kcrt"
 version = "0.1.0"
 dependencies = [
+ "kayak-heap",
  "kayak-kcrt-core",
 ]
 

@@ -28,7 +28,7 @@ use super::*;
 // 3  the array's length         (KFX's)
 // 5  1 for a transformer's run  (KFX's, C454)
 // 16 on   the heap: none in process (C538), where kc's objects are
-// made in kayak-rt's heap, lent it (`obj::kc_heap`)
+// made in kayak-rt's heap, lent it (kcrt's `heap`, C541)
 
 pub fn _pctsyscall_available_colonkc_routine() -> bool {
     kayak_rt::syscall_require(str_lit!("syscall kc-routine (\"kayak:kc-routine/1\")"), str_lit!("kayak:kc-routine/1"), str_lit!("(subr (io sys) (string) int)"));

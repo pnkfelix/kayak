@@ -208,8 +208,9 @@ const SYSCALLS: &[Syscall] = &[
         host: "kayak:kc-routine/1",
         canonical: "(subr (io sys) (string) int)",
         run: |a| {
-            // kc's code in process allocates in this thread's heap (C538).
-            crate::obj::kc_heap::install();
+            // kc's code in process allocates in this thread's heap (C538),
+            // kayak-rt's roots its collector's (C541: kcrt's own heap).
+            crate::obj::space::ready();
             (kayak_kcrt_core::routine(&crate::Str::of_word(a[0]).text()) as i64).word()
         },
     },
@@ -242,7 +243,7 @@ const SYSCALLS: &[Syscall] = &[
         host: "kayak:kc-done/1",
         canonical: "(subr (io sys) () unit)",
         run: |_| {
-            crate::obj::kc_heap::done();
+            kayak_kcrt_core::done();
             ().word()
         },
     },

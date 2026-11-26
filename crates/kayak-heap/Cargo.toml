@@ -6,6 +6,7 @@ license.workspace = true
 
 [dependencies]
 kayak-layout = { path = "../kayak-layout" }
+libc = "0.2.189"
 
 [features]
 # kayak-rt's, which the space reads (C539): its census, which turns

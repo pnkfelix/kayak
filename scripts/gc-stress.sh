@@ -36,15 +36,20 @@ echo "gc-stress: its programs of processes and par, a collection at every alloca
 # kc's code in process, its objects in kayak-rt's heap (C538): its
 # programs of it (tests/kc/heap), a collection every 31st allocation, freed
 # pages poisoned, each collection verified (the barrier's slots among it).
-cargo build --release --quiet -p kayak-kc
+# And each built (C541), its heap the shared heap too, its roots its own.
+cargo build --release --quiet -p kayak-kc -p kayak-kcrt
 kcdb=$(mktemp -d)
 for f in tests/kc/heap/*.fx; do
     want=$(sed -n '1s/^;; => //p' "$f")
     got=$(KAYAK_GC_STRESS=31 KAYAK_GC_POISON=1 KAYAK_GC_VERIFY=1 ./target/release/kc --db "$kcdb/db" run "$f" 2>&1 | tail -1)
     [ "$got" = "$want" ] || { rm -rf "$kcdb"; echo "gc-stress: kc's $f in process: $got, not $want" >&2; exit 1; }
+    ./target/release/kc --db "$kcdb/db" --rt target/release/libkayak_kcrt.a build "$f" "$kcdb/exe" >/dev/null 2>&1 \
+        || { rm -rf "$kcdb"; echo "gc-stress: kc's $f: kc build fails" >&2; exit 1; }
+    got=$(KAYAK_GC_STRESS=31 KAYAK_GC_POISON=1 KAYAK_GC_VERIFY=1 "$kcdb/exe" 2>&1 | tail -1)
+    [ "$got" = "$want" ] || { rm -rf "$kcdb"; echo "gc-stress: kc's $f built: $got, not $want" >&2; exit 1; }
 done
 rm -rf "$kcdb"
-echo "gc-stress: kc's code in process in kayak-rt's heap, a collection every 31 allocations, verified"
+echo "gc-stress: kc's code in kayak-rt's heap, in process and built, a collection every 31 allocations, verified"
 # The compiler making itself, every 300007th: boot/src/kfx/ again.
 cargo build --release --quiet -p kfx
 tmp=$(mktemp -d)

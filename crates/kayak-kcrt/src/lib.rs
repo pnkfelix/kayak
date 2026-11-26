@@ -18,9 +18,46 @@ unsafe extern "C" {
     fn kc_apply_run(state: *const u64);
 }
 
-/// The heap's first space, its words: collected (C453), grown as what
-/// lives needs.
-const HEAP_WORDS: usize = 1 << 23;
+/// The program's roots, the shared collector's runtime (C541,
+/// `kayak_heap::collect::Host`; the plan's step 3): the registers spilled,
+/// its one thread's stack, kc's frames and this runtime's, from the
+/// collection's frame to its base, and kc's globals' cells (`heap.rs`'s,
+/// while kc's code runs). Each word ambiguous, as kayak-rt's are: kc's
+/// frames' words are values of Fixpt's format, exact, but the Rust frames
+/// between are not. It keeps nothing apart and has no other thread.
+struct Built;
+
+impl kayak_heap::collect::Host for Built {
+    fn spill(&self, saved: &mut [usize; 12]) {
+        kayak_heap::roots::spill(saved);
+    }
+    fn roots(&self, saved: &[usize; 12], from: usize) -> kayak_heap::roots::Gathered {
+        use kayak_heap::roots::{native_cells_run, scan_words, stack_base};
+        let mut words: Vec<usize> = saved.to_vec();
+        let base = stack_base();
+        // SAFETY: this thread's own stack, from its caller's frame to its
+        // base, which the thread is running on.
+        unsafe { scan_words(from, base.saturating_sub(from), &mut |w| words.push(w)) };
+        let (lo, hi) = native_cells_run();
+        // SAFETY: the cells of kc's code running on this thread, the
+        // program's, alive while it runs.
+        unsafe { scan_words(lo, hi.saturating_sub(lo), &mut |w| words.push(w)) };
+        let n = words.len();
+        kayak_heap::roots::Gathered {
+            words,
+            constants: Vec::new(),
+            shared: Vec::new(),
+            kept: kayak_heap::roots::KeptIndex::default(),
+            reach_from: 0,
+            ends: [n; 3],
+        }
+    }
+    fn reported(&self, _: Vec<usize>, _: usize, _: bool) {}
+    fn retire(&self, _: &dyn Fn(usize) -> bool) {}
+    fn kept_extent(&self) -> (usize, usize) {
+        (0, 0)
+    }
+}
 
 /// The state's words, and its fields kc's code reads (Fixpt's native
 /// convention's `state`, kayak-jit's `state::…`): the stack's limit, the
@@ -79,6 +116,7 @@ fn new_state(limit: usize) -> *const u64 {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn main(_argc: i32, _argv: *const *const u8) -> i32 {
+    kayak_heap::collect::set_host(&Built);
     // The program on a stack of a known size (C451), so that kc's code
     // checks its limit.
     match std::thread::Builder::new()
@@ -106,13 +144,15 @@ fn program() -> i32 {
             failed("kc: the use given is not text");
         }
     }
-    let heap: &'static mut [u64] = Vec::leak(vec![0u64; HEAP_WORDS]);
-    let range = heap.as_mut_ptr_range();
+    // The heap kc's code starts with is empty (C541), so that its first
+    // object asks for room (`kc_collect`), lent from the shared heap.
+    let none: &'static mut [u64] = Vec::leak(vec![0u64; 1]);
+    let start = none.as_mut_ptr();
     let state = new_state(limit);
     // SAFETY: `kc_entry` is kc's code, which takes the heap's first free
     // word and its end and the state, and writes each top-level
     // expression's value.
-    unsafe { kc_entry(range.start, range.end, state) };
+    unsafe { kc_entry(start, start, state) };
     if apply {
         give(&input);
         // SAFETY: kc's entry object's, on the state `kc_entry` ran on, the

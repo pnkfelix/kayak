@@ -95,6 +95,7 @@ kayak-rt and kcrt-core alone, recorded at each step here.
 | 3, kc in kayak-rt's heap (C538) | kc's code in process allocates in kayak-rt's thread pages, collected by its collector, its stores through its barrier; kcrt's Cheney a built program's alone | ~21k | 1.5k |
 | 3, the space (C539) | + kayak-heap's `space` (1.6k lines, kayak-rt's `obj/space.rs` moved whole): pages, a thread's heap, start bits, the bump, the store buffer | ~19.5k | 1.5k |
 | 3, the collector (C540) | + kayak-heap's `collect` (marking, Cheney's copy, minor and major, the verifier), `frames`, `laid`, the kept index: kayak-rt gives its roots (`Host`) | ~18k | 1.5k |
+| 3, a built kc program (C541) | kc's heap code one copy, kcrt-core's `heap` (kayak-rt's `obj::kc_heap` moved); a built program's heap the shared one, its roots its own `Host`; kcrt's Cheney (`gc.rs`) gone; a stack's base, its spill and native code's cells, kayak-heap's | ~18k | 1.6k |
 
 ## Done
 
@@ -212,6 +213,21 @@ kayak-rt and kcrt-core alone, recorded at each step here.
   is done**: the heap is the shared crate's; what is kayak-rt's is its
   roots and its types. A built kc program could have it next, its `Host`
   kc's exact stack and cells, retiring Cheney's copy (`gc.rs`).
+
+- **Step 3, a built kc program (C541)**: kc's code has one heap, the
+  shared one, built or in process. kayak-rt's `obj::kc_heap` (lending
+  kc's code room, giving it back noted) is kcrt-core's `heap`, over
+  `kayak_heap::space` directly; kcrt's Cheney (`gc.rs`, 336 lines) gone.
+  A built program's `main` gives the collector its `Host` (`kayak-kcrt`'s
+  `Built`): the registers spilled, its thread's stack and kc's cells,
+  every word ambiguous, as kayak-rt's are (the Rust frames between kc's
+  are not exact), nothing kept apart, no other thread. Its heap starts
+  empty, its first object asking for room; `kc_remember` is the heap's
+  barrier there too. In process kayak-rt's `Rt` is the host
+  (`kayak:kc-routine/1` makes it so first). The stack's base, the spill
+  and the native cells' run moved from kayak-rt's `obj::roots` to
+  `kayak_heap::roots`, both hosts'. Not yet: kc's frames as exact roots,
+  so that what only they reach can move.
 
 ## Step 3's rest: kc's code in kayak-rt's heap, in process (done, C538)
 

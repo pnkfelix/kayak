@@ -146,6 +146,107 @@ pub struct Gathered {
     pub ends: [usize; 3],
 }
 
+// A native stack's roots (kayak-rt's `obj::roots`, here since C541, for a
+// built kc program's runtime too): its base, the registers spilled, and
+// the cells of the native code running on it.
+
+/// The thread's stack's base, its highest address (as the OS gives it,
+/// so that a frame's words before kayak-rt was first called are counted).
+#[inline]
+pub fn stack_base() -> usize {
+    thread_local!(static BASE: std::cell::Cell<usize> = const { std::cell::Cell::new(0) });
+    BASE.with(|b| {
+        if b.get() == 0 {
+            b.set(os_stack_base());
+        }
+        b.get()
+    })
+}
+
+#[cfg(target_os = "linux")]
+fn os_stack_base() -> usize {
+    // SAFETY: the calling thread's attributes, read into memory of their
+    // size, and destroyed after.
+    unsafe {
+        let mut attr: libc::pthread_attr_t = std::mem::zeroed();
+        assert_eq!(
+            libc::pthread_getattr_np(libc::pthread_self(), &raw mut attr),
+            0,
+            "the thread's stack"
+        );
+        let (mut addr, mut size) = (std::ptr::null_mut(), 0usize);
+        assert_eq!(
+            libc::pthread_attr_getstack(&raw const attr, &raw mut addr, &raw mut size),
+            0,
+            "the thread's stack"
+        );
+        libc::pthread_attr_destroy(&raw mut attr);
+        addr.addr() + size
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn os_stack_base() -> usize {
+    // SAFETY: the calling thread's own stack's address.
+    unsafe { libc::pthread_get_stackaddr_np(libc::pthread_self()) }.addr()
+}
+
+/// The registers a caller may keep a value in across a call (its
+/// callee-saved ones), spilled into `saved`.
+#[inline(always)]
+pub fn spill(saved: &mut [usize; 12]) {
+    #[cfg(target_arch = "x86_64")]
+    // SAFETY: stores of the callee-saved registers into `saved`, twelve
+    // words, of which six are written.
+    unsafe {
+        std::arch::asm!(
+            "mov [{0}], rbx",
+            "mov [{0} + 8], rbp",
+            "mov [{0} + 16], r12",
+            "mov [{0} + 24], r13",
+            "mov [{0} + 32], r14",
+            "mov [{0} + 40], r15",
+            in(reg) saved.as_mut_ptr(),
+            options(nostack, preserves_flags)
+        );
+    }
+    #[cfg(target_arch = "aarch64")]
+    // SAFETY: stores of the callee-saved registers into `saved`, twelve
+    // words, each written.
+    unsafe {
+        std::arch::asm!(
+            "stp x19, x20, [{0}]",
+            "stp x21, x22, [{0}, #16]",
+            "stp x23, x24, [{0}, #32]",
+            "stp x25, x26, [{0}, #48]",
+            "stp x27, x28, [{0}, #64]",
+            "stp x29, x30, [{0}, #80]",
+            in(reg) saved.as_mut_ptr(),
+            options(nostack, preserves_flags)
+        );
+    }
+}
+
+std::thread_local! {
+    /// The globals' cells of the native code running on this thread with
+    /// room in its heap (C538; kcrt's `heap`, C541), `[lo, hi)`: roots, as its
+    /// frames on this stack are, while it runs.
+    static NATIVE_CELLS: std::cell::Cell<(usize, usize)> = const { std::cell::Cell::new((0, 0)) };
+}
+
+/// The globals' cells of the native code now running, `[lo, hi)`; `(0, 0)`,
+/// none.
+#[inline]
+pub fn native_cells(run: (usize, usize)) {
+    NATIVE_CELLS.set(run);
+}
+
+/// The globals' cells of the native code now running on this thread.
+#[inline]
+pub fn native_cells_run() -> (usize, usize) {
+    NATIVE_CELLS.get()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -16,3 +16,5 @@ doctest = false
 
 [dependencies]
 kayak-kcrt-core = { path = "../kayak-kcrt-core" }
+# The shared heap (C541): its collector given this program's roots.
+kayak-heap = { path = "../kayak-heap" }

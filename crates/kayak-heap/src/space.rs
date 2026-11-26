@@ -210,7 +210,7 @@ pub fn words(w: usize) -> *mut u64 {
 }
 
 /// Room lent native code that bumps a pointer of its own through it (C538:
-/// kc's code in process, `obj::kc_heap`): the thread's current page from
+/// kc's code, kcrt's `heap`, C541): the thread's current page from
 /// its next word to its end, if `w` words fit there; else room as
 /// `words(w)` makes it (a safepoint: a collection may run), the object's
 /// start noted, the pointer left at it, so that the native code makes its

@@ -17339,3 +17339,42 @@ shared crate's.
   nothing made again early; `space::lent_dropped` gone. 0 of 32 since,
   under the same load. TODO §56's note of it gone.
 - **The full check**: `check: all passed`, 10 min 31 s (the mean of 104 runs 8 min 31 s); the pre-check passed first.
+
+## C541. A built kc program's heap is the shared heap; kcrt's Cheney gone (2026-11-25)
+
+Step 3's follow-on (`docs/research/one-runtime.md`): kc's code has one
+heap, built or in process, kayak-heap's.
+- **One copy of kc's heap code**: kayak-rt's `obj::kc_heap` (C538: room
+  lent kc's code from the thread's page, given back with each object's
+  start noted) moved to kcrt-core as `heap.rs`, over `kayak_heap::space`
+  directly, so a built program has it too. kcrt's `gc.rs` (Cheney's two
+  spaces, C453, 336 lines) gone, and with it the `HeapHost` seam of C538:
+  the two differ now only in the collector's `Host`.
+- **A built program's `Host`** (`kayak-kcrt`'s `Built`, given in `main`):
+  the registers spilled, its thread's stack from the collection's frame to
+  its base, and kc's globals' cells (while kc's code runs), every word
+  ambiguous as kayak-rt's are: kc's frames' words are exact, but the Rust
+  frames between (a routine making a string) are not, so pinning is the
+  safe reading for now. Nothing kept apart; one thread. Its heap starts
+  empty (a word's array, its start its end), so the first object asks
+  for room. `kc_remember`, a no-op in a built program before, is the
+  heap's barrier there too: the heap has generations.
+- **Moved to `kayak_heap::roots`** from kayak-rt's `obj::roots`, for both
+  hosts: `stack_base` (pthread's, so kayak-heap takes `libc`), `spill`,
+  and the native cells' run (`native_cells`, `native_cells_run`).
+  `unsafe` there as before (C539's extension of the rule, flagged then).
+- **In process**: `kayak:kc-routine/1` makes kayak-rt the collector's host
+  (`space::ready`, now `pub(crate)`) before kc's code first allocates;
+  `kayak:kc-done/1` calls kcrt-core's `done`.
+- **kc's identity** takes kcrt-core's `heap.rs` and all of kayak-heap's
+  modules now (a built program links its space and collector).
+- **gc-stress** builds each of `tests/kc/heap` too and runs it stressed
+  (a collection every 31st allocation, poisoned, verified).
+- **Measured** (built, best of three, against C540's kcrt linked into the
+  same kc code): `lent-pages` with 1500 churns, 0.31 s and 71 MB against
+  0.45 s and 133 MB; with 2,000,000 cells kept too, 0.41 s and 117 MB
+  against 0.90 s and 164 MB (Cheney's copied the kept list each time; the
+  generational heap promotes it once).
+- **Not yet**: kc's frames as exact roots, so that what only they reach
+  can move; a built program's `par` or tasks (kc makes none).
+- **The full check**: `check: all passed`, 10 min 24 s (the mean of 105 runs 8 min 32 s); the pre-check passed first.

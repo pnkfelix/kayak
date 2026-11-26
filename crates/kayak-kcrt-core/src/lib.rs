@@ -14,8 +14,9 @@
 //! and its code points, two a word; a symbol's fields its name, its hash and
 //! its global slot. What kc's code makes of them past a literal (a
 //! string appended, a substring, an append's pairs) is made here, in kc's
-//! own heap, which is collected (C453, `gc.rs`; C455): a routine that makes
-//! one is given its arguments where the collector moves them. A symbol is
+//! own heap, which is collected (C455; since C541 the shared heap's,
+//! `heap.rs`): a routine that makes one is given its arguments where a
+//! collection finds them. A symbol is
 //! this runtime's own, interned for the run, as Fixpt's symbol table keeps
 //! each symbol for its heap's life.
 //!
@@ -32,8 +33,8 @@
 //! call-outs keep their message and say they failed.
 #![allow(unsafe_code)]
 
-mod gc;
-pub use gc::{B_CELLS_HI, B_CELLS_LO, B_HI, B_NEXT, Heap, HeapHost, collections, set_host};
+mod heap;
+pub use heap::{B_CELLS_HI, B_CELLS_LO, B_HI, B_NEXT, Heap, collections, done};
 
 // Fixpt's tags, immediates and kinds, from kayak-layout's table, Fixpt's
 // own (TODO §56, step 1), under this crate's names.
@@ -195,7 +196,7 @@ fn string_text(v: u64) -> String {
         .collect()
 }
 
-/// String `ps`'s words written at `at`, room `gc::words` gave for them.
+/// String `ps`'s words written at `at`, room `heap::words` gave for them.
 fn write_string(at: u64, ps: &[u32]) -> u64 {
     for (k, &x) in string_words(ps).iter().enumerate() {
         set(at + 8 * k as u64, x);
@@ -209,7 +210,7 @@ fn made(words: Vec<u64>) -> u64 {
 }
 
 fn set(addr: u64, w: u64) {
-    // SAFETY: a word of room `gc::words` gave in kc's heap, live and
+    // SAFETY: a word of room `heap::words` gave in kc's heap, live and
     // writable for the run.
     unsafe { *(addr as *mut u64) = w }
 }
@@ -241,7 +242,7 @@ fn string_in(block: *mut u64, s: &str) -> Result<u64, String> {
 /// whole, its words kayak-rt's strings' (`kayak_heap::text`, C536).
 fn points_in(block: *mut u64, ps: &[u32]) -> Result<u64, String> {
     let w = string_words(ps);
-    let at = gc::words(block, w.len() as u64)?;
+    let at = heap::words(block, w.len() as u64)?;
     for (k, &x) in w.iter().enumerate() {
         set(at + 8 * k as u64, x);
     }
@@ -353,7 +354,7 @@ pub extern "C" fn kc_string_lt(a: u64, b: u64) -> u64 {
 fn string_appended(args: *const u64, block: *mut u64) -> Result<u64, String> {
     // Room first, its arguments read after (the collector may move them).
     let n = string_points(arg(args, 0)).len() + string_points(arg(args, 1)).len();
-    let at = gc::words(block, kayak_heap::text::string_words(n) as u64)?;
+    let at = heap::words(block, kayak_heap::text::string_words(n) as u64)?;
     let ps: Vec<u32> = [string_points(arg(args, 0)), string_points(arg(args, 1))].concat();
     Ok(write_string(at, &ps))
 }
@@ -372,7 +373,7 @@ fn substring_of(args: *const u64, block: *mut u64) -> Result<u64, String> {
     if i < 0 || j < i || j as usize > n {
         return Err("substring range out of bounds".to_string());
     }
-    let at = gc::words(
+    let at = heap::words(
         block,
         kayak_heap::text::string_words((j - i) as usize) as u64,
     )?;
@@ -510,7 +511,7 @@ fn appended(args: *const u64, block: *mut u64) -> Result<u64, String> {
     if n == 0 {
         return Ok(arg(args, 1));
     }
-    let at = gc::words(block, 2 * n)?;
+    let at = heap::words(block, 2 * n)?;
     let mut rest = arg(args, 0);
     for k in 0..n {
         let (car, cdr) = pair(rest);
@@ -547,7 +548,7 @@ fn reversed(args: *const u64, block: *mut u64) -> Result<u64, String> {
     if n == 0 {
         return Ok(null());
     }
-    let at = gc::words(block, 2 * n)?;
+    let at = heap::words(block, 2 * n)?;
     let mut rest = arg(args, 0);
     // The first element the last pair's, each next one the pair before.
     let mut head = null();
@@ -691,14 +692,14 @@ fn list_vector(args: *const u64, block: *mut u64) -> Result<u64, String> {
         rest = pair(rest).1;
     }
     if n == 0 {
-        let at = gc::words(block, 1)?;
+        let at = heap::words(block, 1)?;
         set(at, TAG_HEADER | (KIND_VECTOR << 3));
         return Ok(at + 8 + TAG_BLOBLET);
     }
     if n + 1 > MOST_FIELDS {
         return Err("kc: not yet: a vector of more than 262142 elements".to_string());
     }
-    let at = gc::words(block, n + 2)?;
+    let at = heap::words(block, n + 2)?;
     set(at, TAG_HEADER | (KIND_VECTOR << 3) | ((n + 1) << 14));
     let mut rest = arg(args, 0);
     for k in 0..n {
@@ -794,7 +795,7 @@ fn captured(args: *const u64, block: *mut u64) -> Result<u64, String> {
     }
     // The copy and its closure at once; the stack's words moved by any
     // collection, so read after.
-    let room = gc::words(block, fields + 2 + 5)?;
+    let room = heap::words(block, fields + 2 + 5)?;
     let suffix = room + 8 * (fields + 2);
     set(room, TAG_HEADER | (KIND_ARRAY << 3) | ((fields + 1) << 14));
     set(suffix - 8, TAG_TRAILER | ((fields + 1) << 3));
@@ -889,7 +890,7 @@ fn listed(block: *mut u64, n: u64, values: impl Fn() -> Vec<u64>) -> Result<u64,
     if n == 0 {
         return Ok(null());
     }
-    let at = gc::words(block, 2 * n)?;
+    let at = heap::words(block, 2 * n)?;
     let vs = values();
     for (k, &x) in vs.iter().enumerate() {
         let k = k as u64;
@@ -987,13 +988,13 @@ pub extern "C" fn kc_string_index_fail(len: u64) -> ! {
     failed(&format!("string index out of range (length {len})"))
 }
 
-/// The collector (C453), called by kc's code (x64.kfx's `kc_gc_call`)
-/// where an allocation of `need` bytes does not fit: its stack pointer
+/// Room in the heap (C453; C541, the shared heap's), asked by kc's code
+/// (x64.kfx's `kc_gc_call`) where an allocation of `need` bytes does not fit: its stack pointer
 /// `sp`, its block `block` (the writable address of `kc_gc`). The heap
 /// after, or the run ended.
 #[unsafe(no_mangle)]
 pub extern "C" fn kc_collect(need: u64, sp: u64, block: *mut u64) -> Heap {
-    gc::collect(need, sp, block).unwrap_or_else(|m| failed(&m))
+    heap::collect(need, sp, block).unwrap_or_else(|m| failed(&m))
 }
 
 /// A built program's failure: said, as `fixpt eval` says one, and the run
@@ -1086,17 +1087,19 @@ extern "C" fn here_string_append(args: *const u64, block: *mut u64) -> u64 {
 /// before's region, dropped whole, what this runtime made there with it,
 /// C455).
 /// kc's code's write barrier (C538): after each store of a value into a
-/// heap object (`set`, `array-set!`), the slot's address. A built
-/// program's heap has no generations: nothing.
+/// heap object (`set`, `array-set!`), the slot's address, the heap's
+/// barrier's (C541: a built program's heap has generations too).
 #[unsafe(no_mangle)]
-pub extern "C" fn kc_remember(_slot: u64) {}
+pub extern "C" fn kc_remember(slot: u64) {
+    heap::remember(slot);
+}
 
 extern "C" fn here_remember(slot: u64) {
-    gc::remember(slot);
+    heap::remember(slot);
 }
 
 extern "C" fn here_gc_reset() {
-    gc::reset();
+    heap::reset();
 }
 
 extern "C" fn here_fail(what: u64) -> u64 {
@@ -1120,7 +1123,7 @@ extern "C" fn here_substring(args: *const u64, block: *mut u64) -> u64 {
 }
 
 extern "C" fn here_collect(need: u64, sp: u64, block: *mut u64) -> Heap {
-    gc::collect(need, sp, block).unwrap_or_else(|m| {
+    heap::collect(need, sp, block).unwrap_or_else(|m| {
         failed_here(m);
         Heap { next: 0, end: 0 }
     })

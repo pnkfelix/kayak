@@ -65,11 +65,13 @@ UNITS = [
     # in no unit): its expansions are its (C446). And its runtime: a
     # transformer's answer kept is its run (C448), its routines kcrt-core's
     # (C452), and the heap's walk its collector reads objects by (C535) and
-    # its strings' primitives (C536).
+    # its strings' primitives (C536); since C541 the shared heap whole, a
+    # built program's space and collector.
     ("kc", "kc.unit", ["../fx26/macros/expander-kc.fx", "../fx26/macros/expander-types.fx",
                        "../crates/kayak-kcrt/src/lib.rs", "../crates/kayak-kcrt-core/src/lib.rs",
-                       "../crates/kayak-kcrt-core/src/gc.rs", "../crates/kayak-heap/src/lib.rs",
-                       "../crates/kayak-heap/src/text.rs", "../crates/kayak-heap/src/roots.rs"], kc_text),
+                       "../crates/kayak-kcrt-core/src/heap.rs"]
+     + ["../crates/kayak-heap/src/%s.rs" % m
+        for m in ["lib", "text", "roots", "space", "collect", "frames", "laid"]], kc_text),
 ]
 
 
