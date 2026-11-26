@@ -72,7 +72,11 @@ task is (a Rust future against a native stack and its state block).
 5. **One scheduler over a `Task` trait.** A task is a Rust future
    (kayak-rt's) or a native stack and its state block (kc's), and one
    run queue, one per thread, with work stealing later, runs both. Coopt's
-   scheduler (`coopt-adoption.md`) is the model.
+   scheduler (`coopt-adoption.md`) is the model. *Since C544*: kc's
+   tasks are Fixpt's, a continuation in the heap run by FX-26's own
+   scheduler (`fx26:processes.fx`) over `%sched`'s state (kcrt-core's
+   `sched.rs`), green threads on one thread, as in Fixpt; so what this
+   step shares is that state and its run queue, not native stacks.
 6. **Incremental collection**, designed once, in `kayak-heap` (TODO §54
    step 6; the memory "shared heap may move").
 
@@ -250,6 +254,21 @@ kayak-rt and kcrt-core alone, recorded at each step here.
   `kayak_heap::text`'s (C536): nothing more to share there. kcrt's
   printer over words and kayak-rt's over types stay two: they read
   values two ways, not one format twice.
+
+- **kc's tasks (C544)**: kc compiles FX-26's processes and `par` as Fixpt
+  does: the forms made calls of the scheduler, `fx26:processes.fx`
+  (`%processes`, defined first in a program that uses them; the
+  engine's rewrite, `process-forms.kfx`, now both's), which kc compiles
+  with the program over its prompts and one-shot continuations (C458,
+  C459); the runtime's part, `%sched`'s operations, ported from Fixpt's
+  `sched.rs` to kcrt-core's `sched.rs`, its state Rust's, each value it
+  holds an exact root (`roots::runtime_slots`). A monitored task's
+  failure aborts to the scheduler's prompt (kc's failure shims); a
+  task that spins is preempted at its fuel's poll, now after a
+  function's prologue (`kc_poll`). 24 of Fixpt's programs of processes
+  give its answers built and in process (`tests/kc/tasks`). Not yet:
+  `read-byte` in a `pselect`, a process's output, a product's fields by
+  name.
 
 ## Step 3's rest: kc's code in kayak-rt's heap, in process (done, C538)
 

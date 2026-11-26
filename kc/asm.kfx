@@ -469,38 +469,95 @@
                   (p-fix (n s a k) (offsets (cdr ps) longs (i64+ off n) acc)))))))
 
       (define-rec
-        (lengthened (subr kfx (pieces (listof bool acyclic) i64 (listof (tupleof string i64) acyclic) (listof bool acyclic) bool) (tupleof (listof bool acyclic) bool))
-          (lambda (ps longs off at acc changed)
-            "Each short branch whose target is too far for 8 bits made long."
-            (if (null? ps)
-                (tuple (reverse acc) changed)
-                (tagcase (car ps)
-                  (p-bytes (bs) (lengthened (cdr ps) longs (i64+ off (size bs)) at acc changed))
-                  (p-label (n) (lengthened (cdr ps) longs off at acc changed))
-                  (p-align (k) (lengthened (cdr ps) longs (i64+ off (padding off k)) at acc changed))
-                  (p-branch (cc s)
-                    (let* ((long (car longs)) (t (label-at s at))
-                           (now (cond (long #t)
-                                      ((null? t) #t)
-                                      (else (not (fits8? (i64- (car t) (i64+ off 2))))))))
-                      ;; Offsets of the layout the labels' are of (`long`), not the
-                      ;; one being made: one pass, one layout, as `as` relaxes.
-                      (lengthened (cdr ps) (cdr longs) (i64+ off (branch-size cc long)) at (cons now acc) (or changed (if now (not long) long)))))
-                  (p-call (s) (lengthened (cdr ps) longs (i64+ off 5) at acc changed))
-                  (p-fix (n s a k) (lengthened (cdr ps) longs (i64+ off n) at acc changed)))))))
-
-      (define-rec
         (branches-of (subr kfx (pieces (listof bool acyclic)) (listof bool acyclic))
           (lambda (ps acc)
             (if (null? ps) (reverse acc)
                 (branches-of (cdr ps) (tagcase (car ps) (p-branch (cc s) (cons #f acc)) (else other acc)))))))
 
+      "Each piece's address, in order, given each branch's length."
       (define-rec
-        (settled (subr kfx (pieces (listof bool acyclic)) (listof bool acyclic))
-          (lambda (ps longs)
-            (let* ((at (extract (offsets ps longs 0 nil) 1))
-                   (r (lengthened ps longs 0 at nil #f)))
-              (if (extract r 2) (settled ps (extract r 1)) longs)))))
+        (addresses (subr kfx (pieces (listof bool acyclic) i64 (listof i64 acyclic)) (listof i64 acyclic))
+          (lambda (ps longs off acc)
+            (if (null? ps)
+                (reverse acc)
+                (let ((acc (cons off acc)))
+                  (tagcase (car ps)
+                    (p-bytes (bs) (addresses (cdr ps) longs (i64+ off (size bs)) acc))
+                    (p-label (n) (addresses (cdr ps) longs off acc))
+                    (p-align (k) (addresses (cdr ps) longs (i64+ off (padding off k)) acc))
+                    (p-branch (cc s) (addresses (cdr ps) (cdr longs) (i64+ off (branch-size cc (car longs))) acc))
+                    (p-call (s) (addresses (cdr ps) longs (i64+ off 5) acc))
+                    (p-fix (n s a k) (addresses (cdr ps) longs (i64+ off n) acc))))))))
+
+      "Each label's address and region (C544): `(NAME ADDRESS REGION)`, a
+       region the pieces between two alignments."
+      (define-rec
+        (labels-in (subr kfx (pieces (listof i64 acyclic) i64 (listof (tupleof string i64 i64) acyclic)) (listof (tupleof string i64 i64) acyclic))
+          (lambda (ps addrs region acc)
+            (if (null? ps)
+                acc
+                (tagcase (car ps)
+                  (p-label (n) (labels-in (cdr ps) (cdr addrs) region (cons (tuple n (car addrs) region) acc)))
+                  (p-align (k) (labels-in (cdr ps) (cdr addrs) (i64+ region 1) acc))
+                  (else other (labels-in (cdr ps) (cdr addrs) region acc)))))))
+
+      (define-rec
+        (label-laid (subr kfx (string (listof (tupleof string i64 i64) acyclic)) (listof (tupleof string i64 i64) acyclic))
+          (lambda (n xs) (cond ((null? xs) nil) ((string=? (extract (car xs) 1) n) (list (car xs))) (else (label-laid n (cdr xs)))))))
+
+      "One pass of GNU as's relaxation (C544; `write.c`'s `relax_segment`
+       and `relax_frag`), as kc's code needs it matched byte for byte: each
+       piece moved by what grew before it in this pass (`stretch`); a
+       label passed in this pass at its new address, one not yet reached at
+       its old, moved by `stretch` too if no alignment is between (an
+       alignment may take the growth up), and, past an alignment, a branch
+       to one now behind it left as it is; each short branch too far made
+       long, the growth added; an alignment's padding made again at its
+       new address, its change added. Each branch's length, each piece's
+       new address, whether any grew."
+      (define-rec
+        (relaxed-pass (subr kfx (pieces (listof bool acyclic) (listof i64 acyclic) (listof (tupleof string i64 i64) acyclic) i64 i64
+                                 (listof (tupleof string i64 i64) acyclic) (listof bool acyclic) (listof i64 acyclic) bool)
+                            (tupleof (listof bool acyclic) (listof i64 acyclic) bool))
+          (lambda (ps longs olds old-labels stretch region passed acc-longs acc-addrs grew)
+            (if (null? ps)
+                (tuple (reverse acc-longs) (reverse acc-addrs) grew)
+                (let* ((was (car olds)) (addr (i64+ was stretch)) (addrs (cons addr acc-addrs)))
+                  (tagcase (car ps)
+                    (p-label (n)
+                      (relaxed-pass (cdr ps) longs (cdr olds) old-labels stretch region (cons (tuple n addr region) passed) acc-longs addrs grew))
+                    (p-align (k)
+                      (let ((growth (i64- (padding addr k) (padding was k))))
+                        (relaxed-pass (cdr ps) longs (cdr olds) old-labels (i64+ stretch growth) (i64+ region 1) passed acc-longs addrs
+                                      (or grew (not (i64= growth 0))))))
+                    (p-branch (cc s)
+                      (let* ((long (car longs))
+                             (now (cond (long #t)
+                                        ((not (null? (label-laid s passed))) (not (fits8? (i64- (extract (car (label-laid s passed)) 2) (i64+ addr 2)))))
+                                        ((null? (label-laid s old-labels)) #t)
+                                        (else
+                                         (let* ((t (car (label-laid s old-labels))) (target (extract t 2)) (same (i64= (extract t 3) region)))
+                                           (cond ((and (not (i64= stretch 0)) (or (i64< stretch 0) same))
+                                                  (not (fits8? (i64- (i64+ target stretch) (i64+ addr 2)))))
+                                                 ((and (i64> stretch 0) (i64< target addr)) #f)
+                                                 (else (not (fits8? (i64- target (i64+ addr 2))))))))))
+                             (growth (i64- (branch-size cc now) (branch-size cc long))))
+                        (relaxed-pass (cdr ps) (cdr longs) (cdr olds) old-labels (i64+ stretch growth) region passed (cons now acc-longs) addrs
+                                      (or grew (not (i64= growth 0))))))
+                    (else other
+                      (relaxed-pass (cdr ps) longs (cdr olds) old-labels stretch region passed acc-longs addrs grew))))))))
+
+      "Each branch's length as `as` settles it: every one short at first
+       (as `as` estimates a branch to its own section's symbol), then its
+       passes (`relaxed-pass`) until none grows."
+      (define-rec
+        (relaxed (subr kfx (pieces (listof bool acyclic) (listof i64 acyclic)) (listof bool acyclic))
+          (lambda (ps longs addrs)
+            (let ((r (relaxed-pass ps longs addrs (labels-in ps addrs 0 nil) 0 0 nil nil nil #f)))
+              (if (extract r 3) (relaxed ps (extract r 1) (extract r 2)) longs)))))
+
+      (define settled (subr kfx (pieces (listof bool acyclic)) (listof bool acyclic))
+        (lambda (ps longs) (relaxed ps longs (addresses ps longs 0 nil))))
 
       "A relocation: the offset in its section, its type, its symbol (a
        section's name for a section's), and its addend."

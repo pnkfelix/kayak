@@ -28,6 +28,8 @@ pub mod db;
 pub use db::*;
 pub mod macros_bridge;
 pub use macros_bridge::*;
+pub mod process_forms;
+pub use process_forms::*;
 pub mod front;
 pub use front::*;
 pub mod expand;

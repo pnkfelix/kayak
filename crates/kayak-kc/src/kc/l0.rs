@@ -148,7 +148,7 @@ pub mod kc_l0 {
     pub fn ternary_primitives() -> List<Str> {
         static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
         once(&ONCE, || {
-            kayak_rt::heap_cons(str_lit!("substring"), kayak_rt::heap_cons(str_lit!("array-set!"), kayak_rt::heap_cons(str_lit!("with-mark"), kayak_rt::heap_cons(str_lit!("string-search"), kayak_rt::nil()))))
+            kayak_rt::heap_cons(str_lit!("substring"), kayak_rt::heap_cons(str_lit!("array-set!"), kayak_rt::heap_cons(str_lit!("with-mark"), kayak_rt::heap_cons(str_lit!("string-search"), kayak_rt::heap_cons(str_lit!("%sched"), kayak_rt::nil())))))
         })
     }
 
@@ -988,6 +988,16 @@ pub mod kc_l0 {
                     } else { kayak_rt::data::no_variant() }
                 } else if (null_p(cdr(xs)) && (string_eq_p(h, str_lit!("make-continuation-prompt-tag")) || string_eq_p(h, str_lit!("make-escape-tag")) || string_eq_p(h, str_lit!("make-continuation-mark-key")))) {
                     return l0_made(str_lit!("(prim new (unit))"), next);
+                } else if (null_p(cdr(xs)) && string_eq_p(h, str_lit!("make-icell"))) {
+                    return l0_made(str_lit!("(prim %sched (int 100) (unit) (unit))"), next);
+                } else if (string_eq_p(h, str_lit!("rcons")) && i64_eq(size(xs), 4i64)) {
+                    e = lst(kayak_rt::heap_cons(sym(str_lit!("cons"), f, p), kayak_rt::heap_cons(third(xs), kayak_rt::heap_cons(fourth(xs), kayak_rt::nil()))), f, l, p);
+                    continue;
+                } else if (string_eq_p(h, str_lit!("sleep-until")) && i64_eq(size(xs), 2i64)) {
+                    e = lst(kayak_rt::heap_cons(sym(str_lit!("%sched"), f, p), kayak_rt::heap_cons(num(102i64, f, p), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(sym(str_lit!("#u"), f, p), kayak_rt::nil())))), f, l, p);
+                    continue;
+                } else if (null_p(cdr(xs)) && string_eq_p(h, str_lit!("clock"))) {
+                    return l0_made(str_lit!("(prim %sched (int 101) (unit) (unit))"), next);
                 } else if (string_eq_p(h, str_lit!("prompt")) && i64_eq(size(xs), 4i64)) {
                     let tagcase_ = l0_of(path, scope, env, next, second(xs));
                     if L0Made::__is_L0Made(tagcase_) {

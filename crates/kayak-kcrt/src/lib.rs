@@ -92,6 +92,47 @@ unsafe extern "C" {
     fn kc_poll_routine();
 }
 
+// The failures kc's code calls (C544): each keeps the heap's registers in
+// the state block (`kc_gc`'s next word and end, 728 and 696) and gives its
+// routine the state; the routine ends the run, or, a monitored task's
+// failure caught by its group, answers the record of the scheduler's
+// prompt and unit, aborted to as `kc_abort` aborts (the record and those
+// inside it off the prompts' chain, word 664; the stack pointer its, word
+// 16; its handler's call taken, word 24), the heap's registers as they
+// were. Naked, so that the runtime shared exports them as any routine
+// (a `global_asm!` symbol it would not). In process, x64.kfx's stubs do
+// the same.
+macro_rules! raising {
+    ($name:ident, $routine:ident) => {
+        #[unsafe(naked)]
+        #[unsafe(no_mangle)]
+        pub extern "C" fn $name() {
+            std::arch::naked_asm!(
+                "movq %r12, 728(%r15)",
+                "movq %r13, 696(%r15)",
+                "movq %r15, %rsi",
+                "subq $8, %rsp",
+                concat!("call ", stringify!($routine)),
+                "movq 728(%r15), %r12",
+                "movq 696(%r15), %r13",
+                "movq 0(%rax), %rcx",
+                "movq %rcx, 664(%r15)",
+                "movq 24(%rax), %rcx",
+                "movq 16(%rax), %rsp",
+                "movq %rdx, %rax",
+                "jmp *%rcx",
+                options(att_syntax)
+            )
+        }
+    };
+}
+
+raising!(kc_fail, kcrt_fail);
+raising!(kc_error, kcrt_error);
+raising!(kc_array_index_fail, kcrt_array_index_fail);
+raising!(kc_make_array_fail, kcrt_make_array_fail);
+raising!(kc_string_index_fail, kcrt_string_index_fail);
+
 /// A state for kc's code (C451), as kayak-jit's is in process (`kc run`):
 /// there the code runs from an executable view of its pages, a cell
 /// written through the writable view, at the code distance; here the code

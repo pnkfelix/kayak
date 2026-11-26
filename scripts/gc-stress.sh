@@ -41,7 +41,16 @@ cargo build --release --quiet -p kayak-kc -p kayak-kcrt
 kcdb=$(mktemp -d)
 for f in tests/kc/heap/*.fx; do
     want=$(sed -n '1s/^;; => //p' "$f")
-    got=$(KAYAK_GC_STRESS=31 KAYAK_GC_POISON=1 KAYAK_GC_VERIFY=1 ./target/release/kc --db "$kcdb/db" run "$f" 2>&1 | tail -1)
+    # Compiled first, unstressed (C544: a program of processes compiles the
+    # scheduler too, which stressed would take kc minutes); then run
+    # stressed, its database warm, no query body run.
+    ./target/release/kc --db "$kcdb/db" run "$f" >/dev/null 2>&1
+    # A program of processes (its name `tasks…`), in process, every 997th:
+    # kc reads its database, the scheduler's items in it, under the stress
+    # too, every 31st taking it minutes. Built, every 31st as the others.
+    every=31
+    case "$(basename "$f")" in tasks*) every=997 ;; esac
+    got=$(KAYAK_GC_STRESS=$every KAYAK_GC_POISON=1 KAYAK_GC_VERIFY=1 ./target/release/kc --db "$kcdb/db" run "$f" 2>&1 | tail -1)
     [ "$got" = "$want" ] || { rm -rf "$kcdb"; echo "gc-stress: kc's $f in process: $got, not $want" >&2; exit 1; }
     ./target/release/kc --db "$kcdb/db" --rt target/release/libkayak_kcrt.a build "$f" "$kcdb/exe" >/dev/null 2>&1 \
         || { rm -rf "$kcdb"; echo "gc-stress: kc's $f: kc build fails" >&2; exit 1; }

@@ -1437,55 +1437,6 @@ pub mod kc_asm {
         }
     }
 
-    /// Each short branch whose target is too far for 8 bits made long.
-    pub fn lengthened(mut ps: Pieces, mut longs: List<bool>, mut off: i64, mut at: List<Product_11_12<Str, i64>>, mut acc: List<bool>, mut changed: bool) -> Product_11_12<List<bool>, bool> {
-        loop {
-            if null_p(ps) {
-                return Product_11_12(reverse(acc), changed);
-            } else {
-                let tagcase_ = car(ps);
-                if Piece::__is_PBytes(tagcase_) {
-                    let (bs,) = Piece::__PBytes(tagcase_);
-                    (ps, off) = (cdr(ps), i64_plus(off, size(bs)));
-                    continue;
-                } else if Piece::__is_PLabel(tagcase_) {
-                    let (n,) = Piece::__PLabel(tagcase_);
-                    ps = cdr(ps);
-                    continue;
-                } else if Piece::__is_PAlign(tagcase_) {
-                    let (k,) = Piece::__PAlign(tagcase_);
-                    (ps, off) = (cdr(ps), i64_plus(off, padding(off, k)));
-                    continue;
-                } else if Piece::__is_PBranch(tagcase_) {
-                    let (cc, s,) = Piece::__PBranch(tagcase_);
-                    let long = car(longs);
-                    let t = label_at(s, at);
-                    let now = if long {
-                        true
-                    } else if null_p(t) {
-                        true
-                    } else {
-                        not(fits8_p(i64_minus(car(t), i64_plus(off, 2i64))))
-                    };
-                    (ps, longs, off, acc, changed) = (cdr(ps), cdr(longs), i64_plus(off, branch_size(cc, long)), kayak_rt::heap_cons(now, acc), (changed || if now {
-                        not(long)
-                    } else {
-                        long
-                    }));
-                    continue;
-                } else if Piece::__is_PCall(tagcase_) {
-                    let (s,) = Piece::__PCall(tagcase_);
-                    (ps, off) = (cdr(ps), i64_plus(off, 5i64));
-                    continue;
-                } else if Piece::__is_PFix(tagcase_) {
-                    let (n, s, a, k,) = Piece::__PFix(tagcase_);
-                    (ps, off) = (cdr(ps), i64_plus(off, n));
-                    continue;
-                } else { kayak_rt::data::no_variant() }
-            }
-        }
-    }
-
     pub fn branches_of(mut ps: Pieces, mut acc: List<bool>) -> List<bool> {
         loop {
             if null_p(ps) {
@@ -1506,17 +1457,152 @@ pub mod kc_asm {
         }
     }
 
-    pub fn settled(mut ps: Pieces, mut longs: List<bool>) -> List<bool> {
+    // Each piece's address, in order, given each branch's length.
+    pub fn addresses(ps: Pieces, longs: List<bool>, off: i64, acc: List<i64>) -> List<i64> {
+        if null_p(ps) {
+            reverse(acc)
+        } else {
+            let acc = kayak_rt::heap_cons(off, acc);
+            let tagcase_ = car(ps);
+            if Piece::__is_PBytes(tagcase_) {
+                let (bs,) = Piece::__PBytes(tagcase_);
+                addresses(cdr(ps), longs, i64_plus(off, size(bs)), acc)
+            } else if Piece::__is_PLabel(tagcase_) {
+                let (n,) = Piece::__PLabel(tagcase_);
+                addresses(cdr(ps), longs, off, acc)
+            } else if Piece::__is_PAlign(tagcase_) {
+                let (k,) = Piece::__PAlign(tagcase_);
+                addresses(cdr(ps), longs, i64_plus(off, padding(off, k)), acc)
+            } else if Piece::__is_PBranch(tagcase_) {
+                let (cc, s,) = Piece::__PBranch(tagcase_);
+                addresses(cdr(ps), cdr(longs), i64_plus(off, branch_size(cc, car(longs))), acc)
+            } else if Piece::__is_PCall(tagcase_) {
+                let (s,) = Piece::__PCall(tagcase_);
+                addresses(cdr(ps), longs, i64_plus(off, 5i64), acc)
+            } else if Piece::__is_PFix(tagcase_) {
+                let (n, s, a, k,) = Piece::__PFix(tagcase_);
+                addresses(cdr(ps), longs, i64_plus(off, n), acc)
+            } else { kayak_rt::data::no_variant() }
+        }
+    }
+
+    // Each label's address and region (C544): `(NAME ADDRESS REGION)`, a
+    // region the pieces between two alignments.
+    pub fn labels_in(mut ps: Pieces, mut addrs: List<i64>, mut region: i64, mut acc: List<Product_11_12_13<Str, i64, i64>>) -> List<Product_11_12_13<Str, i64, i64>> {
         loop {
-            let at = offsets(ps, longs, 0i64, nil::<Product_11_12<Str, i64>>()).0;
-            let r = lengthened(ps, longs, 0i64, at, nil::<bool>(), false);
-            if r.1 {
-                longs = r.0;
+            if null_p(ps) {
+                return acc;
+            } else {
+                let tagcase_ = car(ps);
+                if Piece::__is_PLabel(tagcase_) {
+                    let (n,) = Piece::__PLabel(tagcase_);
+                    (ps, addrs, acc) = (cdr(ps), cdr(addrs), kayak_rt::heap_cons(Product_11_12_13(n, car(addrs), region), acc));
+                    continue;
+                } else if Piece::__is_PAlign(tagcase_) {
+                    let (k,) = Piece::__PAlign(tagcase_);
+                    (ps, addrs, region) = (cdr(ps), cdr(addrs), i64_plus(region, 1i64));
+                    continue;
+                } else {
+                    let other = tagcase_;
+                    (ps, addrs) = (cdr(ps), cdr(addrs));
+                    continue;
+                }
+            }
+        }
+    }
+
+    pub fn label_laid(mut n: Str, mut xs: List<Product_11_12_13<Str, i64, i64>>) -> List<Product_11_12_13<Str, i64, i64>> {
+        loop {
+            if null_p(xs) {
+                return nil::<Product_11_12_13<Str, i64, i64>>();
+            } else if string_eq_p(car(xs).0, n) {
+                return kayak_rt::heap_cons(car(xs), kayak_rt::nil());
+            } else {
+                xs = cdr(xs);
+                continue;
+            }
+        }
+    }
+
+    // One pass of GNU as's relaxation (C544; `write.c`'s `relax_segment`
+    // and `relax_frag`), as kc's code needs it matched byte for byte: each
+    // piece moved by what grew before it in this pass (`stretch`); a
+    // label passed in this pass at its new address, one not yet reached at
+    // its old, moved by `stretch` too if no alignment is between (an
+    // alignment may take the growth up), and, past an alignment, a branch
+    // to one now behind it left as it is; each short branch too far made
+    // long, the growth added; an alignment's padding made again at its
+    // new address, its change added. Each branch's length, each piece's
+    // new address, whether any grew.
+    pub fn relaxed_pass(mut ps: Pieces, mut longs: List<bool>, mut olds: List<i64>, mut old_labels: List<Product_11_12_13<Str, i64, i64>>, mut stretch: i64, mut region: i64, mut passed: List<Product_11_12_13<Str, i64, i64>>, mut acc_longs: List<bool>, mut acc_addrs: List<i64>, mut grew: bool) -> Product_11_12_13<List<bool>, List<i64>, bool> {
+        loop {
+            if null_p(ps) {
+                return Product_11_12_13(reverse(acc_longs), reverse(acc_addrs), grew);
+            } else {
+                let was = car(olds);
+                let addr = i64_plus(was, stretch);
+                let addrs = kayak_rt::heap_cons(addr, acc_addrs);
+                let tagcase_ = car(ps);
+                if Piece::__is_PLabel(tagcase_) {
+                    let (n,) = Piece::__PLabel(tagcase_);
+                    (ps, olds, passed, acc_addrs) = (cdr(ps), cdr(olds), kayak_rt::heap_cons(Product_11_12_13(n, addr, region), passed), addrs);
+                    continue;
+                } else if Piece::__is_PAlign(tagcase_) {
+                    let (k,) = Piece::__PAlign(tagcase_);
+                    let growth = i64_minus(padding(addr, k), padding(was, k));
+                    (ps, olds, stretch, region, acc_addrs, grew) = (cdr(ps), cdr(olds), i64_plus(stretch, growth), i64_plus(region, 1i64), addrs, (grew || not(i64_eq(growth, 0i64))));
+                    continue;
+                } else if Piece::__is_PBranch(tagcase_) {
+                    let (cc, s,) = Piece::__PBranch(tagcase_);
+                    let long = car(longs);
+                    let now = if long {
+                        true
+                    } else if not(null_p(label_laid(s, passed))) {
+                        not(fits8_p(i64_minus(car(label_laid(s, passed)).1, i64_plus(addr, 2i64))))
+                    } else if null_p(label_laid(s, old_labels)) {
+                        true
+                    } else {
+                        let t = car(label_laid(s, old_labels));
+                        let target = t.1;
+                        let same = i64_eq(t.2, region);
+                        if (not(i64_eq(stretch, 0i64)) && (i64_lt(stretch, 0i64) || same)) {
+                            not(fits8_p(i64_minus(i64_plus(target, stretch), i64_plus(addr, 2i64))))
+                        } else if (i64_gt(stretch, 0i64) && i64_lt(target, addr)) {
+                            false
+                        } else {
+                            not(fits8_p(i64_minus(target, i64_plus(addr, 2i64))))
+                        }
+                    };
+                    let growth = i64_minus(branch_size(cc, now), branch_size(cc, long));
+                    (ps, longs, olds, stretch, acc_longs, acc_addrs, grew) = (cdr(ps), cdr(longs), cdr(olds), i64_plus(stretch, growth), kayak_rt::heap_cons(now, acc_longs), addrs, (grew || not(i64_eq(growth, 0i64))));
+                    continue;
+                } else {
+                    let other = tagcase_;
+                    (ps, olds, acc_addrs) = (cdr(ps), cdr(olds), addrs);
+                    continue;
+                }
+            }
+        }
+    }
+
+    // Each branch's length as `as` settles it: every one short at first
+    // (as `as` estimates a branch to its own section's symbol), then its
+    // passes (`relaxed-pass`) until none grows.
+    pub fn relaxed(mut ps: Pieces, mut longs: List<bool>, mut addrs: List<i64>) -> List<bool> {
+        loop {
+            let r = relaxed_pass(ps, longs, addrs, labels_in(ps, addrs, 0i64, nil::<Product_11_12_13<Str, i64, i64>>()), 0i64, 0i64, nil::<Product_11_12_13<Str, i64, i64>>(), nil::<bool>(), nil::<i64>(), false);
+            if r.2 {
+                (longs, addrs) = (r.0, r.1);
                 continue;
             } else {
                 return longs;
             }
         }
+    }
+
+    #[inline]
+    pub fn settled(ps: Pieces, longs: List<bool>) -> List<bool> {
+        relaxed(ps, longs, addresses(ps, longs, 0i64, nil::<i64>()))
     }
 
     // A relocation: the offset in its section, its type, its symbol (a

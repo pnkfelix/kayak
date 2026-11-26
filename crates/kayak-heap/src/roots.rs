@@ -270,10 +270,27 @@ pub fn with_native_frames<R>(run: (usize, usize), f: impl FnOnce() -> R) -> R {
     r
 }
 
+/// A runtime's slots off the heap, each told by its address.
+pub type SlotsTold = fn(&mut dyn FnMut(usize));
+
+std::thread_local! {
+    /// What a runtime keeps of the heap's values off the heap, apart from
+    /// its stacks (C544: kcrt's scheduler's queue, wakers, handlers): each
+    /// slot's address told, an exact root.
+    static RUNTIME_SLOTS: std::cell::Cell<Option<SlotsTold>> = const { std::cell::Cell::new(None) };
+}
+
+/// The runtime's slots off the heap from now on, on this thread.
+#[inline]
+pub fn runtime_slots(f: Option<SlotsTold>) {
+    RUNTIME_SLOTS.set(f);
+}
+
 /// A thread's stack's roots, a collection's on it (C542; both runtimes'):
 /// its words from `from` to its base, ambiguous but the native code's
 /// frames (`with_native_frames`), whose slots are exact, and its cells'
-/// slots, exact too; into `words` and `exact`.
+/// slots, exact too, and the runtime's own (`runtime_slots`); into
+/// `words` and `exact`.
 pub fn stack_roots(from: usize, words: &mut Vec<usize>, exact: &mut Vec<usize>) {
     let base = stack_base();
     let (lo, hi) = NATIVE_FRAMES.get();
@@ -299,6 +316,9 @@ pub fn stack_roots(from: usize, words: &mut Vec<usize>, exact: &mut Vec<usize>) 
     while a + 8 <= hi {
         exact.push(a);
         a += 8;
+    }
+    if let Some(f) = RUNTIME_SLOTS.get() {
+        f(&mut |a| exact.push(a));
     }
 }
 

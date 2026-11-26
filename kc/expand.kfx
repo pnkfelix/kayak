@@ -586,15 +586,21 @@
       "Forms `xs`, the program's as read or expanded, set as its forms: if
        it loads a file, with its loads spliced in (C471)."
       (define kc-set-spliced! (subr qe (db string string sexps fileds string) unit)
-        (lambda (d path text xs loaded expanded)
-          (begin
+        (lambda (d path text as-read loaded expanded)
+          ;; A program of processes (C544), `%processes` defined first, the
+          ;; scheduler's module file built in, as the engine's
+          ;; `with-processes` makes one: what its forms are made calls of.
+          (let ((xs (if (mentions? as-read process-heads)
+                        (onto (read-all "(define %processes (load-module \"fx26:processes.fx\"))" "<scheduler>" 1) as-read)
+                        as-read)))
+           (begin
             ;; As expanded, before the loads are spliced: what
             ;; `--expanded-located` writes, as the engine does.
             (db-set! d (key1 "unspliced" path) (if (any? loads? xs) (if (string=? expanded "") "%read" expanded) "") 0)
             (if (any? loads? xs)
                 (let ((ys (with-loads xs path loaded)))
                   (kc-load-forms! d path text ys (words-of (map located ys))))
-                (kc-load-forms! d path text xs expanded))))))
+                (kc-load-forms! d path text xs expanded)))))))
 
     (define kc-forms-spliced! (subr qe (db runner string string sexps fileds) unit)
       (lambda (d run path text forms loaded)

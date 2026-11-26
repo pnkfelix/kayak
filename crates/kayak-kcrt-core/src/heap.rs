@@ -144,6 +144,7 @@ pub(crate) fn remember(slot: u64) {
 /// A run's start: what one before left lent given back.
 pub(crate) fn reset() {
     done();
+    crate::sched::reset();
 }
 
 /// Collections so far.

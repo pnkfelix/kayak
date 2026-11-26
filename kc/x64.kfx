@@ -116,12 +116,22 @@
        the function's code."
       (define x64-entry-checks (subr kfx (string) string)
         (lambda (sym)
-          (string-list-append (list "    cmpq 16(%r15), %rsp\n    jb .Lck_" sym "_deep\n    subq $1, 24(%r15)\n    jb .Lck_" sym "_poll\n.Lck_" sym "_go:\n"))))
+          (string-list-append (list "    cmpq 16(%r15), %rsp\n    jb .Lck_" sym "_deep\n"))))
+
+      "The fuel's check (C544): after the function's prologue, its
+       parameters and free values in its slots and the rest of its frame
+       zeroed, so that every register but the heap's and the state's is
+       dead there and every word of its frame a value, as a preemption at
+       the poll needs (`kc_poll`): the scheduler's `preempt` may collect, or
+       capture the frame."
+      (define x64-entry-fuel (subr kfx (string) string)
+        (lambda (sym)
+          (string-list-append (list "    subq $1, 24(%r15)\n    jb .Lck_" sym "_poll\n.Lck_" sym "_go:\n"))))
 
       (define x64-entry-calls (subr kfx (string) string)
         (lambda (sym)
           (string-list-append (list ".Lck_" sym "_deep:\n    movl $" (i64->string x64-fail-stack) ", %edi\n    call kc_fail\n"
-                                    ".Lck_" sym "_poll:\n    call *560(%r15)\n    jmp .Lck_" sym "_go\n"))))
+                                    ".Lck_" sym "_poll:\n    call kc_poll\n    jmp .Lck_" sym "_go\n"))))
 
       "Lines already made, as they are, after the code so far."
       (define x64-emit-lines (subr kfx (x64-code string) x64-code)
@@ -614,6 +624,13 @@
                      (let* ((c (x64-emit-args c (prim-args t) si env))
                             (c (x64-moved-args c x64-arg-registers si 3)))
                        (x64-emit c "call kc_string_search")))
+                    ((and (string=? h "prim") (string=? (prim-name t) "%sched"))
+                     ;; The scheduler's operation (C544): its number and operands
+                     ;; into slots, then given to the runtime, which may make
+                     ;; something in the heap.
+                     (let* ((c (x64-emit-args c (prim-args t) si env))
+                            (c (x64-moved-args c x64-arg-registers si 3)))
+                       (x64-emit c "call kc_sched")))
                     ((and (string=? h "prim") (string=? (prim-name t) "substring"))
                      ;; `substring`: its arguments into slots, then given to the runtime.
                      (let* ((args (prim-args t))
@@ -653,7 +670,7 @@
                              (fr (x64-label c "frame" k))
                              (inner (x64-using (x64-code nil (i64+ k 1) 0 nil px) (i64+ n m)))
                              (inner (x64-loaded-args (x64-stored-params inner x64-arg-registers 0 n) 6 n))
-                             (inner (x64-loaded-free inner 0 m n))
+                             (inner (x64-emit-lines (x64-loaded-free inner 0 m n) (x64-entry-fuel sym)))
                              (env2 (x64-params-at fv n (x64-params-at ps 0 nil)))
                              (inner (x64-emit-tail inner (item-body t) (i64+ n m) env2 fr)))
                         (tagcase inner
@@ -1125,7 +1142,8 @@
                        ;; Its body in tail position, its frame `fr`, a symbol set to
                        ;; its size once its code is made (C413).
                        (let ((fr (string-append ".L" (string-append px "_frame"))))
-                         (tagcase (x64-emit-tail (x64-loaded-args (x64-stored-params (x64-using (x64-code nil 0 0 nil px) n) x64-arg-registers 0 n) 6 n)
+                         (tagcase (x64-emit-tail (x64-emit-lines (x64-loaded-args (x64-stored-params (x64-using (x64-code nil 0 0 nil px) n) x64-arg-registers 0 n) 6 n)
+                                                                 (x64-entry-fuel (x64-proc-symbol (item-name i))))
                                                  (item-body i) n (x64-params-at ps 0 nil) fr)
                            (x64-code (ls m slots fails px2)
                              (x64-asm-item-text 0
@@ -1264,7 +1282,10 @@
       (define x64-entry-support (subr kfx (bool) string)
         (lambda (applies)
           (string-list-append
-            (list "    .text\nkc_gc_init:\n    movq $0, 664(%r15)\n    leaq 8(%rsp), %rax\n"
+            (list "    .text\n    .globl kc_poll\nkc_poll:\n    call *560(%r15)\n    subq $8, %rsp\n    movq %r15, %rdi\n    call kcrt_preempt_due\n"
+                  "    testq %rax, %rax\n    je .Lkc_poll_none\n    movq %rax, %r10\n    call *-28(%r10)\n    call kcrt_preempt_done\n"
+                  ".Lkc_poll_none:\n    addq $8, %rsp\n    ret\n"
+                  "    .text\nkc_gc_init:\n    movq $0, 664(%r15)\n    leaq 8(%rsp), %rax\n"
                   "    movq %r12, 688(%r15)\n    movq %r13, 696(%r15)\n    movq %rax, 704(%r15)\n"
                   "    leaq kc_cells_lo(%rip), %rax\n    subq 208(%r15), %rax\n    subq $4, %rax\n    movq %rax, 712(%r15)\n"
                   "    leaq kc_cells_hi(%rip), %rax\n    subq 208(%r15), %rax\n    subq $4, %rax\n    movq %rax, 720(%r15)\n    ret\n"
@@ -1312,6 +1333,7 @@
                   "    call *%rax\n" "    movq %r12, 680(%r15)\n" "    popq %r12\n    popq %r13\n    popq %r15\n    ret\n"
                   (x64-heap-routine "kc_string_append" "kcrt_string_append" 2)
                   (x64-heap-routine "kc_substring" "kcrt_substring" 3)
+                  (x64-heap-routine "kc_sched" "kcrt_sched" 3)
                   (x64-heap-routine "kc_append" "kcrt_append" 2)
                   (x64-heap-routine "kc_reverse" "kcrt_reverse" 1)
                   (x64-heap-routine "kc_int_to_string" "kcrt_int_to_string" 1)
@@ -1342,7 +1364,9 @@
             "kcrt_f64_to_string" "kcrt_list_to_vector" "kc_error" "kc_string_search"
             "kc_bytevector_length" "kcrt_bytevector_u8_ref" "kc_is_utf8" "kcrt_utf8_to_string"
             ;; The write barrier (C538).
-            "kc_remember"))
+            "kc_remember"
+            ;; The scheduler's operations (C544), and its preemption at a poll.
+            "kcrt_sched" "kcrt_preempt_due" "kcrt_preempt_done"))
 
     (hide
       "Routines that always fail, and those that may (C452): each called,
@@ -1350,6 +1374,8 @@
       (define x64-failing strings (list "kc_fail" "kc_array_index_fail" "kc_make_array_fail" "kc_string_index_fail" "kc_error"))
       (define x64-may-fail strings (list "kcrt_string_append" "kcrt_substring" "kcrt_append" "kcrt_given" "kc_collect" "kcrt_capture" "kcrt_resume_copy" "kcrt_current_marks" "kcrt_marks_of" "kcrt_reverse" "kcrt_int_to_string"
                                          "kcrt_char_to_string" "kcrt_f64_to_string" "kcrt_list_to_vector" "kcrt_bytevector_u8_ref" "kcrt_utf8_to_string"))
+
+      (define x64-may-fail-in-rdx strings (list "kcrt_sched"))
 
       (define-rec
         (x64-routine-stubs (subr kfx (strings i64 (listof string acyclic)) string)
@@ -1360,7 +1386,20 @@
                   (x64-routine-stubs (cdr ns) (i64+ k 1)
                     (cons (string-list-append
                             (cond ((string-member? (car ns) x64-failing)
-                                   (list (car ns) ":\n    subq $8, %rsp\n    call *" cell "(%rip)\n    jmp kc_failed\n"))
+                                   ;; A failure (C544): the heap's registers kept, the
+                                   ;; routine given the state; it answers the record of
+                                   ;; the scheduler's prompt if a monitored task's
+                                   ;; failure is caught, aborted to as `kc_abort` does
+                                   ;; with the value it gives, else 0, the run failed.
+                                   (list (car ns) ":\n    movq %r12, 728(%r15)\n    movq %r13, 696(%r15)\n    movq %r15, %rsi\n"
+                                         "    subq $8, %rsp\n    call *" cell "(%rip)\n    testq %rax, %rax\n    je kc_failed\n"
+                                         "    movq 728(%r15), %r12\n    movq 696(%r15), %r13\n    movq 0(%rax), %rcx\n    movq %rcx, 664(%r15)\n"
+                                         "    movq 24(%rax), %rcx\n    movq 16(%rax), %rsp\n    movq %rdx, %rax\n    jmp *%rcx\n"))
+                                  ;; One whose value may be 0 (C544, `%sched`'s, a
+                                  ;; fixnum 0): its failure said in `%rdx`.
+                                  ((string-member? (car ns) x64-may-fail-in-rdx)
+                                   (list (car ns) ":\n    subq $8, %rsp\n    call *" cell "(%rip)\n    addq $8, %rsp\n"
+                                         "    testq %rdx, %rdx\n    jne kc_failed\n    ret\n"))
                                   ((string-member? (car ns) x64-may-fail)
                                    (list (car ns) ":\n    subq $8, %rsp\n    call *" cell "(%rip)\n    addq $8, %rsp\n"
                                          "    testq %rax, %rax\n    je kc_failed\n    ret\n"))

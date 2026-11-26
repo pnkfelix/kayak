@@ -17,6 +17,7 @@
 ../kfx/regs-isa.kfx
 ../fx26/ir.kfx
 ../fx26/prims.kfx
+../fx26/process-forms.kfx
 ../fx26/lower.kfx
 ../fx26/cg.kfx
 ../fx26/regs-asm.kfx

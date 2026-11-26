@@ -26,6 +26,8 @@ pub mod ir;
 pub use ir::*;
 pub mod prims;
 pub use prims::*;
+pub mod process_forms;
+pub use process_forms::*;
 pub mod lower;
 pub use lower::*;
 pub mod cg;

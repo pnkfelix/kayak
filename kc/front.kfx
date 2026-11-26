@@ -548,7 +548,8 @@
       (define-rec
         (instances-in (subr kfx (sexp (listof kface acyclic) (listof kinst acyclic)) sexp)
           (lambda (e faces env)
-            "`e`, each `(letrena r B ...)` a `let` of `r` to unit (kc's code has
+            "`e`, each `(letrena r B ...)` a `let` of `r` to unit (and a
+             `letreap`'s, a process's own place, C544; kc's code has
              one heap, so a place is nothing at run time), and each `(with x E)`
              of an instance a `let` of the names `E` uses of its interface, each
              its field (C471)."
@@ -556,7 +557,7 @@
               (lst (xs f l p)
                 (cond ((null? xs) e)
                       ((sym-is? (car xs) "quote") e)
-                      ((and (sym-is? (car xs) "letrena") (i64>= (size xs) 3))
+                      ((and (or (sym-is? (car xs) "letrena") (sym-is? (car xs) "letreap")) (i64>= (size xs) 3))
                        (instances-in (lst (cons (sym "let" f p) (cons (lst (list (lst (list (second xs) (sym "#u" f p)) f l p)) f l p) (cdr (cdr xs)))) f l p)
                                      faces env))
                       ((and (sym-is? (car xs) "with") (i64= (size xs) 3) (not (null? (instance-of (second xs) faces env))))
@@ -647,7 +648,8 @@
                                                          (cdr (cdr (items f))))))
                                    acc)
                              faces)))
-                        (else (modules-expanded (cdr fs) ms (cons (withs-expanded (instances-in (instance-made f ms faces) faces nil) ms) acc) faces)))))))))
+                        ;; Its forms of processes the scheduler's calls (C544).
+                        (else (modules-expanded (cdr fs) ms (cons (withs-expanded (instances-in (instance-made (processes-rewritten f) ms faces) faces nil) ms) acc) faces)))))))))
 
     "Whether the file `PATH`'s text is as it was (C417): its forms' inputs
      are too, not read again."

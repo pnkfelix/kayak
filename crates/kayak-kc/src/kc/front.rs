@@ -1315,7 +1315,8 @@ pub mod kc_front {
         }
     }
 
-    /// `e`, each `(letrena r B ...)` a `let` of `r` to unit (kc's code has
+    /// `e`, each `(letrena r B ...)` a `let` of `r` to unit (and a
+    /// `letreap`'s, a process's own place, C544; kc's code has
     /// one heap, so a place is nothing at run time), and each `(with x E)`
     /// of an instance a `let` of the names `E` uses of its interface, each
     /// its field (C471).
@@ -1328,7 +1329,7 @@ pub mod kc_front {
                     return e;
                 } else if sym_is_p(car(xs), str_lit!("quote")) {
                     return e;
-                } else if (sym_is_p(car(xs), str_lit!("letrena")) && i64_gt_eq(size(xs), 3i64)) {
+                } else if ((sym_is_p(car(xs), str_lit!("letrena")) || sym_is_p(car(xs), str_lit!("letreap"))) && i64_gt_eq(size(xs), 3i64)) {
                     e = lst(kayak_rt::heap_cons(sym(str_lit!("let"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(sym(str_lit!("#u"), f, p), kayak_rt::nil())), f, l, p), kayak_rt::nil()), f, l, p), cdr(cdr(xs)))), f, l, p);
                     continue;
                 } else if (sym_is_p(car(xs), str_lit!("with")) && i64_eq(size(xs), 3i64) && not(null_p(instance_of(second(xs), faces, env)))) {
@@ -1523,7 +1524,7 @@ pub mod kc_front {
                     })), cdr(cdr(items(f)))))), acc));
                     continue;
                 } else {
-                    (fs, acc) = (cdr(fs), kayak_rt::heap_cons(withs_expanded(instances_in(instance_made(f, ms, faces), faces, nil::<kayak_rt::data::DataAt<'static, kc_front::Kinst>>()), ms), acc));
+                    (fs, acc) = (cdr(fs), kayak_rt::heap_cons(withs_expanded(instances_in(instance_made(processes_rewritten(f), ms, faces), faces, nil::<kayak_rt::data::DataAt<'static, kc_front::Kinst>>()), ms), acc));
                     continue;
                 }
             }

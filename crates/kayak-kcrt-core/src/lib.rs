@@ -34,6 +34,7 @@
 #![allow(unsafe_code)]
 
 mod heap;
+mod sched;
 pub use heap::{B_CELLS_HI, B_CELLS_LO, B_HI, B_NEXT, Heap, collections, done};
 
 // Fixpt's tags, immediates and kinds, from kayak-layout's table, Fixpt's
@@ -369,6 +370,45 @@ pub extern "C" fn kcrt_substring(args: *const u64, block: *mut u64) -> u64 {
     substring_of(args, block).unwrap_or_else(|m| failed(&m))
 }
 
+/// `(%sched n a b)` (C544): the scheduler's operation `n` on `a` and `b`
+/// (`sched.rs`), in kc's heap where it makes something.
+#[unsafe(no_mangle)]
+pub extern "C" fn kcrt_sched(args: *const u64, block: *mut u64) -> u64 {
+    sched::op(args, block).unwrap_or_else(|m| failed(&m))
+}
+
+/// In process, its value in `%rax` and whether it failed in `%rdx`: its
+/// value may be 0 (a fixnum 0), which says a failure of the other
+/// routines (x64.kfx's `x64-may-fail-in-rdx`).
+#[repr(C)]
+pub struct Answered {
+    value: u64,
+    failed: u64,
+}
+
+/// At a poll whose slice is spent (C544, x64.kfx's `kc_poll`): the
+/// scheduler's `preempt` to call, or 0.
+#[unsafe(no_mangle)]
+pub extern "C" fn kcrt_preempt_due(state: *const u64) -> u64 {
+    sched::preempt_due(state)
+}
+
+/// Its call returned.
+#[unsafe(no_mangle)]
+pub extern "C" fn kcrt_preempt_done() {
+    sched::preempt_done()
+}
+
+extern "C" fn here_sched(args: *const u64, block: *mut u64) -> Answered {
+    match sched::op(args, block) {
+        Ok(value) => Answered { value, failed: 0 },
+        Err(m) => Answered {
+            value: failed_here(m),
+            failed: 1,
+        },
+    }
+}
+
 /// A symbol's name: its field 0, the string it was made of.
 #[unsafe(no_mangle)]
 pub extern "C" fn kc_symbol_to_string(v: u64) -> u64 {
@@ -688,8 +728,8 @@ pub extern "C" fn kc_string_search(s: u64, sub: u64, from: u64) -> u64 {
 
 /// `(error message)`, FX-26's: the run fails, saying the message.
 #[unsafe(no_mangle)]
-pub extern "C" fn kc_error(v: u64) -> u64 {
-    failed(&string_text(v))
+pub extern "C" fn kcrt_error(v: u64, state: *const u64) -> Raised {
+    raised(&string_text(v), state)
 }
 
 // ------------------------------------------------------------ control
@@ -932,20 +972,20 @@ extern "C" fn here_resume_copy(v: u64, dest: u64, chain: u64) -> u64 {
 /// An array's index past its end, or below 0 (C422): kc's words, in a
 /// string's way; Fixpt's machines each say it their own way.
 #[unsafe(no_mangle)]
-pub extern "C" fn kc_array_index_fail(len: u64) -> ! {
-    failed(&format!("array index out of range (length {len})"))
+pub extern "C" fn kcrt_array_index_fail(len: u64, state: *const u64) -> Raised {
+    raised(&format!("array index out of range (length {len})"), state)
 }
 
 /// `make-array` of a length below 0.
 #[unsafe(no_mangle)]
-pub extern "C" fn kc_make_array_fail() -> ! {
-    failed("a bloblet's field count must be non-negative")
+pub extern "C" fn kcrt_make_array_fail(_: u64, state: *const u64) -> Raised {
+    raised("a bloblet's field count must be non-negative", state)
 }
 
 /// `string-ref` past its string's end, as Fixpt says it.
 #[unsafe(no_mangle)]
-pub extern "C" fn kc_string_index_fail(len: u64) -> ! {
-    failed(&format!("string index out of range (length {len})"))
+pub extern "C" fn kcrt_string_index_fail(len: u64, state: *const u64) -> Raised {
+    raised(&format!("string index out of range (length {len})"), state)
 }
 
 /// Room in the heap (C453; C541, the shared heap's), asked by kc's code
@@ -1062,20 +1102,23 @@ extern "C" fn here_gc_reset() {
     heap::reset();
 }
 
-extern "C" fn here_fail(what: u64) -> u64 {
-    failed_here(fail_words(what).to_string())
+extern "C" fn here_fail(what: u64, state: *const u64) -> Raised {
+    raised_here(fail_words(what).to_string(), state)
 }
 
-extern "C" fn here_array_index_fail(len: u64) -> u64 {
-    failed_here(format!("array index out of range (length {len})"))
+extern "C" fn here_array_index_fail(len: u64, state: *const u64) -> Raised {
+    raised_here(format!("array index out of range (length {len})"), state)
 }
 
-extern "C" fn here_make_array_fail() -> u64 {
-    failed_here("a bloblet's field count must be non-negative".to_string())
+extern "C" fn here_make_array_fail(_: u64, state: *const u64) -> Raised {
+    raised_here(
+        "a bloblet's field count must be non-negative".to_string(),
+        state,
+    )
 }
 
-extern "C" fn here_string_index_fail(len: u64) -> u64 {
-    failed_here(format!("string index out of range (length {len})"))
+extern "C" fn here_string_index_fail(len: u64, state: *const u64) -> Raised {
+    raised_here(format!("string index out of range (length {len})"), state)
 }
 
 extern "C" fn here_substring(args: *const u64, block: *mut u64) -> u64 {
@@ -1113,8 +1156,8 @@ extern "C" fn here_list_to_vector(args: *const u64, block: *mut u64) -> u64 {
     list_vector(args, block).unwrap_or_else(failed_here)
 }
 
-extern "C" fn here_error(v: u64) -> u64 {
-    failed_here(string_text(v))
+extern "C" fn here_error(v: u64, state: *const u64) -> Raised {
+    raised_here(string_text(v), state)
 }
 
 /// The address of the routine kc's code names `name` (`kc_show`, ...), as
@@ -1133,6 +1176,9 @@ pub fn routine(name: &str) -> u64 {
         "kc_string_lt" => kc_string_lt as *const (),
         "kcrt_string_append" => here_string_append as *const (),
         "kcrt_substring" => here_substring as *const (),
+        "kcrt_sched" => here_sched as *const (),
+        "kcrt_preempt_due" => kcrt_preempt_due as *const (),
+        "kcrt_preempt_done" => kcrt_preempt_done as *const (),
         "kc_symbol_to_string" => kc_symbol_to_string as *const (),
         "kc_is_string" => kc_is_string as *const (),
         "kc_is_symbol" => kc_is_symbol as *const (),
@@ -1253,8 +1299,41 @@ pub fn fail_words(what: u64) -> &'static str {
 /// A failure of kc's code, said as `fixpt eval` says a failure, and the
 /// run ended.
 #[unsafe(no_mangle)]
-pub extern "C" fn kc_fail(what: u64) -> ! {
-    failed(fail_words(what))
+pub extern "C" fn kcrt_fail(what: u64, state: *const u64) -> Raised {
+    raised(fail_words(what), state)
+}
+
+/// What a failure of kc's code comes to (C544): the record of the
+/// scheduler's prompt, if the failing task is of a monitored group, and
+/// the value to abort to it with (unit), for kc's code to abort there as
+/// `kc_abort` does (`kayak-kcrt`'s shims, x64.kfx's stubs in process): the
+/// record and those inside it taken off the prompts' chain, the stack
+/// pointer the record's, its handler's call taken; a record of 0, a
+/// failure in process, said (`failed_here`).
+#[repr(C)]
+pub struct Raised {
+    at: u64,
+    value: u64,
+}
+
+fn caught(message: &str, state: *const u64) -> Option<Raised> {
+    sched::task_failed(message, state).map(|at| Raised {
+        at,
+        value: sched::unit(),
+    })
+}
+
+/// A built program's: caught, or the run ended.
+fn raised(message: &str, state: *const u64) -> Raised {
+    caught(message, state).unwrap_or_else(|| failed(message))
+}
+
+/// In process: caught, or said, and 0.
+fn raised_here(message: String, state: *const u64) -> Raised {
+    caught(&message, state).unwrap_or_else(|| Raised {
+        at: failed_here(message),
+        value: 0,
+    })
 }
 
 /// A top-level expression's value, written on a line of its own, as

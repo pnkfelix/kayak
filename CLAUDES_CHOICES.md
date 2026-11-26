@@ -17429,3 +17429,105 @@ runtimes had of their own, surveyed.
   directed by its Rust types.
 - kc's identity takes `write.rs`.
 - **The full check**: `check: all passed`, 10 min 18 s (the mean of 107 runs 8 min 34 s); the pre-check passed first.
+
+## C544. kc compiles tasks: Fixpt's scheduler, `%sched` in kcrt-core (2026-11-25)
+
+The user, after C543: "Maybe we should look into making kc able to compile
+tasks? What's left for that?", then "okay go ahead. make as much progress
+as you can". kc refused every program of processes (`not yet: a form,
+make-icell`).
+- **Fixpt's design, not a new one**: in Fixpt the forms of processes and
+  `par` are derived, each a call of a procedure of the scheduler, which is
+  FX-26 itself (`fx26:processes.fx`, built in), over prompts and one-shot
+  continuations; the runtime's part is one primitive, `%sched`, an
+  operation's number and two operands (Fixpt's `sched.rs`). kc already
+  compiled prompts and continuations (C458-C460) and, it turned out,
+  checked and lowered all of `processes.fx` but `%sched`. So kc does as
+  Fixpt and the engine do: one source, the scheduler's, for all three.
+- **The front end**: a program whose forms mention a form of processes
+  has `(define %processes (load-module "fx26:processes.fx"))` first
+  (kc's `kc-set-spliced!`, as the engine's `with-processes`), its loads
+  spliced; the checker checks the forms as its own, as before; then each
+  form, as kc flattens it for lowering (`modules-expanded`), has its forms
+  of processes made calls of `%processes`'s procedures
+  (`processes-rewritten`, over `process-expanded`). That rewrite was the
+  engine's (`fx26/lower.kfx`); it moved to `fx26/process-forms.kfx`, in
+  the engine's, tier 1's and kc's units, one copy.
+- **l0**: `%sched` a ternary primitive; `(make-icell)`, `(clock)`,
+  `(sleep-until t)` kc's own `%sched` operations past Fixpt's (100, 101,
+  102: Fixpt's are primitives of their own, `%fx26-make-icell`, `clock`,
+  `sleep-until`); `rcons` a `cons` and `letreap` a `letrena` (kc's code
+  has one heap, a place unit at run time).
+- **`%sched` in kcrt-core** (`sched.rs`, a port of Fixpt's `sched.rs`;
+  tier 1's `cells/sched.kfx` is the same in KFX, over its machine's words,
+  which kc cannot share): tasks by number, the lowest free first, ending
+  the current one making the first current (Fixpt's `Heap::task_end`; the
+  first bug: a `par` of two values deadlocked); the run queue, timers,
+  cancelled tasks, monitored groups and their parents, waiting tasks'
+  stops, per-task quiet counts and graces. An I-cell and a mailbox are
+  Fixpt's objects (kinds `icell` and `mailbox`, three fields and a
+  trailer, Fixpt's field numbers), their lists kc's pairs, their stores
+  through the heap's barrier; a message copied as Fixpt's `copy_within`
+  copies (what `shared` says is shared, the rest copied once each).
+- **Its state off the heap, exact roots**: Fixpt keeps the state in a
+  vector in its heap; here it is Rust's, a thread's, and every word of it
+  that is a value (a task's thunk, a waker, a handler, the prompt's tag,
+  a failure's handler) is told the collector as an exact root through a
+  new hook (`kayak_heap::roots::runtime_slots`, read by `stack_roots`,
+  so both hosts'), and rewritten where its object moves. Each operation
+  that makes something takes all its room first and reads its operands
+  after (C455's rule), never holding the state across a collection.
+- **A routine whose value may be 0**: in process a routine's 0 says it
+  failed, but `%sched`'s fixnum 0 is a value (the first task's number);
+  its failure is said in `%rdx` instead (x64.kfx's `x64-may-fail-in-rdx`,
+  kcrt's `Answered`). The second bug: in process the run stopped silently.
+- **A monitored task's failure** (`trap`, `par-branch`, `race-lost`,
+  `worker-fails`, `attempt`): kc's failures (`kc_fail`, `kc_error`, the
+  index failures) asked the scheduler first (Fixpt's `task_failed`): of a
+  monitored group, and the scheduler's prompt on kc's stack (its prompts'
+  chain, word 664), the rest of the group cancelled, the failure kept for
+  `TAKE_FAILURE`, and the prompt's record given back. A shim saves the
+  heap's registers into the state block (728, 696) before the routine,
+  and aborts to the record as `kc_abort` does (inline, so the runtime
+  shared needs no symbol of the program's) with unit. In process the
+  routine stubs are the shims; built, naked `no_mangle` functions in
+  kayak-kcrt (a `global_asm!` symbol the shared runtime does not export:
+  the third bug).
+- **Preemption** (`spinner`, `race-deadline`, `allocating`): the fuel's
+  poll moved from a function's entry to after its prologue (its
+  parameters and free values in slots, the rest of its frame zeroed), so
+  that there every register but the heap's and the state's is dead and
+  every word of its frame a value: the scheduler's `preempt` may collect,
+  or capture the frame. The poll calls `kc_poll` (kc's support, global):
+  the state's poll, then `kcrt_preempt_due` (Fixpt's `preempt_due`: the
+  first task if another could run and it runs none; another if the
+  scheduler's prompt is on its stack; never while quiet or in its grace),
+  and, if due, the scheduler's `preempt` called as a kc procedure, then
+  `kcrt_preempt_done`.
+- **Tests**: 24 of Fixpt's programs of processes, monitors and
+  preemption copied to `tests/kc/tasks` (kc-steps: built, in process,
+  with a tiny heap, warm, and Fixpt's answer stated), each its first
+  line its answer as kc and Fixpt give it; `tests/kc/heap/tasks.fx`, a
+  process summing copied lists, `par`, a preempted `race`, a monitored
+  failure, which gc-stress runs collected every 31st allocation built,
+  every 997th in process (kc reads its database, the scheduler's items in
+  it, under the stress too: every 31st, minutes; each `tests/kc/heap`
+  program is compiled unstressed first since, its database warm).
+- **kc's assembler relaxes as `as` does** (the check's kc-objects found
+  26 of the tasks' objects 16 bytes longer than `as` makes them): kc
+  sized every branch from the whole layout of the pass before, so a
+  forward branch past an alignment, measured while the branches before
+  it were still short, could grow where `as` keeps it short, and never
+  shrink. Now `settled` is GNU as's `relax_segment` and `relax_frag`:
+  in a pass each piece moved by what grew before it, a label passed at its
+  new address, one ahead at its old one moved by that growth only where
+  no alignment is between, a branch past an alignment to one now behind
+  it left as it is, an alignment's padding made again. 533 objects as
+  `as` makes them, 0 differ.
+- **Not yet**: `read-byte` in a `pselect` (the standard input's
+  readiness), a process's output (Heist's F6), a product's fields by
+  name (an older gap of kc's, in three of the programs), tier 1's
+  `stay-cellular`. Tasks are green threads on one thread, as Fixpt's
+  are: `par`'s branches take turns. The plan's step 5 changes with it
+  (`docs/research/one-runtime.md`).
+- **The full check**: `check: all passed`, 12 min 11 s (the mean of 108 runs 8 min 36 s; kc-steps 3 min 52 s of it, its new programs each compiling the scheduler); the pre-check passed first.

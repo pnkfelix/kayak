@@ -16,6 +16,7 @@ macros-bridge.kfx
 ../kfx/regs-isa.kfx
 ir.kfx
 prims.kfx
+process-forms.kfx
 lower.kfx
 cg.kfx
 regs-asm.kfx

@@ -111,7 +111,11 @@
                   ((string=? (car ops) n) (car (cdr ops)))
                   (else (int-op-of n (cdr (cdr ops))))))))
 
-      (define ternary-primitives (listof string acyclic) (list "substring" "array-set!" "with-mark" "string-search")))
+      (define ternary-primitives (listof string acyclic)
+        (list "substring" "array-set!" "with-mark" "string-search"
+              ;; The scheduler's operations (C544), `fx26:processes.fx`'s, by
+              ;; number, as Fixpt's runtime has them (kcrt-core's `sched.rs`).
+              "%sched")))
 
     (define not-yet (subr kfx (string string) string)
       (lambda (path what) (begin (error (string-append "kc: " (string-append path (string-append ": not yet: " what)))) "")))
@@ -453,6 +457,22 @@
                         ;; above its frame on the stack, which a capture takes.
                         ((and (null? (cdr xs)) (or (string=? h "make-continuation-prompt-tag") (string=? h "make-escape-tag") (string=? h "make-continuation-mark-key")))
                          (l0-made "(prim new (unit))" next))
+                        ;; An I-cell, empty (C544): the scheduler's operation 100,
+                        ;; kc's own, Fixpt's `%fx26-make-icell`.
+                        ((and (null? (cdr xs)) (string=? h "make-icell"))
+                         (l0-made "(prim %sched (int 100) (unit) (unit))" next))
+                        ;; A cons at a place (C544): kc's code has one heap, a place
+                        ;; nothing at run time (`kc/front.kfx`'s `letrena`).
+                        ((and (string=? h "rcons") (i64= (size xs) 4))
+                         (l0-of path scope env next (lst (list (sym "cons" f p) (third xs) (fourth xs)) f l p)))
+                        ;; Sleeping until the clock reaches a time (C544), the
+                        ;; scheduler's operation 102, kc's own; unit.
+                        ((and (string=? h "sleep-until") (i64= (size xs) 2))
+                         (l0-of path scope env next (lst (list (sym "%sched" f p) (num 102 f p) (second xs) (sym "#u" f p)) f l p)))
+                        ;; The clock (C544): nanoseconds since the run began, as
+                        ;; Fixpt's `clock_ns`, the scheduler's operation 101, kc's own.
+                        ((and (null? (cdr xs)) (string=? h "clock"))
+                         (l0-made "(prim %sched (int 101) (unit) (unit))" next))
                         ((and (string=? h "prompt") (i64= (size xs) 4))
                          (tagcase (l0-of path scope env next (second xs))
                            (l0-made (t n1)

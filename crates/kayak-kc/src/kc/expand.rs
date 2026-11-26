@@ -33281,7 +33281,12 @@ pub mod kc_expand {
 
     // Forms `xs`, the program's as read or expanded, set as its forms: if
     // it loads a file, with its loads spliced in (C471).
-    pub fn kc_set_spliced_x(d: Db, path: Str, text: Str, xs: Sexps, loaded: Fileds, expanded: Str) -> () {
+    pub fn kc_set_spliced_x(d: Db, path: Str, text: Str, as_read: Sexps, loaded: Fileds, expanded: Str) -> () {
+        let xs = if mentions_p(as_read, process_heads()) {
+            onto(read_all(str_lit!("(define %processes (load-module \"fx26:processes.fx\"))"), str_lit!("<scheduler>"), 1i64), as_read)
+        } else {
+            as_read
+        };
         db_set_x(d, key1(str_lit!("unspliced"), path), if any_p(kayak_rt::as_proc(loads_p), xs) {
             if string_eq_p(expanded, str_lit!("")) {
                 str_lit!("%read")
