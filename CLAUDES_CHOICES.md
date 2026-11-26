@@ -17700,3 +17700,41 @@ the task programs, each compiling Fixpt's scheduler; I measured instead.
   than the slowdown; and `kc run`, which assembles the whole program at
   each run where `kc build` reuses its objects. Both noted for later.
 - **The full check**: `check: all passed`, 7 min 57 s (the mean of 112 runs 8 min 40 s; the last, C547's, 12 min 41 s); kc-steps 2 min 19 s of it (C547's 4 min 51 s); the pre-check passed first.
+
+## C549. kc's own branch layout; `as`'s only as asked (2026-11-26)
+
+The user, on C544's relaxation copied from GNU as: "I don't think kc
+should have reproduce `as` exactly, or least we should have that be an
+opt in mode. Where did that requirement come from?" It was mine (C450):
+`as` taken as the oracle for kc's encoder, its objects compared byte for
+byte, and C450 and C544 copied `as`'s relaxation (`relax_segment`, its
+estimate of a label not yet reached, its rules past an alignment) to
+keep every object the same. The user: "You can keep as layout
+compatibility as an opt in".
+- **`kc --object --as-layout FILE OUT`**: `as`'s layout (`relaxed`), as
+  before. `kc build`, `kc run`'s image and `kc --object` without it lay
+  branches out as kc does (`kc-longs`, kc/asm.kfx).
+- **kc's layout**: every branch short, then passes (`grown`) measuring
+  each short one on the exact layout of that pass's lengths, one too far
+  made long, until none grows; without alignments this is the least
+  layout (Szymanski, CACM 1978). With them it was not: on its first run
+  kc's layout was 16 bytes longer than `as`'s in 31 of 549 objects (the
+  scheduler's), a branch made long whose target a later growth brought
+  back in reach past an alignment (a branch grown before an alignment
+  shortens its padding). So then (`least-longs`) each long branch that
+  may fit short (behind it in reach; ahead, in reach once short and an
+  alignment gives back the most it may, `most-padding`) is made short,
+  grown again, the new layout kept while the section shortens. Each
+  short branch fits on the layout made, so no estimate is kept.
+- **scripts/kc-objects.py**: each object made both ways; `--as-layout`'s
+  compared byte for byte with `as`'s, as before; kc's loosely (`.text`
+  no longer, `.rodata` and `.bss` the same, `.data`'s size, relocations'
+  types and symbols in order, symbols' names, bindings, types and
+  sections), and how much shorter it is said.
+- **Measured**: kc-objects, 549 as `as` makes them, kc's layout no
+  shorter in any: on kc's code `as`'s choices are already least. The
+  largest object (14 MB of text) assembled in 5.9 s, `as`'s layout 5.3 s,
+  the same bytes. What it buys is freedom, not bytes yet: the layout
+  kc's to change (a worklist, Szymanski's, rather than passes; other
+  branch forms).
+- **The full check**: `check: all passed`, 7 min 59 s (the mean of 113 runs 8 min 40 s); kc-steps 2 min 16 s of it; kc-objects 549 as `as` makes them with `--as-layout`, kc's layout no longer in any (shorter in 0); the pre-check passed first.

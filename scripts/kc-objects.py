@@ -1,11 +1,17 @@
 """kc's assembler against the GNU assembler (C450): each assembly file kc's
 native back end made (the objects `kc build` assembles, under
 target/kc-steps/, made by scripts/kc-steps.py first), made an object by kc
-(`kc --object FILE OUT`, kc/asm.kfx) and by `as`, the two compared: each
-section's bytes (`.text`, `.data`, `.rodata`), `.bss`'s size, each
-section's relocations (offset, type, symbol or section, addend), and the
-symbols (name, binding, type, section, value, size), but the sections'
-own. The first difference of each that differs is said.
+(`kc --object --as-layout FILE OUT`, kc/asm.kfx) and by `as`, the two
+compared: each section's bytes (`.text`, `.data`, `.rodata`), `.bss`'s
+size, each section's relocations (offset, type, symbol or section,
+addend), and the symbols (name, binding, type, section, value, size), but
+the sections' own. The first difference of each that differs is said.
+
+kc's own layout (C549, `kc --object FILE OUT`, what `kc build` makes) is
+compared too, loosely, as its branches may be shorter than `as`'s: its
+`.text` no longer than `as`'s, `.rodata` and `.bss` the same, and the same
+relocations (type and symbol, in order) and symbols (name, binding, type,
+section), their offsets aside.
 
 usage: python3 -I scripts/kc-objects.py [-v] [FILE.s ...]
 """
@@ -97,16 +103,45 @@ def first_difference(mine, theirs):
     return None
 
 
+def loose_difference(own, theirs):
+    """How kc's own layout's object differs from `as`'s beyond its branches'
+    lengths, if it does."""
+    a, t = own["sections"][".text"], theirs["sections"][".text"]
+    if len(a) > len(t):
+        return "kc's layout: .text %d bytes, as's %d" % (len(a), len(t))
+    for name in (".rodata", ".bss"):
+        if own["sections"][name] != theirs["sections"][name]:
+            return "kc's layout: %s differs" % name
+    if len(own["sections"][".data"]) != len(theirs["sections"][".data"]):
+        return "kc's layout: .data's size differs"
+    for target in sorted(set(own["relocs"]) | set(theirs["relocs"])):
+        ra = [(ty, sym) for _, ty, sym, _ in own["relocs"].get(target, [])]
+        rt = [(ty, sym) for _, ty, sym, _ in theirs["relocs"].get(target, [])]
+        if ra != rt:
+            return "kc's layout: relocations of %s differ" % target
+    sa = {x[:4] for x in own["symbols"]}
+    st = {x[:4] for x in theirs["symbols"]}
+    if sa != st:
+        return "kc's layout: symbols: kc's alone %s; as's alone %s" % (sorted(sa - st)[:3], sorted(st - sa)[:3])
+    return None
+
+
 def compare(path):
+    """`path`'s difference, and how much shorter kc's layout's `.text` is."""
     with tempfile.TemporaryDirectory() as d:
-        mine, theirs = os.path.join(d, "kc.o"), os.path.join(d, "as.o")
-        r = subprocess.run([KC, "--object", path, mine], capture_output=True, text=True)
+        mine, own, theirs = os.path.join(d, "kc.o"), os.path.join(d, "own.o"), os.path.join(d, "as.o")
+        r = subprocess.run([KC, "--object", "--as-layout", path, mine], capture_output=True, text=True)
         if r.returncode != 0:
-            return path, "kc --object failed: " + (r.stderr.strip().splitlines() or [""])[-1]
+            return path, "kc --object --as-layout failed: " + (r.stderr.strip().splitlines() or [""])[-1], 0
+        r = subprocess.run([KC, "--object", path, own], capture_output=True, text=True)
+        if r.returncode != 0:
+            return path, "kc --object failed: " + (r.stderr.strip().splitlines() or [""])[-1], 0
         r = subprocess.run(["as", "-o", theirs, path], capture_output=True, text=True)
         if r.returncode != 0:
-            return path, "as failed: " + r.stderr.strip()[-300:]
-        return path, first_difference(elf(mine), elf(theirs))
+            return path, "as failed: " + r.stderr.strip()[-300:], 0
+        e_own, e_as = elf(own), elf(theirs)
+        why = first_difference(elf(mine), e_as) or loose_difference(e_own, e_as)
+        return path, why, len(e_as["sections"][".text"]) - len(e_own["sections"][".text"])
 
 
 def main():
@@ -119,10 +154,12 @@ def main():
         sys.exit("kc-objects: no assembly under %s: run scripts/kc-steps.py first" % WORK)
     with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count() or 4) as ex:
         results = list(ex.map(compare, files))
-    bad = [(p, why) for p, why in results if why]
+    bad = [(p, why) for p, why, _ in results if why]
     for p, why in bad[: (len(bad) if verbose else 20)]:
         print("DIFFERS: %s: %s" % (os.path.relpath(p, ROOT), why))
-    print("kc-objects: %d objects, %d as `as` makes them, %d differ" % (len(results), len(results) - len(bad), len(bad)))
+    shorter = [n for _, why, n in results if not why and n > 0]
+    print("kc-objects: %d objects, %d as `as` makes them, %d differ; kc's layout shorter in %d (%d bytes)" % (
+        len(results), len(results) - len(bad), len(bad), len(shorter), sum(shorter)))
     sys.exit(1 if bad else 0)
 
 

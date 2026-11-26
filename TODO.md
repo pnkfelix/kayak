@@ -1659,7 +1659,9 @@ harness); K2 onward Ghuloum's steps; the service after K2's first steps.
   text kept for comparison: each step program's objects as `as` makes
   them of it, byte for byte (done, C450: kc's assembler of the text,
   kc/asm.kfx, its objects `kc build`'s, scripts/kc-objects.py; the
-  text made instructions as data, not yet); (3) kc's own convention (the user: "I'm
+  text made instructions as data, not yet; since C549 byte for byte
+  only as asked, `kc --object --as-layout`, kc's own branch layout
+  otherwise, the same length as `as`'s on every step object so far); (3) kc's own convention (the user: "I'm
   okay with us inventing our own variant"; data stays Fixpt's): a stack
   limit, a failure that returns to the trampoline, a state register kept
   for fuel; linked into kayak-jit's code area, `kc run` in process, each

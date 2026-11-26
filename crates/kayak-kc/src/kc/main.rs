@@ -139,7 +139,7 @@ pub mod kc_driver {
     }
 
     #[inline]
-    pub fn asm_object() -> kayak_rt::Proc1s<'static, Str, List<i64>> {
+    pub fn asm_object() -> kayak_rt::Proc2s<'static, bool, Str, List<i64>> {
         kayak_rt::as_proc(kc_asm::asm_object)
     }
 
@@ -540,9 +540,8 @@ pub mod kc_driver {
     }
 
     /// Each object not made yet, written to `dir`: its assembly, `NAME.s`,
-    /// and its object, `NAME.o`, kc's assembler's (C450, kc/asm.kfx), as
-    /// `as` makes it of the text beside it (scripts/kc-objects.py); their
-    /// files' names.
+    /// and its object, `NAME.o`, kc's assembler's (C450, kc/asm.kfx), its
+    /// branches laid out as kc lays them (C549); their files' names.
     pub fn objects_written(mut d: Db, mut run: Runner, mut file: Str, mut dir: Str, mut os: Sexps, mut names: List<Str>, mut have: List<Str>, mut acc: List<Str>) -> List<Str> {
         loop {
             if null_p(os) {
@@ -561,7 +560,7 @@ pub mod kc_driver {
                     let s = string_append(car(names), str_lit!(".s"));
                     write_text(string_append(dir, string_append(str_lit!("/"), s)), text);
                     {
-                        let m = bytes_written(string_append(dir, string_append(str_lit!("/"), string_append(car(names), str_lit!(".o")))), asm_object().call(text));
+                        let m = bytes_written(string_append(dir, string_append(str_lit!("/"), string_append(car(names), str_lit!(".o")))), asm_object().call(false, text));
                         if string_eq_p(m, str_lit!("")) {
                             ()
                         } else {
@@ -1396,8 +1395,16 @@ pub mod kc_driver {
                 match fail_with(str_lit!("usage: kc [--db DB] [--stats] [--rt RUNTIME] (--check FILE | --rust FILE OUT | --asm FILE OUT | build FILE EXE | run [--heap WORDS] FILE | serve)"), int_lit(2)) {}
             } else if string_eq_p(car(rest), str_lit!("serve")) {
                 serve(d, dbp, stats, at)
+            } else if (string_eq_p(car(rest), str_lit!("--object")) && not(null_p(cdr(rest))) && string_eq_p(car(cdr(rest)), str_lit!("--as-layout")) && not(null_p(cdr(cdr(rest)))) && not(null_p(cdr(cdr(cdr(rest)))))) {
+                let m = bytes_written(car(cdr(cdr(cdr(rest)))), asm_object().call(true, read_text(car(cdr(cdr(rest))))));
+                if string_eq_p(m, str_lit!("")) {
+                    int_lit(0)
+                } else {
+                    match fail_with(m, int_lit(1)) {};
+                    int_lit(1)
+                }
             } else if (string_eq_p(car(rest), str_lit!("--object")) && not(null_p(cdr(rest))) && not(null_p(cdr(cdr(rest))))) {
-                let m = bytes_written(car(cdr(cdr(rest))), asm_object().call(read_text(car(cdr(rest)))));
+                let m = bytes_written(car(cdr(cdr(rest))), asm_object().call(false, read_text(car(cdr(rest)))));
                 if string_eq_p(m, str_lit!("")) {
                     int_lit(0)
                 } else {

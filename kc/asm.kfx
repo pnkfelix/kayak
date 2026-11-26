@@ -2,15 +2,19 @@
  to just use the same byte emitter everywhere, as that is the thing that's
  most likely to expose bugs\"). The assembly text kc's native back end
  makes (x64.kfx), a subset of the GNU assembler's x86-64 syntax, made an
- ELF relocatable object, as `as` makes one of it: each section's bytes,
- symbols and relocations the same (`scripts/kc-objects.py` compares them,
- object by object). `kc build` links these (main.kfx); the text is kept
- beside them, the same text `as` is given, for comparing and reading.
+ ELF relocatable object. Asked (`kc --object --as-layout`), it is as `as`
+ makes one of it: each section's bytes, symbols and relocations the same
+ (`scripts/kc-objects.py` compares them, object by object). Otherwise
+ (C549) only its branches' lengths are kc's own (`kc-longs`), so its
+ layout, not its instructions, may differ. `kc build` links these
+ (main.kfx); the text is kept beside them, the same text `as` is given,
+ for comparing and reading.
 
  What `as` does that decides bytes, found by trying it (GNU as 2.38):
  - a jump to a symbol of its own section, local or global, resolved and
    made short (`eb`, `7x`) where its target is near, grown (`e9`, `0f
-   8x`) until none changes; to another's, long, `R_X86_64_PLT32`;
+   8x`) until none changes (`relaxed`, only as asked); to another's,
+   long, `R_X86_64_PLT32`;
  - a call to a local symbol of its section resolved, any other
    `R_X86_64_PLT32`; a `%rip` operand of a global, a common or an
    undefined symbol `R_X86_64_PC32` against it, of a local one of
@@ -608,15 +612,109 @@
 
       "Each branch's length as `as` settles it: every one short at first
        (as `as` estimates a branch to its own section's symbol), then its
-       passes (`relaxed-pass`) until none grows."
+       passes (`relaxed-pass`) until none grows. kc's own layout is
+       `kc-longs`; this one is asked for (`--as-layout`, C549), for
+       comparing kc's objects with `as`'s byte for byte."
       (define-rec
         (relaxed (subr kfx (pieces (listof bool acyclic) (listof i64 acyclic)) (listof bool acyclic))
           (lambda (ps longs addrs)
             (let ((r (relaxed-pass ps longs addrs (labels-in ps addrs 0 (lm-none)) 0 0 (lm-none) nil nil #f)))
               (if (extract r 3) (relaxed ps (extract r 1) (extract r 2)) longs)))))
 
-      (define settled (subr kfx (pieces (listof bool acyclic)) (listof bool acyclic))
-        (lambda (ps longs) (relaxed ps longs (addresses ps longs 0 nil))))
+      "One pass of kc's own layout (C549): each short branch measured on
+       the layout of this pass's lengths, every address exact; one whose
+       target is too far, or not a label of its section, made long. Each
+       branch's length, and whether any grew."
+      (define-rec
+        (grown (subr kfx (pieces (listof bool acyclic) (listof i64 acyclic) lmap (listof bool acyclic) bool)
+                     (tupleof (listof bool acyclic) bool))
+          (lambda (ps longs addrs labels acc grew)
+            (if (null? ps)
+                (tuple (reverse acc) grew)
+                (tagcase (car ps)
+                  (p-branch (cc s)
+                    (let* ((long (car longs))
+                           (t (if long nil (label-laid s labels)))
+                           (now (or long (null? t) (not (fits8? (i64- (extract (car t) 2) (i64+ (car addrs) 2)))))))
+                      (grown (cdr ps) (cdr longs) (cdr addrs) labels (cons now acc) (or grew (and now (not long))))))
+                  (else other (grown (cdr ps) longs (cdr addrs) labels acc grew)))))))
+
+      "Branches grown until none must (C549): a pass (`grown`) until none
+       grows. A branch only grows, so it ends; each short one fits on the
+       layout it ends with. Without alignments, from every branch short,
+       the least layout (Szymanski 1978)."
+      (define-rec
+        (grown-longs (subr kfx (pieces (listof bool acyclic)) (listof bool acyclic))
+          (lambda (ps longs)
+            (let* ((addrs (addresses ps longs 0 nil))
+                   (r (grown ps longs addrs (labels-in ps addrs 0 (lm-none)) nil #f)))
+              (if (extract r 2) (grown-longs ps (extract r 1)) longs)))))
+
+      "The most padding an alignment of `ps` may make."
+      (define-rec
+        (most-padding (subr kfx (pieces i64) i64)
+          (lambda (ps m)
+            (if (null? ps)
+                m
+                (most-padding (cdr ps)
+                              (tagcase (car ps)
+                                (p-align (k) (let ((n (i64- (i64-shl 1 (i64->int k)) 1))) (if (i64> n m) n m)))
+                                (else other m)))))))
+
+      "Each branch's length, a long one made short where it may fit short
+       (C549): its target behind it within reach, or ahead within reach
+       once the branch is short and an alignment between gives back the
+       most it may (`slack`). Past an alignment a branch grown before
+       another may bring that one's target nearer, so a branch made long
+       may fit short later."
+      (define-rec
+        (shrunk (subr kfx (pieces (listof bool acyclic) (listof i64 acyclic) lmap i64 (listof bool acyclic) bool)
+                      (tupleof (listof bool acyclic) bool))
+          (lambda (ps longs addrs labels slack acc any)
+            (if (null? ps)
+                (tuple (reverse acc) any)
+                (tagcase (car ps)
+                  (p-branch (cc s)
+                    (let* ((long (car longs))
+                           (t (if long (label-laid s labels) nil))
+                           (short (and (not (null? t))
+                                       (let* ((addr (car addrs)) (target (extract (car t) 2)))
+                                         (if (i64<= target addr)
+                                             (fits8? (i64- target (i64+ addr 2)))
+                                             (fits8? (i64- (i64- target (i64+ (i64- (branch-size cc #t) 2) slack)) (i64+ addr 2))))))))
+                      (shrunk (cdr ps) (cdr longs) (cdr addrs) labels slack (cons (and long (not short)) acc) (or any short))))
+                  (else other (shrunk (cdr ps) longs (cdr addrs) labels slack acc any)))))))
+
+      "A section's length, given each branch's length."
+      (define section-length (subr kfx (pieces (listof bool acyclic)) i64)
+        (lambda (ps longs) (extract (offsets ps longs 0 nil) 2)))
+
+      "From a layout that fits, `longs`: those that may be short made so,
+       then grown again (`grown-longs`), kept while the section shortens."
+      (define-rec
+        (least-longs (subr kfx (pieces (listof bool acyclic) i64) (listof bool acyclic))
+          (lambda (ps longs slack)
+            (let* ((addrs (addresses ps longs 0 nil))
+                   (r (shrunk ps longs addrs (labels-in ps addrs 0 (lm-none)) slack nil #f)))
+              (if (not (extract r 2))
+                  longs
+                  (let ((next (grown-longs ps (extract r 1))))
+                    (if (i64< (section-length ps next) (section-length ps longs))
+                        (least-longs ps next slack)
+                        longs)))))))
+
+      "Each branch's length as kc lays it out (C549): every one short at
+       first, grown until none must (`grown-longs`), then those that may
+       be short again tried so (`least-longs`). Each short branch fits on
+       the layout made; `as`'s estimates of a label not yet reached, and
+       its rules at an alignment, are not kept (`relaxed`, asked for)."
+      (define kc-longs (subr kfx (pieces (listof bool acyclic)) (listof bool acyclic))
+        (lambda (ps longs) (least-longs ps (grown-longs ps longs) (most-padding ps 0))))
+
+      "Each branch's length: `as`'s layout if `as-layout`, else kc's."
+      (define settled (subr kfx (bool pieces (listof bool acyclic)) (listof bool acyclic))
+        (lambda (as-layout ps longs)
+          (if as-layout (relaxed ps longs (addresses ps longs 0 nil)) (kc-longs ps longs))))
 
       "A relocation: the offset in its section, its type, its symbol (a
        section's name for a section's), and its addend."
@@ -849,7 +947,7 @@
         (tagcase (lines-read (reading (list nil nil nil nil nil) 0 nil nil nil nil) (lines-of (string-chars text) nil nil))
           (reading (ss0 cur gs commons sets labels)
             (let* ((ss (map (lambda ((ps pieces)) (rev-onto-pieces ps nil)) ss0))
-                   (longs (map (lambda ((ps pieces)) (settled ps (branches-of ps nil))) ss))
+                   (longs (map (lambda ((ps pieces)) (settled #f ps (branches-of ps nil))) ss))
                    (syms (concat (map (lambda ((k i64))
                                         (map (lambda ((x (tupleof string i64)))
                                                (tuple (extract x 1) k (extract x 2) (string-member? (extract x 1) gs)))
@@ -875,14 +973,15 @@
                             (fix ro-rs r0 ro) (zeros (i64- d0 (i64+ r0 (size ro))) nil)
                             (fix data-rs d0 data) (zeros (i64- (extract cs 2) (i64+ d0 (size data))) nil))))))))
 
-    "`asm-object TEXT`: the ELF relocatable object of assembly `TEXT`, its
-     bytes, as `as` makes it (this file's head)."
-    (define asm-object (subr kfx (string) (listof i64 acyclic))
-      (lambda (text)
+    "`asm-object AS-LAYOUT TEXT`: the ELF relocatable object of assembly
+     `TEXT`, its bytes; as `as` makes it (this file's head) if `AS-LAYOUT`,
+     else its branches laid out as kc lays them (C549, `kc-longs`)."
+    (define asm-object (subr kfx (bool string) (listof i64 acyclic))
+      (lambda (as-layout text)
         (tagcase (lines-read (reading (list nil nil nil nil nil) 0 nil nil nil nil) (lines-of (string-chars text) nil nil))
           (reading (ss0 cur gs commons sets labels)
             (let* ((ss (map (lambda ((ps pieces)) (rev-onto-pieces ps nil)) ss0))
-                   (longs (map (lambda ((ps pieces)) (settled ps (branches-of ps nil))) ss))
+                   (longs (map (lambda ((ps pieces)) (settled as-layout ps (branches-of ps nil))) ss))
                    (syms (concat (map (lambda ((k i64))
                                         (map (lambda ((x (tupleof string i64)))
                                                (tuple (extract x 1) k (extract x 2) (string-member? (extract x 1) gs)))

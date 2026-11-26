@@ -190,9 +190,8 @@
         (objects-written (subr qe (db runner string string sexps (listof string acyclic) (listof string acyclic) (listof string acyclic)) (listof string acyclic))
           (lambda (d run file dir os names have acc)
             "Each object not made yet, written to `dir`: its assembly, `NAME.s`,
-             and its object, `NAME.o`, kc's assembler's (C450, kc/asm.kfx), as
-             `as` makes it of the text beside it (scripts/kc-objects.py); their
-             files' names."
+             and its object, `NAME.o`, kc's assembler's (C450, kc/asm.kfx), its
+             branches laid out as kc lays them (C549); their files' names."
             (if (null? os)
                 (reverse acc)
                 (if (string-member? (string-append (car names) ".o") have)
@@ -204,7 +203,7 @@
                            (s (string-append (car names) ".s")))
                       (begin
                         (write-text (string-append dir (string-append "/" s)) text)
-                        (let ((m (bytes-written (string-append dir (string-append "/" (string-append (car names) ".o"))) (asm-object text))))
+                        (let ((m (bytes-written (string-append dir (string-append "/" (string-append (car names) ".o"))) (asm-object #f text))))
                           (if (string=? m "") #u (begin (error (string-append "kc: " m)) #u)))
                         (objects-written d run file dir (cdr os) (cdr names) have (cons s acc)))))))))
 
@@ -566,9 +565,14 @@
                      (fail-with "usage: kc [--db DB] [--stats] [--rt RUNTIME] (--check FILE | --rust FILE OUT | --asm FILE OUT | build FILE EXE | run [--heap WORDS] FILE | serve)" 2))
                     ((string=? (car rest) "serve") (serve d dbp stats at))
                     ;; An assembly file made an object by kc's assembler (C450),
-                    ;; for comparing with `as`'s (scripts/kc-objects.py).
+                    ;; for comparing with `as`'s (scripts/kc-objects.py); its
+                    ;; branches as `as` lays them out if asked (C549).
+                    ((and (string=? (car rest) "--object") (not (null? (cdr rest))) (string=? (car (cdr rest)) "--as-layout")
+                          (not (null? (cdr (cdr rest)))) (not (null? (cdr (cdr (cdr rest))))))
+                     (let ((m (bytes-written (car (cdr (cdr (cdr rest)))) (asm-object #t (read-text (car (cdr (cdr rest))))))))
+                       (if (string=? m "") 0 (begin (fail-with m 1) 1))))
                     ((and (string=? (car rest) "--object") (not (null? (cdr rest))) (not (null? (cdr (cdr rest)))))
-                     (let ((m (bytes-written (car (cdr (cdr rest))) (asm-object (read-text (car (cdr rest)))))))
+                     (let ((m (bytes-written (car (cdr (cdr rest))) (asm-object #f (read-text (car (cdr rest)))))))
                        (if (string=? m "") 0 (begin (fail-with m 1) 1))))
                     ;; An assembly file made the image `kc run` runs (C451), after
                     ;; what kc's code runs on in process, for looking at it.

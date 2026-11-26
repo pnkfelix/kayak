@@ -7,15 +7,19 @@ use super::*;
 // to just use the same byte emitter everywhere, as that is the thing that's
 // most likely to expose bugs"). The assembly text kc's native back end
 // makes (x64.kfx), a subset of the GNU assembler's x86-64 syntax, made an
-// ELF relocatable object, as `as` makes one of it: each section's bytes,
-// symbols and relocations the same (`scripts/kc-objects.py` compares them,
-// object by object). `kc build` links these (main.kfx); the text is kept
-// beside them, the same text `as` is given, for comparing and reading.
+// ELF relocatable object. Asked (`kc --object --as-layout`), it is as `as`
+// makes one of it: each section's bytes, symbols and relocations the same
+// (`scripts/kc-objects.py` compares them, object by object). Otherwise
+// (C549) only its branches' lengths are kc's own (`kc-longs`), so its
+// layout, not its instructions, may differ. `kc build` links these
+// (main.kfx); the text is kept beside them, the same text `as` is given,
+// for comparing and reading.
 //
 // What `as` does that decides bytes, found by trying it (GNU as 2.38):
 // - a jump to a symbol of its own section, local or global, resolved and
 // made short (`eb`, `7x`) where its target is near, grown (`e9`, `0f
-// 8x`) until none changes; to another's, long, `R_X86_64_PLT32`;
+// 8x`) until none changes (`relaxed`, only as asked); to another's,
+// long, `R_X86_64_PLT32`;
 // - a call to a local symbol of its section resolved, any other
 // `R_X86_64_PLT32`; a `%rip` operand of a global, a common or an
 // undefined symbol `R_X86_64_PC32` against it, of a local one of
@@ -1794,7 +1798,9 @@ pub mod kc_asm {
 
     // Each branch's length as `as` settles it: every one short at first
     // (as `as` estimates a branch to its own section's symbol), then its
-    // passes (`relaxed-pass`) until none grows.
+    // passes (`relaxed-pass`) until none grows. kc's own layout is
+    // `kc-longs`; this one is asked for (`--as-layout`, C549), for
+    // comparing kc's objects with `as`'s byte for byte.
     pub fn relaxed(mut ps: Pieces, mut longs: List<bool>, mut addrs: List<i64>) -> List<bool> {
         loop {
             let r = relaxed_pass(ps, longs, addrs, labels_in(ps, addrs, 0i64, lm_none()), 0i64, 0i64, lm_none(), nil::<bool>(), nil::<i64>(), false);
@@ -1807,9 +1813,163 @@ pub mod kc_asm {
         }
     }
 
+    // One pass of kc's own layout (C549): each short branch measured on
+    // the layout of this pass's lengths, every address exact; one whose
+    // target is too far, or not a label of its section, made long. Each
+    // branch's length, and whether any grew.
+    pub fn grown(mut ps: Pieces, mut longs: List<bool>, mut addrs: List<i64>, mut labels: kayak_rt::data::DataAt<'static, Lmap>, mut acc: List<bool>, mut grew: bool) -> Product_11_12<List<bool>, bool> {
+        loop {
+            if null_p(ps) {
+                return Product_11_12(reverse(acc), grew);
+            } else {
+                let tagcase_ = car(ps);
+                if Piece::__is_PBranch(tagcase_) {
+                    let (cc, s,) = Piece::__PBranch(tagcase_);
+                    let long = car(longs);
+                    let t = if long {
+                        nil::<Product_11_12_13_14<Str, i64, i64, bool>>()
+                    } else {
+                        label_laid(s, labels)
+                    };
+                    let now = (long || null_p(t) || not(fits8_p(i64_minus(car(t).1, i64_plus(car(addrs), 2i64)))));
+                    (ps, longs, addrs, acc, grew) = (cdr(ps), cdr(longs), cdr(addrs), kayak_rt::heap_cons(now, acc), (grew || (now && not(long))));
+                    continue;
+                } else {
+                    let other = tagcase_;
+                    (ps, addrs) = (cdr(ps), cdr(addrs));
+                    continue;
+                }
+            }
+        }
+    }
+
+    // Branches grown until none must (C549): a pass (`grown`) until none
+    // grows. A branch only grows, so it ends; each short one fits on the
+    // layout it ends with. Without alignments, from every branch short,
+    // the least layout (Szymanski 1978).
+    pub fn grown_longs(mut ps: Pieces, mut longs: List<bool>) -> List<bool> {
+        loop {
+            let addrs = addresses(ps, longs, 0i64, nil::<i64>());
+            let r = grown(ps, longs, addrs, labels_in(ps, addrs, 0i64, lm_none()), nil::<bool>(), false);
+            if r.1 {
+                longs = r.0;
+                continue;
+            } else {
+                return longs;
+            }
+        }
+    }
+
+    // The most padding an alignment of `ps` may make.
+    pub fn most_padding(mut ps: Pieces, mut m: i64) -> i64 {
+        loop {
+            if null_p(ps) {
+                return m;
+            } else {
+                (ps, m) = (cdr(ps), {
+                    let tagcase_ = car(ps);
+                    if Piece::__is_PAlign(tagcase_) {
+                        let (k,) = Piece::__PAlign(tagcase_);
+                        let n = i64_minus(i64_shl(1i64, i64_to_int(k)), 1i64);
+                        if i64_gt(n, m) {
+                            n
+                        } else {
+                            m
+                        }
+                    } else {
+                        let other = tagcase_;
+                        m
+                    }
+                });
+                continue;
+            }
+        }
+    }
+
+    // Each branch's length, a long one made short where it may fit short
+    // (C549): its target behind it within reach, or ahead within reach
+    // once the branch is short and an alignment between gives back the
+    // most it may (`slack`). Past an alignment a branch grown before
+    // another may bring that one's target nearer, so a branch made long
+    // may fit short later.
+    pub fn shrunk(mut ps: Pieces, mut longs: List<bool>, mut addrs: List<i64>, mut labels: kayak_rt::data::DataAt<'static, Lmap>, mut slack: i64, mut acc: List<bool>, mut any: bool) -> Product_11_12<List<bool>, bool> {
+        loop {
+            if null_p(ps) {
+                return Product_11_12(reverse(acc), any);
+            } else {
+                let tagcase_ = car(ps);
+                if Piece::__is_PBranch(tagcase_) {
+                    let (cc, s,) = Piece::__PBranch(tagcase_);
+                    let long = car(longs);
+                    let t = if long {
+                        label_laid(s, labels)
+                    } else {
+                        nil::<Product_11_12_13_14<Str, i64, i64, bool>>()
+                    };
+                    let short = (not(null_p(t)) && {
+                        let addr = car(addrs);
+                        let target = car(t).1;
+                        if i64_lt_eq(target, addr) {
+                            fits8_p(i64_minus(target, i64_plus(addr, 2i64)))
+                        } else {
+                            fits8_p(i64_minus(i64_minus(target, i64_plus(i64_minus(branch_size(cc, true), 2i64), slack)), i64_plus(addr, 2i64)))
+                        }
+                    });
+                    (ps, longs, addrs, acc, any) = (cdr(ps), cdr(longs), cdr(addrs), kayak_rt::heap_cons((long && not(short)), acc), (any || short));
+                    continue;
+                } else {
+                    let other = tagcase_;
+                    (ps, addrs) = (cdr(ps), cdr(addrs));
+                    continue;
+                }
+            }
+        }
+    }
+
+    // A section's length, given each branch's length.
     #[inline]
-    pub fn settled(ps: Pieces, longs: List<bool>) -> List<bool> {
-        relaxed(ps, longs, addresses(ps, longs, 0i64, nil::<i64>()))
+    pub fn section_length(ps: Pieces, longs: List<bool>) -> i64 {
+        offsets(ps, longs, 0i64, nil::<Product_11_12<Str, i64>>()).1
+    }
+
+    // From a layout that fits, `longs`: those that may be short made so,
+    // then grown again (`grown-longs`), kept while the section shortens.
+    pub fn least_longs(mut ps: Pieces, mut longs: List<bool>, mut slack: i64) -> List<bool> {
+        loop {
+            let addrs = addresses(ps, longs, 0i64, nil::<i64>());
+            let r = shrunk(ps, longs, addrs, labels_in(ps, addrs, 0i64, lm_none()), slack, nil::<bool>(), false);
+            if not(r.1) {
+                return longs;
+            } else {
+                let next = grown_longs(ps, r.0);
+                if i64_lt(section_length(ps, next), section_length(ps, longs)) {
+                    longs = next;
+                    continue;
+                } else {
+                    return longs;
+                }
+            }
+        }
+    }
+
+    // Each branch's length as kc lays it out (C549): every one short at
+    // first, grown until none must (`grown-longs`), then those that may
+    // be short again tried so (`least-longs`). Each short branch fits on
+    // the layout made; `as`'s estimates of a label not yet reached, and
+    // its rules at an alignment, are not kept (`relaxed`, asked for).
+    #[inline]
+    pub fn kc_longs(ps: Pieces, longs: List<bool>) -> List<bool> {
+        least_longs(ps, grown_longs(ps, longs), most_padding(ps, 0i64))
+    }
+
+    // Each branch's length: `as`'s layout if `as-layout`, else kc's.
+    #[inline]
+    pub fn settled(as_layout: bool, ps: Pieces, longs: List<bool>) -> List<bool> {
+        if as_layout {
+            relaxed(ps, longs, addresses(ps, longs, 0i64, nil::<i64>()))
+        } else {
+            kc_longs(ps, longs)
+        }
     }
 
     // A relocation: the offset in its section, its type, its symbol (a
@@ -2411,7 +2571,7 @@ pub mod kc_asm {
                 rev_onto_pieces(ps, nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>())
             })), ss0);
             let longs = map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), ps: Pieces| {
-                settled(ps, branches_of(ps, nil::<bool>()))
+                settled(false, ps, branches_of(ps, nil::<bool>()))
             })), ss);
             let syms = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((gs, ss, longs,), |(gs, ss, longs,), k: i64| {
                 map(kayak_rt::as_proc(kayak_rt::closure1s((gs, k,), |(gs, k,), x: Product_11_12<Str, i64>| {
@@ -2490,17 +2650,18 @@ pub mod kc_asm {
         } else { kayak_rt::data::no_variant() }
     }
 
-    // `asm-object TEXT`: the ELF relocatable object of assembly `TEXT`, its
-    // bytes, as `as` makes it (this file's head).
-    pub fn asm_object(text: Str) -> List<i64> {
+    // `asm-object AS-LAYOUT TEXT`: the ELF relocatable object of assembly
+    // `TEXT`, its bytes; as `as` makes it (this file's head) if `AS-LAYOUT`,
+    // else its branches laid out as kc lays them (C549, `kc-longs`).
+    pub fn asm_object(as_layout: bool, text: Str) -> List<i64> {
         let tagcase_ = lines_read(reading(kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::nil()))))), 0i64, nil::<Str>(), nil::<Product_11_12_13<Str, i64, i64>>(), nil::<Product_11_12<Str, i64>>(), nil::<Product_11_12<Str, i64>>()), lines_of(string_chars(text), nil::<char>(), nil::<Str>()));
         if Reading::__is_Reading(tagcase_) {
             let (ss0, cur, gs, commons, sets, labels,) = Reading::__Reading(tagcase_);
             let ss = map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), ps: Pieces| {
                 rev_onto_pieces(ps, nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>())
             })), ss0);
-            let longs = map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), ps: Pieces| {
-                settled(ps, branches_of(ps, nil::<bool>()))
+            let longs = map(kayak_rt::as_proc(kayak_rt::closure1s((as_layout,), |(as_layout,), ps: Pieces| {
+                settled(as_layout, ps, branches_of(ps, nil::<bool>()))
             })), ss);
             let syms = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((gs, ss, longs,), |(gs, ss, longs,), k: i64| {
                 map(kayak_rt::as_proc(kayak_rt::closure1s((gs, k,), |(gs, k,), x: Product_11_12<Str, i64>| {
