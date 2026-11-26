@@ -47,6 +47,7 @@ heap many times over.
 import concurrent.futures
 import os
 import queue
+import shutil
 import subprocess
 import sys
 import threading
@@ -417,6 +418,14 @@ def fixpt_gives(fx, p):
     return got
 
 
+def fresh(db):
+    """Database `db` removed, its head and its files (`DB.d`), so that a
+    worker begins cold."""
+    if os.path.exists(db):
+        os.remove(db)
+    shutil.rmtree(db + ".d", ignore_errors=True)
+
+
 def swept(p, db):
     """`p` built, run, run in process and with a tiny heap, against what it
     states: the wrongs, the query bodies ran, and whether it ran in process
@@ -491,8 +500,7 @@ def sweep(ps):
 
     def worker(k):
         db = os.path.join(WORK, "db-%d.db" % k)
-        if os.path.exists(db):
-            os.remove(db)
+        fresh(db)
         mine = []
         while True:
             try:
@@ -529,8 +537,7 @@ def rust(ps):
     """The KFX programs by `kc --rust`, each a module of one crate
     (target/kc-rust), built once and run: the wrongs, the query bodies ran."""
     db = os.path.join(WORK, "rust.db")
-    if os.path.exists(db):
-        os.remove(db)
+    fresh(db)
     wrong, ran = [], 0
     kfx = [p for p in ps if p.endswith(".kfx")]
     crate = os.path.join(ROOT, "target", "kc-rust")

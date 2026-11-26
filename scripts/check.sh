@@ -28,11 +28,15 @@ tstep() {
     shift
     step scripts/timed "$tstep_name$KAYAK_TIMED_IN" "$@"
 }
+# With --all, every job run, whatever changed: a job of `scripts/memo.py`
+# (C552) is otherwise run only when the inputs it declares have changed
+# since it last passed.
 quick=
 case "${1-}" in
 --quick) quick=--quick ;;
+--all) KAYAK_CHECK_ALL=1; export KAYAK_CHECK_ALL ;;
 "") ;;
-*) echo "usage: scripts/check.sh [--quick]" >&2; exit 2 ;;
+*) echo "usage: scripts/check.sh [--quick | --all]" >&2; exit 2 ;;
 esac
 step cargo fmt --all --check
 # Which of Fixpt's answers kept this check asks for (C132): none yet.
@@ -63,7 +67,11 @@ job fixpoint tstep fixpoint${quick:+-quick} scripts/fixpoint.sh $quick
 # The second self-hosting (C366): the compiler on tier 1 makes itself; not
 # with --quick, for its 100 s.
 if [ -z "$quick" ]; then
-    job selfhost tstep selfhost-cells scripts/selfhost-cells.sh
+    # Run only when what it reads changed (C552): the compiler's sources,
+    # what it must make, and the two binaries, kayak-rt and the heap in them.
+    job selfhost python3 -I scripts/memo.py selfhost-cells --path kfx --path boot/src/kfx \
+        --path scripts/selfhost-cells.sh --bin kayak-fx26 --bin kayak-cells \
+        -- scripts/timed selfhost-cells-in-check scripts/selfhost-cells.sh
     # The emitter's async mode (C371): the compiler built async makes itself.
     job asyncs tstep async-check scripts/async-check.sh
     # The collector's stress mode (C511): the corpus and the compiler, a

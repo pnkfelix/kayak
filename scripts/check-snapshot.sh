@@ -4,7 +4,9 @@
 # is exactly the snapshot. The user's: "make sure your script prints out the
 # directory".
 #
-# usage: scripts/check-snapshot.sh [--quick]     check a snapshot
+# usage: scripts/check-snapshot.sh [--quick | --all]
+#                                                check a snapshot (--all:
+#                                                every job, C552)
 #        scripts/check-snapshot.sh --same        whether the working tree is
 #                                                the snapshot that last passed
 #        scripts/check-snapshot.sh --commit < MSG
@@ -37,6 +39,7 @@ if [ -z "${TIMED_CHECK-}" ]; then
     case "${1-}" in
     "") TIMED_CHECK=1 exec "$(dirname "$0")/timed" full-check "$0" "$@" ;;
     --quick) TIMED_CHECK=1 exec "$(dirname "$0")/timed" quick-check "$0" "$@" ;;
+    --all) TIMED_CHECK=1 exec "$(dirname "$0")/timed" full-check-all "$0" "$@" ;;
     esac
 fi
 # Run from a copy of this script: `sh` reads a script as it goes, and this

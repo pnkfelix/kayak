@@ -17788,3 +17788,36 @@ one of these".
   was kept from one to the next); each worker's `db-K.db.d` left when its
   head is removed (harmless: nothing is read but through a head).
 - **The full check**: `check: all passed`, 7 min 06 s (the mean of 115 runs 8 min 39 s); kc-steps 64 s of it, 0 wrong; the pre-check passed first.
+
+## C552. selfhost-cells run only when its inputs change; `--all` (2026-11-26)
+
+The user, after C551 left selfhost-cells the check's floor (325 s
+alone): "Let's look at selfhost-cells itself. Maybe it's slow paths
+aren't testing anything important anymore", then, of the options:
+"Let's go with 'Run it only when its inputs change'", and: "I'm
+wondering if all the tests should follow that policy, with some extra
+opt-in flag to say that we want to run all the tests anyway".
+- **What it is, measured**: the compiler made cellular words by the
+  engine (7 s), then run on tier 1 to compile itself (about 320 s); by
+  `perf`, tier 1's steps throughout (`hand_run_x` 18%, `int_to_i64` 11%,
+  the step, routine and operand 17%, words 9%), no one slow path. 97 s at
+  C366, about 150 at C474, 325 now (the integers of C488 and the heap of
+  C500-C543 likely; not bisected). What only it checks: kayak-rt's heap
+  and collector on a program that large and long; the rest (the
+  compiler's fixed point, tier 1 on 1410 programs twice) other jobs check.
+- **`scripts/memo.py NAME [--path P]... [--bin B]... -- COMMAND`**: a job's
+  key a hash of its name, its command, this script, every file under the
+  paths it declares and the release binaries it runs (their crates all in
+  them); a pass kept under its key (target/check-memo/NAME/KEY.log, its
+  output), and a job whose key has passed not run, its kept output said,
+  marked. A failure keeps nothing. Under `KAYAK_CHECK_ALL=1` every job
+  runs, and one that fails where its key had passed says its declared
+  inputs are not all it reads.
+- **selfhost-cells** by it: `kfx`, `boot/src/kfx`, its script, and the
+  binaries `kayak-fx26` and `kayak-cells` (kayak-rt and kayak-heap in
+  them): a change to kc, the scripts or the docs leaves it as it passed.
+- **`scripts/check.sh --all`** and **`scripts/check-snapshot.sh --all`**
+  (timed `full-check-all`): every job run whatever changed.
+- **kc-steps**: a worker's database removed with its files (`fresh`,
+  `DB.d` too, C551's leftover).
+- **The full check**: `check: all passed`, 6 min 59 s (the mean of 116 runs 8 min 38 s), selfhost-cells run (no pass kept yet) and kept; the pre-check passed first.
