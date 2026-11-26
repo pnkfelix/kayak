@@ -17569,3 +17569,57 @@ place is its index in the product's type, which only the checker knows
   does; `pselect-key` alone is left (`read-byte`, standard input, which
   kc has none of).
 - **The full check**: `check: all passed`, 10 min 50 s (the mean of 109 runs 8 min 38 s; kc-steps 4 min 39 s of it, 393 programs); the pre-check passed first.
+
+## C546. kc's standard I/O: `read-byte`, `write-out`, `write-err`, stdin's readiness (2026-11-26)
+
+Continuing the user's "make as much progress as you can" on kc's tasks:
+Fixpt's last program of processes kc could not run, `pselect-key`, waits
+for `(read-byte)`, and kc had no I/O primitive at all (not even
+`write-out`).
+- **Through `%sched`**: kc's own operations 103 (`read-byte`), 104
+  (`write-out`), 105 (`write-err`), 106 (a failure's words), past 100-102
+  (C544), and Fixpt's 43-45 (`STDIN_READY`, `STDIN_WAIT`, `STDIN_UNWAIT`).
+  `%sched` is already a routine of both runtimes that may make something
+  in the heap, its failure said apart from its value; a new routine would
+  have needed x64's tables, both shims and the routine tables for the same.
+  A calling convention of kc's own, which may differ from Fixpt's (its
+  own primitives).
+- **The sums made in FX-26**: each operation answers a fixnum (a byte,
+  `-1` at the end, 0 written, or `-2 - KIND`), and l0 makes the sum Fixpt's
+  primitive gives of it, `(sum byte k)`, `(sum eof #u)`, `(sum done #u)`,
+  `(sum failed (product (kind (sum K #u)) (detail ...)))`, its kinds in
+  kayak-rt's order (`stdio.rs`'s `KINDS`): no tag's symbol made in Rust,
+  which kc's code interns as its own.
+- **kcrt-core's `stdio.rs`**, as Fixpt's world has it: a buffer read a
+  block at a time, ready when it has a byte or `poll` with no wait says a
+  read would not block. `poll` is the readiness call, not a spin: the
+  user asked ("Polling? Isn't polling anti async"). A readiness question
+  answers at once (timeout 0), and when no task can run the scheduler
+  (`timers_wait`, now Fixpt's shape) waits in one `poll` until the input
+  is ready or the earliest timer is due, then runs the input's wakers. What
+  *is* anti-async is a bare `read-byte` with nothing buffered: it blocks
+  the thread, every task with it, as Fixpt's does (parity), noted in TODO
+  with the async way (wait through the scheduler, then read) and the
+  scalable one once processes wait too (one wait over every source,
+  kayak-sys's `Poller`). `libc` a dependency of kcrt-core (kayak-heap's
+  already).
+- **A second input beside kayak-rt's**: kc's runtimes cannot use
+  kayak-rt's `Input` (a reader thread, inside kayak-rt), so in process
+  kc's code reads its own buffer. Flagged: a divergence of the shared
+  runtime's to remove (TODO). `kc serve` reads its requests from the
+  standard input, which a program's read there would take from.
+- **Output in order**: built, written and flushed through Rust's standard
+  output, as the values are; in process, appended to the output the
+  values go to (`OUTPUT`), so that `kc run` writes them in the executable's
+  order (kc-steps compares them byte for byte). `here_sched` says it runs
+  in process (`here()`).
+- **kc-steps gives each program an empty standard input** (`/dev/null`),
+  as Fixpt's tests assume ("A test's standard input is empty"), so that a
+  read takes nothing of the check's.
+- **Tests**: `tests/kc/tasks/pselect-key.fx` (-1); `tests/kc/io/write.fx`
+  (writes interleaved with values, `write-err` of no text, since kc-steps reads Fixpt's answer after its standard error; a read at the end). By hand, against
+  Fixpt: a byte waiting (65), one late with a deadline passed (-1), a
+  `pselect` of the input alone waiting for a late byte (90, the
+  scheduler's wait in `poll`), all built and in process.
+- **The full check**: `check: all passed`, 10 min 13 s (the mean of 110 runs 8 min 39 s; kc-steps 3 min 58 s of it, 395 programs); the pre-check passed first. A first run failed on the new test alone (its `write-err` text, which kc-steps took as Fixpt's answer), fixed as above.
+- **Next, asked of the user**: the async form (a read or write that would block parks its task instead), as C547, waiting for their word.

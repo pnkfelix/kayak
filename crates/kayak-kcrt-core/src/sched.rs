@@ -51,6 +51,13 @@ pub(crate) const MAKE_ICELL: i64 = 100;
 pub(crate) const CLOCK: i64 = 101;
 /// And `(sleep-until t)`: until the clock reaches `t`; unit.
 pub(crate) const SLEEP_UNTIL: i64 = 102;
+/// And the standard input and output (C546, `stdio`): `(read-byte)`, a
+/// byte, `-1` at the end, or a failure's number; `(write-out s)`,
+/// `(write-err s)`, 0 or a failure's number; a failure's words, a string.
+pub(crate) const READ_BYTE: i64 = 103;
+pub(crate) const WRITE_OUT: i64 = 104;
+pub(crate) const WRITE_ERR: i64 = 105;
+pub(crate) const IO_DETAIL: i64 = 106;
 
 pub(crate) fn unit() -> u64 {
     (super::IMM_UNIT << super::IMM_SHIFT) | super::TAG_IMMEDIATE
@@ -94,6 +101,9 @@ struct Sched {
     /// A failure caught (`task_failed`): its message, and its group's
     /// handler, for the scheduler to call (`TAKE_FAILURE`).
     failure: Option<(String, u64)>,
+    /// Wakers run once a read of the standard input would not wait,
+    /// newest first (Fixpt's `STDIN_WAITERS`).
+    stdin_waiters: Vec<u64>,
 }
 
 impl Sched {
@@ -120,6 +130,9 @@ impl Sched {
         }
         if let Some((_, h)) = &self.failure {
             f(std::ptr::from_ref(h).addr());
+        }
+        for w in &self.stdin_waiters {
+            f(std::ptr::from_ref(w).addr());
         }
     }
 
@@ -212,7 +225,7 @@ fn with<R>(f: impl FnOnce(&mut Sched) -> R) -> R {
 
 /// Nanoseconds since the run began, Fixpt's `clock_ns` (which counts from
 /// its process's start too), a fixnum's for years.
-fn clock_ns() -> i64 {
+pub(crate) fn clock_ns() -> i64 {
     static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
     START
         .get_or_init(std::time::Instant::now)
@@ -549,7 +562,28 @@ pub(crate) fn op(args: *const u64, block: *mut u64) -> Result<u64, String> {
             let es: Vec<u64> = reaped.iter().map(|&(t, w)| r.cons(fixnum(t), w)).collect();
             r.list(&es)
         }
-        43..=45 => return Err("kc: not yet: a task that waits for the standard input".to_string()),
+        // Whether a read of the standard input would not wait; waker `a`
+        // run once it would not, and taken back (Fixpt's 43-45).
+        43 => boolean(crate::stdio::ready()),
+        44 => {
+            with(|s| s.stdin_waiters.insert(0, a));
+            unit()
+        }
+        45 => {
+            with(|s| s.stdin_waiters.retain(|&w| w != a));
+            unit()
+        }
+        READ_BYTE => fixnum(crate::stdio::read_byte()),
+        WRITE_OUT | WRITE_ERR => fixnum(crate::stdio::write(
+            &String::from_iter(
+                super::string_points(a)
+                    .iter()
+                    .map(|&c| char::from_u32(c).unwrap_or('\u{fffd}')),
+            ),
+            n == WRITE_ERR,
+            crate::here(),
+        )),
+        IO_DETAIL => super::string_in(block, &crate::stdio::detail())?,
         46..=54 => return Err("kc: not yet: a task that waits for a process".to_string()),
         55 => {
             let ms = ((a as i64) >> 3).max(0);
@@ -591,19 +625,39 @@ fn icell_put(args: *const u64, _block: *mut u64) -> Result<u64, String> {
     Ok(unit())
 }
 
-/// When no task can run and the first waits: `#f` if no timer is set;
-/// else, having slept until the earliest (if `sleep`), each due taken, its
-/// waker run, in the order of their times, and `#t`.
+/// When no task can run and the first waits: `#f` if no timer is set and
+/// no waker waits for the standard input; else, having slept until the
+/// earliest timer, or until the input is ready, whichever is first (if
+/// `sleep`; a wait in `poll`, no spin), the input's wakers run if it is
+/// ready, and each timer due taken, its waker run, in the order of their
+/// times, and `#t` (Fixpt's `timers_wait`, C546).
 fn timers_wait(sleep: bool) -> u64 {
-    let earliest = with(|s| s.timers.iter().map(|&(t, _)| t).min());
-    let Some(t) = earliest else {
+    let (earliest, input) = with(|s| {
+        (
+            s.timers.iter().map(|&(t, _)| t).min(),
+            !s.stdin_waiters.is_empty(),
+        )
+    });
+    if earliest.is_none() && !input {
         return falsity();
-    };
+    }
     if sleep {
-        let now = clock_ns();
-        if t > now {
-            std::thread::sleep(std::time::Duration::from_nanos((t - now) as u64));
+        if input {
+            crate::stdio::wait(earliest);
+        } else if let Some(t) = earliest {
+            let now = clock_ns();
+            if t > now {
+                std::thread::sleep(std::time::Duration::from_nanos((t - now) as u64));
+            }
         }
+    }
+    if input && crate::stdio::ready() {
+        with(|s| {
+            let ws = std::mem::take(&mut s.stdin_waiters);
+            for w in ws.into_iter().rev() {
+                s.queue.push_back(w);
+            }
+        });
     }
     let now = clock_ns();
     with(|s| {

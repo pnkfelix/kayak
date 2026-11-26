@@ -67,6 +67,7 @@ version = "0.1.0"
 dependencies = [
  "kayak-heap",
  "kayak-layout",
+ "libc",
 ]
 
 [[package]]

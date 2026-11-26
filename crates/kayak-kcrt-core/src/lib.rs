@@ -35,6 +35,7 @@
 
 mod heap;
 mod sched;
+mod stdio;
 pub use heap::{B_CELLS_HI, B_CELLS_LO, B_HI, B_NEXT, Heap, collections, done};
 
 // Fixpt's tags, immediates and kinds, from kayak-layout's table, Fixpt's
@@ -400,7 +401,10 @@ pub extern "C" fn kcrt_preempt_done() {
 }
 
 extern "C" fn here_sched(args: *const u64, block: *mut u64) -> Answered {
-    match sched::op(args, block) {
+    HERE.set(true);
+    let r = sched::op(args, block);
+    HERE.set(false);
+    match r {
         Ok(value) => Answered { value, failed: 0 },
         Err(m) => Answered {
             value: failed_here(m),
@@ -1032,6 +1036,22 @@ std::thread_local! {
     /// `kayak:kc-give/1`): its expansion's tag and its use, as a built
     /// transformer's `--apply` reads them from its standard input.
     static GIVEN: std::cell::RefCell<(String, String)> = const { std::cell::RefCell::new((String::new(), String::new())) };
+}
+
+/// Text kc's code wrote in process (C546, `write-out`), after the values
+/// written before it.
+pub(crate) fn output_push(s: &str) {
+    OUTPUT.with(|o| o.borrow_mut().push_str(s));
+}
+
+std::thread_local! {
+    /// Whether kc's code runs in process (`here_sched`), not built.
+    static HERE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Whether kc's code runs in process.
+pub(crate) fn here() -> bool {
+    HERE.get()
 }
 
 /// kc's code's output in process, taken.

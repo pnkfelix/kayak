@@ -453,6 +453,26 @@ pub mod kc_l0 {
         }
     }
 
+    // The standard input and output (C546), as kc's scheduler's
+    // operations (`stdio.rs`): a byte, `-1` at its end, 0 written, or a
+    // failure's number, `-2 - KIND`, its kind an `io-error`'s by its place
+    // (`stdio.rs`'s `KINDS`), its words operation 106's; the sum FX-26
+    // gives made of it here.
+    #[inline]
+    pub fn l0_read_byte_text() -> Str {
+        str_lit!("(let ((%io-k (%sched 103 #u #u))) (if (>= %io-k 0) (sum byte %io-k) (if (= %io-k -1) (sum eof #u) (sum failed (product (kind (if (= %io-k -2) (sum not-found #u) (if (= %io-k -3) (sum permission-denied #u) (if (= %io-k -4) (sum already-exists #u) (if (= %io-k -5) (sum not-a-directory #u) (if (= %io-k -6) (sum is-a-directory #u) (if (= %io-k -7) (sum broken-pipe #u) (if (= %io-k -8) (sum invalid-data #u) (sum other #u))))))))) (detail (%sched 106 #u #u)))))))")
+    }
+
+    #[inline]
+    pub fn l0_write_out_text() -> Str {
+        str_lit!("(let ((%io-k (%sched 104 %io-s #u))) (if (= %io-k 0) (sum done #u) (sum failed (product (kind (if (= %io-k -2) (sum not-found #u) (if (= %io-k -3) (sum permission-denied #u) (if (= %io-k -4) (sum already-exists #u) (if (= %io-k -5) (sum not-a-directory #u) (if (= %io-k -6) (sum is-a-directory #u) (if (= %io-k -7) (sum broken-pipe #u) (if (= %io-k -8) (sum invalid-data #u) (sum other #u))))))))) (detail (%sched 106 #u #u))))))")
+    }
+
+    #[inline]
+    pub fn l0_write_err_text() -> Str {
+        str_lit!("(let ((%io-k (%sched 105 %io-s #u))) (if (= %io-k 0) (sum done #u) (sum failed (product (kind (if (= %io-k -2) (sum not-found #u) (if (= %io-k -3) (sum permission-denied #u) (if (= %io-k -4) (sum already-exists #u) (if (= %io-k -5) (sum not-a-directory #u) (if (= %io-k -6) (sum is-a-directory #u) (if (= %io-k -7) (sum broken-pipe #u) (if (= %io-k -8) (sum invalid-data #u) (sum other #u))))))))) (detail (%sched 106 #u #u))))))")
+    }
+
     // `l0-item PATH KEY`: the form KEY of the checked program as an item of
     // the core language (C407): `(proc NAME ((K NAME) ...) BODY)` of a
     // procedure the program defines (its parameters numbered first), `(global
@@ -1058,6 +1078,19 @@ pub mod kc_l0 {
                     continue;
                 } else if (string_eq_p(h, str_lit!("sleep-until")) && i64_eq(size(xs), 2i64)) {
                     e = lst(kayak_rt::heap_cons(sym(str_lit!("%sched"), f, p), kayak_rt::heap_cons(num(102i64, f, p), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(sym(str_lit!("#u"), f, p), kayak_rt::nil())))), f, l, p);
+                    continue;
+                } else if (null_p(cdr(xs)) && string_eq_p(h, str_lit!("read-byte"))) {
+                    e = car(read_all(l0_read_byte_text(), f, 1i64));
+                    continue;
+                } else if (null_p(cdr(xs)) && string_eq_p(h, str_lit!("stdin-ready?"))) {
+                    return l0_made(str_lit!("(prim %sched (int 43) (unit) (unit))"), next);
+                } else if (i64_eq(size(xs), 2i64) && (string_eq_p(h, str_lit!("write-out")) || string_eq_p(h, str_lit!("write-err")))) {
+                    let body = car(read_all(if string_eq_p(h, str_lit!("write-out")) {
+                        l0_write_out_text()
+                    } else {
+                        l0_write_err_text()
+                    }, f, 1i64));
+                    e = lst(kayak_rt::heap_cons(sym(str_lit!("let"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit!("%io-s"), f, p), kayak_rt::heap_cons(second(xs), kayak_rt::nil())), f, l, p), kayak_rt::nil()), f, l, p), kayak_rt::heap_cons(body, kayak_rt::nil()))), f, l, p);
                     continue;
                 } else if (null_p(cdr(xs)) && string_eq_p(h, str_lit!("clock"))) {
                     return l0_made(str_lit!("(prim %sched (int 101) (unit) (unit))"), next);

@@ -77,6 +77,9 @@ def programs():
 
 
 def run(args, **kw):
+    # Its standard input empty, at its end (C546), as Fixpt's tests have
+    # it: a program that reads (`read-byte`) takes nothing of the check's.
+    kw.setdefault("stdin", subprocess.DEVNULL)
     return subprocess.run(args, capture_output=True, text=True, **kw)
 
 

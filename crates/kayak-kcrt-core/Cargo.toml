@@ -15,3 +15,5 @@ doctest = false
 # Fixpt's layout, the one table of tags and kinds (TODO §56, step 1).
 kayak-layout = { path = "../kayak-layout" }
 kayak-heap = { path = "../kayak-heap" }
+# The standard input's readiness, `poll` (C546, `stdio.rs`).
+libc = "0.2.189"
