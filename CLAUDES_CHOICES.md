@@ -17821,3 +17821,18 @@ opt-in flag to say that we want to run all the tests anyway".
 - **kc-steps**: a worker's database removed with its files (`fresh`,
   `DB.d` too, C551's leftover).
 - **The full check**: `check: all passed`, 6 min 59 s (the mean of 116 runs 8 min 38 s), selfhost-cells run (no pass kept yet) and kept; the pre-check passed first.
+
+## C553. A push only of code that passed `--all` (2026-11-26)
+
+The user, of C552's memo: "Requiring `--all` before a push sounds
+prudent".
+- **`scripts/tree-digest.sh TREE`**: a tree's code, every file by mode,
+  object and path, but `CLAUDES_CHOICES.md` and `tests/fixpt-answers/`
+  (what a commit's amend after its check changes), hashed.
+- **`scripts/check-snapshot.sh --all`**, when it passes, adds its tree's
+  digest to `target/check-all-passed`.
+- **`scripts/push.sh`**: pushes main to origin only if the working tree
+  is committed, HEAD's digest is there, and origin/main is behind HEAD;
+  else nothing. A script, not a git hook: a hook is not versioned, and
+  would stop the user's own pushes too. Pushing still only when asked.
+- **The full check**: `check-snapshot.sh --all`: `check: all passed`, 7 min 06 s, selfhost-cells run (not skipped) and its pass kept; the tree recorded as pushable; the pre-check passed first.

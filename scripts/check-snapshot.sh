@@ -140,4 +140,9 @@ if [ "${1-}" != --quick ]; then
 fi
 echo "$tree" > "$snap/.passed-tree"
 echo "$base" > "$snap/.passed-base"
+# Every job run (C553): this tree's code may be pushed (scripts/push.sh).
+if [ "${1-}" = --all ]; then
+    scripts/tree-digest.sh "$tree" >> target/check-all-passed
+    echo "check-snapshot: every job passed: this tree may be pushed (scripts/push.sh)"
+fi
 echo "check-snapshot: passed (directory $snap)"
