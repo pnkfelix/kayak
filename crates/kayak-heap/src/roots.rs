@@ -144,6 +144,10 @@ pub struct Gathered {
     /// stack's, the owned blocks', the kept objects' (the thread locals'
     /// after), for a report.
     pub ends: [usize; 3],
+    /// Exact roots, apart (C542): each a slot's address, off the heap (a
+    /// native frame's word, a global's cell), holding a value, rewritten
+    /// where what it reaches moves.
+    pub exact: Vec<usize>,
 }
 
 // A native stack's roots (kayak-rt's `obj::roots`, here since C541, for a
@@ -245,6 +249,57 @@ pub fn native_cells(run: (usize, usize)) {
 #[inline]
 pub fn native_cells_run() -> (usize, usize) {
     NATIVE_CELLS.get()
+}
+
+std::thread_local! {
+    /// The frames of the native code that asked for room as the room is
+    /// made (C542), `[lo, hi)` of this thread's stack: kc's frames, from
+    /// its stack pointer at the call to its run's base, each word a value
+    /// of Fixpt's format or a word that reaches no object (a return
+    /// address, a frame's stack pointer). `(0, 0)` else.
+    static NATIVE_FRAMES: std::cell::Cell<(usize, usize)> = const { std::cell::Cell::new((0, 0)) };
+}
+
+/// `f` run with the native code's frames `[lo, hi)` exact roots: for the
+/// room it asks for (a collection may run), and no longer.
+#[inline]
+pub fn with_native_frames<R>(run: (usize, usize), f: impl FnOnce() -> R) -> R {
+    let before = NATIVE_FRAMES.replace(run);
+    let r = f();
+    NATIVE_FRAMES.set(before);
+    r
+}
+
+/// A thread's stack's roots, a collection's on it (C542; both runtimes'):
+/// its words from `from` to its base, ambiguous but the native code's
+/// frames (`with_native_frames`), whose slots are exact, and its cells'
+/// slots, exact too; into `words` and `exact`.
+pub fn stack_roots(from: usize, words: &mut Vec<usize>, exact: &mut Vec<usize>) {
+    let base = stack_base();
+    let (lo, hi) = NATIVE_FRAMES.get();
+    let (lo, hi) = if lo >= from && lo < hi && hi <= base {
+        (lo, hi)
+    } else {
+        (base, base)
+    };
+    // SAFETY: this thread's own stack, from its caller's frame to its
+    // base, which the thread is running on: the words below the native
+    // frames and above them.
+    unsafe {
+        scan_words(from, lo - from, &mut |w| words.push(w));
+        scan_words(hi, base - hi, &mut |w| words.push(w));
+    }
+    let mut a = (lo + 7) & !7;
+    while a + 8 <= hi {
+        exact.push(a);
+        a += 8;
+    }
+    let (lo, hi) = NATIVE_CELLS.get();
+    let mut a = lo;
+    while a + 8 <= hi {
+        exact.push(a);
+        a += 8;
+    }
 }
 
 #[cfg(test)]

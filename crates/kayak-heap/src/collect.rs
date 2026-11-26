@@ -357,6 +357,19 @@ fn collect_from(saved: &[usize; 12], from: usize, minor: bool) {
             unsafe { space::word_mut(&m.view, slot).write(new) };
         }
     }
+    // The exact roots (C542: native code's frames and cells), each taken
+    // as a field is: what only they reach moves.
+    for &slot in &roots.exact {
+        // SAFETY: a slot off the heap the host gave, live while the
+        // collection runs (a frame below it on this thread's stack, a
+        // global's cell), read and written by this thread alone.
+        let w = unsafe { std::ptr::with_exposed_provenance::<u64>(slot).read() };
+        let new = m.field(w, Way::Own);
+        if new != w {
+            // SAFETY: as above.
+            unsafe { std::ptr::with_exposed_provenance_mut::<u64>(slot).write(new) };
+        }
+    }
     m.cheney();
     timer.lap();
 

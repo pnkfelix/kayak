@@ -120,9 +120,7 @@ unsafe fn free_boxed<T>(at: usize, poison: bool) {
 
 pub(super) use kayak_heap::roots::spill;
 /// How a kept object is scanned: its bytes, or by its type.
-use kayak_heap::roots::{
-    Gathered as Roots, KeptAt, KeptIndex, Scan, native_cells_run, scan_words, stack_base,
-};
+use kayak_heap::roots::{Gathered as Roots, KeptAt, KeptIndex, Scan, scan_words, stack_base};
 
 impl Registry {
     fn lock(&self) -> MutexGuard<'_, Inner> {
@@ -825,14 +823,10 @@ fn reached_from(saved: &[usize; 12], from: usize) -> Reached {
 
 pub(super) fn roots_from(saved: &[usize; 12], from: usize) -> Roots {
     let mut words: Vec<usize> = saved.to_vec();
-    let base = stack_base();
-    // SAFETY: this thread's own stack, from its caller's frame to its
-    // base, which the thread is running on.
-    unsafe { scan_words(from, base.saturating_sub(from), &mut |w| words.push(w)) };
-    let (lo, hi) = native_cells_run();
-    // SAFETY: the cells of the native code running on this thread, its
-    // image's, alive while it runs (`native_cells`).
-    unsafe { scan_words(lo, hi.saturating_sub(lo), &mut |w| words.push(w)) };
+    // The stack, from the caller's frame to its base, and kc's code's
+    // frames and cells, exact (C542).
+    let mut exact = Vec::new();
+    kayak_heap::roots::stack_roots(from, &mut words, &mut exact);
     let mut constants = Vec::new();
     let made: Vec<(usize, ConstantRead)> =
         CONSTANTS.lock().unwrap_or_else(|e| e.into_inner()).clone();
@@ -922,6 +916,7 @@ pub(super) fn roots_from(saved: &[usize; 12], from: usize) -> Roots {
         kept: KeptIndex::made(index),
         reach_from,
         ends,
+        exact,
     }
 }
 

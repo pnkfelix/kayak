@@ -20,11 +20,11 @@ unsafe extern "C" {
 
 /// The program's roots, the shared collector's runtime (C541,
 /// `kayak_heap::collect::Host`; the plan's step 3): the registers spilled,
-/// its one thread's stack, kc's frames and this runtime's, from the
-/// collection's frame to its base, and kc's globals' cells (`heap.rs`'s,
-/// while kc's code runs). Each word ambiguous, as kayak-rt's are: kc's
-/// frames' words are values of Fixpt's format, exact, but the Rust frames
-/// between are not. It keeps nothing apart and has no other thread.
+/// its one thread's stack from the collection's frame to its base, and
+/// kc's globals' cells (`heap.rs`'s, while kc's code runs). The Rust
+/// frames' words ambiguous, as kayak-rt's are; kc's frames' and its
+/// cells' exact (C542, `roots::stack_roots`). It keeps nothing apart and
+/// has no other thread.
 struct Built;
 
 impl kayak_heap::collect::Host for Built {
@@ -32,16 +32,9 @@ impl kayak_heap::collect::Host for Built {
         kayak_heap::roots::spill(saved);
     }
     fn roots(&self, saved: &[usize; 12], from: usize) -> kayak_heap::roots::Gathered {
-        use kayak_heap::roots::{native_cells_run, scan_words, stack_base};
         let mut words: Vec<usize> = saved.to_vec();
-        let base = stack_base();
-        // SAFETY: this thread's own stack, from its caller's frame to its
-        // base, which the thread is running on.
-        unsafe { scan_words(from, base.saturating_sub(from), &mut |w| words.push(w)) };
-        let (lo, hi) = native_cells_run();
-        // SAFETY: the cells of kc's code running on this thread, the
-        // program's, alive while it runs.
-        unsafe { scan_words(lo, hi.saturating_sub(lo), &mut |w| words.push(w)) };
+        let mut exact = Vec::new();
+        kayak_heap::roots::stack_roots(from, &mut words, &mut exact);
         let n = words.len();
         kayak_heap::roots::Gathered {
             words,
@@ -50,6 +43,7 @@ impl kayak_heap::collect::Host for Built {
             kept: kayak_heap::roots::KeptIndex::default(),
             reach_from: 0,
             ends: [n; 3],
+            exact,
         }
     }
     fn reported(&self, _: Vec<usize>, _: usize, _: bool) {}

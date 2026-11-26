@@ -17378,3 +17378,32 @@ heap, built or in process, kayak-heap's.
 - **Not yet**: kc's frames as exact roots, so that what only they reach
   can move; a built program's `par` or tasks (kc makes none).
 - **The full check**: `check: all passed`, 10 min 24 s (the mean of 105 runs 8 min 32 s); the pre-check passed first.
+
+## C542. kc's frames are exact roots (2026-11-25)
+
+C541's "not yet": kc's frames were read as ambiguous words, as kayak-rt's
+Rust frames are, so everything kc's code held pinned its page.
+- **Exact roots in the collector**: `Gathered` takes `exact`, the
+  addresses of slots off the heap holding values; the collector takes
+  each as it takes a noted slot (`field`), after the pins and before
+  Cheney's scan, and rewrites it where its target moved.
+- **Which words**: kc's frames as it asks for room, from its stack
+  pointer then (`kc_gc_call`'s, or the one a heap routine's wrapper keeps,
+  `B_SP`, its arguments' words first) to its run's base (`B_STACK`, which
+  `kc_gc_init` and `kc_call2` write), the range Cheney's copy took as
+  exact (C453), named for the room's making alone
+  (`roots::with_native_frames`), never while Rust runs on; and kc's
+  cells. `roots::stack_roots` reads a stack for both hosts: below and
+  above kc's frames ambiguous, kc's frames and cells exact. kayak-rt's
+  `roots_from` and kcrt's `Built` call it.
+- **Why this is safe**: each word of kc's frames is a value of Fixpt's
+  format, or a word that reaches no object (a return address into the
+  code, a frame's stack pointer, `kc_resume`'s address, aligned to read
+  as a fixnum); a routine reads its arguments only after its room, from
+  the stack words (C455, Cheney's rule already). Under gc-stress (a
+  collection every 31st allocation, verified, poisoned), built and in
+  process, as before.
+- **Measured**: the built `lent-pages` with 1500 churns: a collection
+  reaching 19,321 objects moved 16,588 (none at C541); 0.31 s and 71 MB,
+  as at C541; with 2,000,000 kept, 0.42 s against 0.41.
+- **The full check**: `check: all passed`, 10 min 40 s (the mean of 106 runs 8 min 33 s); the pre-check passed first.

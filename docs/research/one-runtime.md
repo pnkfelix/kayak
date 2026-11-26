@@ -229,6 +229,17 @@ kayak-rt and kcrt-core alone, recorded at each step here.
   `kayak_heap::roots`, both hosts'. Not yet: kc's frames as exact roots,
   so that what only they reach can move.
 
+- **kc's frames exact (C542)**: while kc's code asks for room (at
+  `kc_gc_call`, or a routine's `words`), its frames, from its stack
+  pointer then to its run's base (`B_STACK`, `kc_gc_init`'s or
+  `kc_call2`'s), are named to the heap (`roots::with_native_frames`), and
+  a collection takes their slots, and kc's cells', as exact roots
+  (`Gathered::exact`, rewritten as fields are): what only kc's code holds
+  moves, where it pinned its page. One helper reads a stack for both
+  hosts (`roots::stack_roots`): the Rust frames ambiguous, kc's exact.
+  A built program's collection of 19,000 objects reached moved 16,600
+  of them; it had moved none.
+
 ## Step 3's rest: kc's code in kayak-rt's heap, in process (done, C538)
 
 What it took for kc's code run in process (`kc run`, a transformer) to

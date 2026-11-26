@@ -15,15 +15,16 @@
 //! object's start noted, read by its header, as an allocation of
 //! kayak-rt's notes its own, so that a collection finds them; then more
 //! lent, a collection perhaps run first (the space's policy). Its roots:
-//! its frames, on this thread's stack, below the frame that called it,
-//! which a collection scans; its globals' cells, scanned while it runs
+//! its frames, on this thread's stack, exact while it asks for room
+//! (C542, `roots::with_native_frames`), so that what only they reach
+//! moves; its globals' cells, exact too, while it runs
 //! (`roots::native_cells`). Its stores into the heap pass the heap's
 //! barrier (`kc_remember`). What a run made since it was last lent room is
 //! given back as it ends ([`done`]), as any other, its objects dead.
 //!
 //! A routine that makes something in kc's heap is called with its
 //! arguments in stack words (x64.kfx's `x64-heap-routine`), and reads them
-//! after it has its room: a collection pins what they reach.
+//! after it has its room: a collection moves what they reach.
 
 use std::cell::Cell;
 
@@ -36,9 +37,11 @@ use kayak_heap::space;
 /// the heap (C455), the heap's next free word and the stack pointer where
 /// its caller's frames start.
 pub const B_HI: usize = 1;
+const B_STACK: usize = 2;
 pub const B_CELLS_LO: usize = 3;
 pub const B_CELLS_HI: usize = 4;
 pub const B_NEXT: usize = 5;
+const B_SP: usize = 6;
 
 /// The heap after a collection, in `%rax` and `%rdx`: its next free word
 /// and its end; a next of 0, a failure (in process).
@@ -90,13 +93,16 @@ fn given_back(block: *mut u64) -> Result<(), String> {
     Ok(())
 }
 
-/// Room for `w` words lent the run, its cells its roots from now.
-fn lent(block: *mut u64, w: usize) -> (usize, usize) {
+/// Room for `w` words lent the run, its cells its roots from now; its
+/// frames, from `sp` to its run's base (`B_STACK`, which `kc_gc_init` and
+/// `kc_call2` write), exact roots while the room is made (C542).
+fn lent(block: *mut u64, sp: u64, w: usize) -> (usize, usize) {
     kayak_heap::roots::native_cells((
         block_word(block, B_CELLS_LO) as usize,
         block_word(block, B_CELLS_HI) as usize,
     ));
-    let (from, end, large) = space::lend(w);
+    let frames = (sp as usize, block_word(block, B_STACK) as usize);
+    let (from, end, large) = kayak_heap::roots::with_native_frames(frames, || space::lend(w));
     LENT.set(Some(Lent {
         block: block as usize,
         from,
@@ -105,11 +111,11 @@ fn lent(block: *mut u64, w: usize) -> (usize, usize) {
     (from, end)
 }
 
-/// `kc_collect`'s: room for `need` bytes, kc's code's heap after (its
-/// stack pointer, `_sp`, the collector's to find: it scans the stack).
-pub(crate) fn collect(need: u64, _sp: u64, block: *mut u64) -> Result<Heap, String> {
+/// `kc_collect`'s: room for `need` bytes, kc's code's heap after; its
+/// frames from its stack pointer `sp`.
+pub(crate) fn collect(need: u64, sp: u64, block: *mut u64) -> Result<Heap, String> {
     given_back(block)?;
-    let (from, end) = lent(block, need.div_ceil(8) as usize);
+    let (from, end) = lent(block, sp, need.div_ceil(8) as usize);
     Ok(Heap {
         next: from as u64,
         end: end as u64,
@@ -121,7 +127,9 @@ pub(crate) fn collect(need: u64, _sp: u64, block: *mut u64) -> Result<Heap, Stri
 /// (`B_NEXT`, `B_HI`), which its wrapper makes kc's code's.
 pub(crate) fn words(block: *mut u64, n: u64) -> Result<u64, String> {
     given_back(block)?;
-    let (from, end) = lent(block, n as usize);
+    // Its caller's frames from the stack pointer its wrapper kept, its
+    // arguments' words first.
+    let (from, end) = lent(block, block_word(block, B_SP), n as usize);
     set_block_word(block, B_NEXT, from as u64 + 8 * n);
     set_block_word(block, B_HI, end as u64);
     Ok(from as u64)
