@@ -17746,3 +17746,45 @@ The user: "Rename `--as-layout` to `--gnu-as-layout` I think". The option
 their mentions (scripts/kc-objects.py, TODO.md, C549's entry) renamed;
 nothing else changed.
 - **The full check**: `check: all passed`, 8 min 00 s (the mean of 114 runs 8 min 40 s); the pre-check not run (a rename, kc-objects run alone first).
+
+## C551. The check's stages at once; kc-steps' programs by 16 workers (2026-11-26)
+
+The user: "How else could we speed up the check? It's probably testing
+with a cold cache, right?", then, of the steps I listed: "Yeah do each
+one of these".
+- **Measured first**: the check's foreground, its stages one after
+  another, was about 7 of its 7 min 19 s (kc-steps 137 s, fixpt-programs
+  67, engine-programs 58, io-programs 27, fixpt-accepts 24, clippy 22,
+  kc-objects 14, models 13); the jobs beside it (selfhost-cells 380 s,
+  the workspace's tests 331, async-check 159, gc-stress 114, fixpoint
+  27) all ended inside it. The cache: cargo's warm (the snapshot's
+  target/ kept), Fixpt's answers kept for most scripts, kc's database
+  cold whenever kc's identity changed.
+- **scripts/check.sh**: every stage after the workspace's build a job
+  (`job NAME COMMAND…`), its log said when it is waited for, in the order
+  begun; those that share a directory (kc-steps then kc-objects; the
+  REPL's sessions and its clippy, target/rust-repl; fixpt-programs then
+  refused-fixpt-programs) one job, in order. Fixpt's answers are written
+  atomically and what each process asks noted by process, so the jobs
+  that ask share the store.
+- **scripts/kc-steps.py**: its programs swept by 16 workers, each its own
+  database (target/kc-steps/db-K.db), the loads' and the tasks' programs
+  begun first, each built again warm by the worker that built it; the
+  edits (`cutoff`, `expansions`, each its database), the convention (none)
+  and the Rust crate (its own) beside them; parking last and alone, as it
+  measures the clock. Fixpt's `eval` of a program that reads nothing of
+  the world (not of loads/, tasks/, io/) through fixptcache's store at
+  the pin (`keep=False`: target/fixpt-cache, nothing in tests/). kc's one
+  database is not safe for two processes (each saves its head whole, a
+  node's number given in order within its shard, revisions each run's
+  own); making it so is the user's recommendation, next.
+- **Measured**: kc-steps alone 51 s (137); in the check 64 s. The check
+  7 min 06 s (7 min 19 s), its whole 385 s, and selfhost-cells 383 s of
+  it: the floor now that job, 325 s alone (its header's "about 100 s" of
+  C366, grown). The workspace's tests: 5989, 36750 s of CPU in 318 s
+  (about 115 cores of 128), the four families of kayak-checks (cells,
+  ours and Fixpt's words; checkers; reps) about 9000 s each, none kc's.
+- **Left**: kc-steps' workers' databases cold each check (kc-steps.db
+  was kept from one to the next); each worker's `db-K.db.d` left when its
+  head is removed (harmless: nothing is read but through a head).
+- **The full check**: `check: all passed`, 7 min 06 s (the mean of 115 runs 8 min 39 s); kc-steps 64 s of it, 0 wrong; the pre-check passed first.

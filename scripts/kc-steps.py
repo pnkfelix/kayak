@@ -12,8 +12,12 @@ usage: python3 -I scripts/kc-steps.py
   rust    the KFX programs (`.kfx`): `kc --rust`, each a module of one
           crate (target/kc-rust), built once and run.
 
-kc runs with one database for the whole sweep (target/kc-steps.db), so a
-second sweep with nothing changed runs no query body: its count is said.
+The programs are swept by WORKERS at once (C551), each worker a database
+of its own (target/kc-steps/db-K.db), each program built by the first
+worker free, the slowest begun first; beside them, the edits (`cutoff`,
+`expansions`), the convention and the Rust crate, each its own database or
+none. Fixpt's answer to a program that reads nothing of the world is
+asked once at the pin (scripts/fixptcache.py, target/fixpt-cache/).
 
 And early cutoff, as kc's database does it (C399): a program compiled,
 then edited to text that means the same (spaces, a comment) runs again
@@ -22,7 +26,7 @@ whose input, `l0`'s value, is as it was; edited to another value, the back
 end runs too.
 
 And warm (C463): after the sweep, each program built again, nothing
-changed, with the database the sweep left: no query body may run. And
+changed, with the database its worker left: no query body may run. And
 early cutoff of the kinds of item kc has grown since (C463): a datatype,
 a module's value, a global a closure captures, a prompt's body; a core
 form's keyword and a literal never looked up as a global's name.
@@ -40,9 +44,15 @@ the executable's; and a program whose garbage passes a built program's
 heap many times over.
 """
 
+import concurrent.futures
 import os
+import queue
 import subprocess
 import sys
+import threading
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import fixptcache  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TESTS = os.path.join(ROOT, "tests", "kc")
@@ -383,68 +393,145 @@ def convention():
     return wrong
 
 
-def main():
-    if sys.argv[1:]:
-        sys.exit(__doc__)
-    os.makedirs(WORK, exist_ok=True)
-    db = os.path.join(ROOT, "target", "kc-steps.db")
-    fx = fixpt()
-    wrong, ran, in_process, collected = [], 0, 0, 0
-    ps = programs()
-    for p in ps:
-        name = os.path.relpath(p, TESTS)
-        want = stated(p)
-        if fx:
-            r = run([fx, "--fx26-machine", "fx-cells-rsinterp", "eval", p], cwd=os.path.dirname(p))
-            lines = [l for l in (r.stdout + r.stderr).splitlines() if l.strip() and not l.startswith(";")]
-            got = lines[-1].split(" : ")[0] if lines else "(none)"
-            if got.startswith("! evaluation failed: "):
-                got = "! " + got[len("! evaluation failed: "):]
-            if got != want:
-                wrong.append("%s: states %s, Fixpt gives %s" % (name, want, got))
-        exe = os.path.join(WORK, name.replace("/", "--"))
-        # `kc build` (C419): its objects assembled and linked by kc.
-        r = run([KC, "--db", db, "--rt", RT, "--stats", "build", p, exe])
-        ran += int(r.stderr.split("kc: ")[-1].split()[0]) if "query bodies ran" in r.stderr else 0
-        if r.returncode != 0:
-            wrong.append("%s: kc build: %s" % (name, r.stderr.strip()))
-            continue
-        r = run([exe])
-        # Each top-level expression's value on a line; the last is stated.
-        got = (r.stdout.strip().splitlines() or [""])[-1]
-        if r.returncode != 0:
-            # A failure, as `fixpt eval` says one: `! MESSAGE`.
-            got = "! " + r.stderr.strip().split("evaluation failed: ")[-1]
-        if got != want:
-            wrong.append("%s: native gives %s, not %s" % (name, got, want))
-        # `kc run` (C451): the same code in process, sealed in the code area
-        # and called, its runtime KFX's: what it writes, and its status, the
-        # executable's own.
-        q = run([KC, "--db", db, "run", p])
-        if (q.stdout, q.stderr, q.returncode) != (r.stdout, r.stderr, r.returncode):
-            wrong.append("%s: kc run gives %r %r %d, the executable %r %r %d"
-                         % (name, q.stdout[-300:], q.stderr[-300:], q.returncode, r.stdout[-300:], r.stderr[-300:], r.returncode))
-        else:
-            in_process += 1
-        # And with a heap of a few words (C453): the collector called at
-        # nearly every allocation, the program's answer its executable's.
-        q = run([KC, "--db", db, "run", "--heap", str(TINY_HEAP), p])
-        if (q.stdout, q.stderr, q.returncode) != (r.stdout, r.stderr, r.returncode):
-            wrong.append("%s: kc run --heap %d gives %r %r %d, the executable %r %r %d"
-                         % (name, TINY_HEAP, q.stdout[-300:], q.stderr[-300:], q.returncode, r.stdout[-300:], r.stderr[-300:], r.returncode))
-        else:
-            collected += 1
-    # Warm (C463): each built again, nothing changed: no query body runs.
-    warm = 0
-    for p in ps:
-        name = os.path.relpath(p, TESTS)
-        exe = os.path.join(WORK, name.replace("/", "--"))
-        r = run([KC, "--db", db, "--rt", RT, "--stats", "build", p, exe])
-        got = bodies_ran(r.stderr)
-        if r.returncode == 0 and got == []:
-            warm += 1
-        elif r.returncode == 0:
-            wrong.append("%s: built again, nothing changed, ran %s" % (name, " ".join(got or ["(no stats)"])))
+# How many programs are swept at once (C551), each worker with a database
+# of its own: a program's cold build compiles what it shares with the others
+# (the runtime's routines, the prelude's items) once in each.
+WORKERS = 16
+
+# Programs that read the world (a file by a path from where they are, the
+# clock, the standard input): Fixpt asked each time, in their directory.
+WORLDLY = ("loads", "tasks", "io")
+
+
+def fixpt_gives(fx, p):
+    """What Fixpt's `eval` says `p` is, as kc-steps reads its answer."""
+    args = ["--fx26-machine", "fx-cells-rsinterp", "eval", p]
+    if os.path.relpath(p, TESTS).split(os.sep)[0] in WORLDLY:
+        r = run([fx] + args, cwd=os.path.dirname(p))
+    else:
+        r = fixptcache.run(fx, args, [p], keep=False)
+    lines = [l for l in (r.stdout + r.stderr).splitlines() if l.strip() and not l.startswith(";")]
+    got = lines[-1].split(" : ")[0] if lines else "(none)"
+    if got.startswith("! evaluation failed: "):
+        got = "! " + got[len("! evaluation failed: "):]
+    return got
+
+
+def swept(p, db):
+    """`p` built, run, run in process and with a tiny heap, against what it
+    states: the wrongs, the query bodies ran, and whether it ran in process
+    and collected as its executable."""
+    name = os.path.relpath(p, TESTS)
+    want = stated(p)
+    wrong, ran = [], 0
+    exe = os.path.join(WORK, name.replace("/", "--"))
+    # `kc build` (C419): its objects assembled and linked by kc.
+    r = run([KC, "--db", db, "--rt", RT, "--stats", "build", p, exe])
+    ran += int(r.stderr.split("kc: ")[-1].split()[0]) if "query bodies ran" in r.stderr else 0
+    if r.returncode != 0:
+        return ["%s: kc build: %s" % (name, r.stderr.strip())], ran, False, False
+    r = run([exe])
+    # Each top-level expression's value on a line; the last is stated.
+    got = (r.stdout.strip().splitlines() or [""])[-1]
+    if r.returncode != 0:
+        # A failure, as `fixpt eval` says one: `! MESSAGE`.
+        got = "! " + r.stderr.strip().split("evaluation failed: ")[-1]
+    if got != want:
+        wrong.append("%s: native gives %s, not %s" % (name, got, want))
+    # `kc run` (C451): the same code in process, sealed in the code area
+    # and called, its runtime KFX's: what it writes, and its status, the
+    # executable's own.
+    q = run([KC, "--db", db, "run", p])
+    in_process = (q.stdout, q.stderr, q.returncode) == (r.stdout, r.stderr, r.returncode)
+    if not in_process:
+        wrong.append("%s: kc run gives %r %r %d, the executable %r %r %d"
+                     % (name, q.stdout[-300:], q.stderr[-300:], q.returncode, r.stdout[-300:], r.stderr[-300:], r.returncode))
+    # And with a heap of a few words (C453): the collector called at
+    # nearly every allocation, the program's answer its executable's.
+    q = run([KC, "--db", db, "run", "--heap", str(TINY_HEAP), p])
+    collected = (q.stdout, q.stderr, q.returncode) == (r.stdout, r.stderr, r.returncode)
+    if not collected:
+        wrong.append("%s: kc run --heap %d gives %r %r %d, the executable %r %r %d"
+                     % (name, TINY_HEAP, q.stdout[-300:], q.stderr[-300:], q.returncode, r.stdout[-300:], r.stderr[-300:], r.returncode))
+    return wrong, ran, in_process, collected
+
+
+def warmed(p, db):
+    """`p` built again, nothing changed, with the database that built it: a
+    wrong if any query body ran (C463)."""
+    name = os.path.relpath(p, TESTS)
+    exe = os.path.join(WORK, name.replace("/", "--"))
+    r = run([KC, "--db", db, "--rt", RT, "--stats", "build", p, exe])
+    got = bodies_ran(r.stderr)
+    if r.returncode == 0 and got == []:
+        return None
+    if r.returncode == 0:
+        return "%s: built again, nothing changed, ran %s" % (name, " ".join(got or ["(no stats)"]))
+    return "%s: built again: %s" % (name, r.stderr.strip())
+
+
+def slowest_first(ps):
+    """The programs, those that take longest (a load of a large file, the
+    scheduler's) begun first, so that no worker is left with one at the end."""
+    def rank(p):
+        top = os.path.relpath(p, TESTS).split(os.sep)[0]
+        return (0 if top == "loads" else 1 if top == "tasks" else 2, p)
+    return sorted(ps, key=rank)
+
+
+def sweep(ps):
+    """Every program swept (`swept`) and built again warm (`warmed`) by
+    WORKERS, each its own database, cold at first: the wrongs, the query
+    bodies ran, how many ran in process and collected, how many warm."""
+    todo = queue.Queue()
+    for p in slowest_first(ps):
+        todo.put(p)
+    lock = threading.Lock()
+    totals = {"wrong": [], "ran": 0, "in_process": 0, "collected": 0, "warm": 0}
+
+    def worker(k):
+        db = os.path.join(WORK, "db-%d.db" % k)
+        if os.path.exists(db):
+            os.remove(db)
+        mine = []
+        while True:
+            try:
+                p = todo.get_nowait()
+            except queue.Empty:
+                break
+            wrong, ran, in_process, collected = swept(p, db)
+            with lock:
+                totals["wrong"] += wrong
+                totals["ran"] += ran
+                totals["in_process"] += in_process
+                totals["collected"] += collected
+            # Built: to be built again warm.
+            if not (wrong and ": kc build: " in wrong[0]):
+                mine.append(p)
+        # Warm (C463): each built again, nothing changed: no query body runs.
+        for p in mine:
+            w = warmed(p, db)
+            with lock:
+                if w is None:
+                    totals["warm"] += 1
+                else:
+                    totals["wrong"].append(w)
+
+    threads = [threading.Thread(target=worker, args=(k,)) for k in range(WORKERS)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    return totals
+
+
+def rust(ps):
+    """The KFX programs by `kc --rust`, each a module of one crate
+    (target/kc-rust), built once and run: the wrongs, the query bodies ran."""
+    db = os.path.join(WORK, "rust.db")
+    if os.path.exists(db):
+        os.remove(db)
+    wrong, ran = [], 0
     kfx = [p for p in ps if p.endswith(".kfx")]
     crate = os.path.join(ROOT, "target", "kc-rust")
     os.makedirs(os.path.join(crate, "src"), exist_ok=True)
@@ -484,14 +571,39 @@ def main():
             want = stated(os.path.join(TESTS, name))
             if got != want:
                 wrong.append("%s: rust gives %s, not %s" % (name, got, want))
-    wrong += cutoff()
-    wrong += expansions()
-    wrong += convention()
+    return wrong, ran
+
+
+def main():
+    if sys.argv[1:]:
+        sys.exit(__doc__)
+    os.makedirs(WORK, exist_ok=True)
+    fx = fixpt()
+    ps = programs()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=32) as ex:
+        # Beside the sweep: Fixpt's answers, the edits, the convention, the
+        # crate, none sharing a database with another.
+        said = [ex.submit(fixpt_gives, fx, p) for p in ps] if fx else []
+        edits = [ex.submit(f) for f in (cutoff, expansions, convention)]
+        crate = ex.submit(rust, ps)
+        totals = sweep(ps)
+        wrong = totals["wrong"]
+        for p, f in zip(ps, said):
+            got, want = f.result(), stated(p)
+            if got != want:
+                wrong.append("%s: states %s, Fixpt gives %s" % (os.path.relpath(p, TESTS), want, got))
+        rust_wrong, rust_ran = crate.result()
+        wrong += rust_wrong
+        for f in edits:
+            wrong += f.result()
+    # Last, alone: what parks waits on the clock, a machine left to it.
     wrong += parking()
+    kfx = [p for p in ps if p.endswith(".kfx")]
     for w in wrong:
         print("kc-steps: " + w)
     print("kc-steps: %d programs, %d by native code (%d of them in process as their executables, %d with a heap of %d words, %d built again warm, no body run), %d by Rust; %d wrong; %d query bodies ran%s"
-          % (len(ps), len(ps), in_process, collected, TINY_HEAP, warm, len(kfx), len(wrong), ran, "" if fx else "; Fixpt not here, its answers unchecked"))
+          % (len(ps), len(ps), totals["in_process"], totals["collected"], TINY_HEAP, totals["warm"], len(kfx), len(wrong),
+             totals["ran"] + rust_ran, "" if fx else "; Fixpt not here, its answers unchecked"))
     sys.exit(1 if wrong else 0)
 
 
