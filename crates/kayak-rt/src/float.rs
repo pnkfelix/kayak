@@ -162,31 +162,15 @@ pub fn f64_finite_p(x: f64) -> bool {
     x.is_finite()
 }
 
-/// A double as Fixpt writes a value: an integral one below 1e21 with one
-/// decimal, any other as Rust writes it.
-#[inline]
-pub fn write_f64(x: f64) -> String {
-    if x.is_nan() {
-        "+nan.0".into()
-    } else if x.is_infinite() {
-        if x > 0.0 { "+inf.0" } else { "-inf.0" }.into()
-    } else if x == x.trunc() && x.abs() < 1e21 {
-        format!("{x:.1}")
-    } else {
-        format!("{x}")
-    }
-}
+/// A double as Fixpt writes a value (`kayak_heap::write`, C543: kcrt's
+/// too).
+pub use kayak_heap::write::write_f64;
 
 /// `f64->string`: as a value is written, and with `.0` if it would have no
 /// point, so that it reads back as a double (Fixpt's `format_flonum`).
 #[inline]
 pub fn f64_to_string(x: f64) -> Str {
-    let s = write_f64(x);
-    if x.is_finite() && !s.contains(['.', 'e', 'E']) {
-        leak_string(format!("{s}.0"))
-    } else {
-        leak_string(s)
-    }
+    leak_string(kayak_heap::write::f64_text(x))
 }
 
 /// Correctly rounded, through the decimal digits, as Rust reads them.

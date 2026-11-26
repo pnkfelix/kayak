@@ -48,6 +48,7 @@ const IMM_SHIFT: u32 = layout::TAG_BITS;
 const IMM_MASK: u64 = 0b1_1111;
 const IMM_PAYLOAD_SHIFT: u32 =
     (Value::char('\u{1}').raw() ^ Value::char('\0').raw()).trailing_zeros();
+use kayak_heap::write::{put_char, put_string};
 use layout::value::Value;
 /// An immediate's subtag, as Fixpt's `Value` makes its word.
 const fn subtag(v: Value) -> u64 {
@@ -65,24 +66,6 @@ fn pair(v: u64) -> (u64, u64) {
     // SAFETY: a pair's value is its cell's address, tag 1, a cell of two
     // words kc's code made on the heap, which lives as long as the run.
     unsafe { (*p, *p.add(1)) }
-}
-
-/// A character as Fixpt writes it (`print.rs`'s `put_char`).
-fn put_char(out: &mut String, c: char) {
-    out.push_str("#\\");
-    match c {
-        ' ' => out.push_str("space"),
-        '\n' => out.push_str("newline"),
-        '\t' => out.push_str("tab"),
-        '\r' => out.push_str("return"),
-        '\0' => out.push_str("null"),
-        '\u{7}' => out.push_str("alarm"),
-        '\u{8}' => out.push_str("backspace"),
-        '\u{7f}' => out.push_str("delete"),
-        '\u{1b}' => out.push_str("escape"),
-        c if (c as u32) < 0x20 => out.push_str(&format!("x{:x}", c as u32)),
-        c => out.push(c),
-    }
 }
 
 /// A value as Fixpt writes it.
@@ -636,39 +619,16 @@ fn vector_length(v: u64) -> u64 {
 }
 const KIND_FLONUM: u64 = layout::kind("flonum") as u64;
 
-/// `(f64->string x)`, Fixpt's (`num.rs`'s `format_flonum`): an integral
-/// value under 1e21 with `.0`, else Rust's shortest form, `.0` added if it
-/// has no point or exponent; `+nan.0`, `+inf.0`, `-inf.0`.
-fn flonum_text(x: f64) -> String {
-    if x.is_nan() {
-        return "+nan.0".into();
-    }
-    if x.is_infinite() {
-        return if x > 0.0 {
-            "+inf.0".into()
-        } else {
-            "-inf.0".into()
-        };
-    }
-    if x == x.trunc() && x.abs() < 1e21 {
-        format!("{x:.1}")
-    } else {
-        let s = format!("{x}");
-        if s.contains(['.', 'e', 'E']) {
-            s
-        } else {
-            format!("{s}.0")
-        }
-    }
-}
-
 /// A flonum's value: a bloblet of kind 5, its suffix the bits (Fixpt's).
 fn f64_string(args: *const u64, block: *mut u64) -> Result<u64, String> {
     let v = arg(args, 0);
     if v & TAG_MASK != TAG_BLOBLET || kind(v) != KIND_FLONUM {
         return Err("kc: f64->string of a value not an f64".to_string());
     }
-    string_in(block, &flonum_text(f64::from_bits(word(v - TAG_BLOBLET))))
+    string_in(
+        block,
+        &kayak_heap::write::f64_text(f64::from_bits(word(v - TAG_BLOBLET))),
+    )
 }
 
 #[unsafe(no_mangle)]
@@ -1207,23 +1167,6 @@ pub fn routine(name: &str) -> u64 {
     f as usize as u64
 }
 
-/// A string as Fixpt writes one (`print.rs`'s `put_string`).
-fn put_string(out: &mut String, s: &str) {
-    out.push('"');
-    for c in s.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\n' => out.push_str("\\n"),
-            '\t' => out.push_str("\\t"),
-            '\r' => out.push_str("\\r"),
-            c if (c as u32) < 0x20 => out.push_str(&format!("\\x{:x};", c as u32)),
-            c => out.push(c),
-        }
-    }
-    out.push('"');
-}
-
 /// A value other than a pair as Fixpt writes it.
 fn atom(v: u64) -> String {
     match v & TAG_MASK {
@@ -1319,36 +1262,6 @@ pub extern "C" fn kc_fail(what: u64) -> ! {
 #[unsafe(no_mangle)]
 pub extern "C" fn kc_show(v: u64) {
     println!("{}", written(v));
-}
-
-#[cfg(test)]
-mod flonums {
-    use super::flonum_text;
-
-    /// `f64->string` (C470) as Fixpt's `format_flonum` writes each (each
-    /// string the pinned Fixpt's `f64->string`): kc's programs make no
-    /// `f64` yet, the expander's data may hold one.
-    #[test]
-    fn written_as_fixpt_writes_them() {
-        for (x, s) in [
-            (1.0, "1.0"),
-            (-0.0, "-0.0"),
-            (0.1, "0.1"),
-            (2.5, "2.5"),
-            (1e20, "100000000000000000000.0"),
-            (1e21, "1000000000000000000000.0"),
-            (
-                1.5e300,
-                "1500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000.0",
-            ),
-            (1e-7, "0.0000001"),
-            (f64::NAN, "+nan.0"),
-            (f64::INFINITY, "+inf.0"),
-            (f64::NEG_INFINITY, "-inf.0"),
-        ] {
-            assert_eq!(flonum_text(x), s, "{x:?}");
-        }
-    }
 }
 
 #[cfg(test)]

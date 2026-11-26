@@ -240,6 +240,17 @@ kayak-rt and kcrt-core alone, recorded at each step here.
   A built program's collection of 19,000 objects reached moved 16,600
   of them; it had moved none.
 
+- **Step 4, the writers (C543)**: Fixpt's `put_char`, `put_string` (a
+  drift mark on `print.rs`), a double's text and `f64->string`'s, in
+  `kayak_heap::write`, kcrt-core's printer's and kayak-rt's `Show`'s.
+  kayak-rt's had drifted: a string's `\r` and a control character
+  written raw, where Fixpt (and kcrt) escape them. The rest of the two
+  runtimes' primitives over strings (compare, append, substring, the
+  hashes, search) were one line each over the one `&[u32]` already, or
+  `kayak_heap::text`'s (C536): nothing more to share there. kcrt's
+  printer over words and kayak-rt's over types stay two: they read
+  values two ways, not one format twice.
+
 ## Step 3's rest: kc's code in kayak-rt's heap, in process (done, C538)
 
 What it took for kc's code run in process (`kc run`, a transformer) to

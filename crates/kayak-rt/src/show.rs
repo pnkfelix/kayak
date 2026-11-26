@@ -78,35 +78,16 @@ impl Show for () {
 
 impl Show for char {
     fn show(&self, out: &mut String) {
-        out.push_str("#\\");
-        match *self {
-            ' ' => out.push_str("space"),
-            '\n' => out.push_str("newline"),
-            '\t' => out.push_str("tab"),
-            '\r' => out.push_str("return"),
-            '\0' => out.push_str("null"),
-            '\u{7}' => out.push_str("alarm"),
-            '\u{8}' => out.push_str("backspace"),
-            '\u{1b}' => out.push_str("escape"),
-            '\u{7f}' => out.push_str("delete"),
-            c => out.push(c),
-        }
+        // Fixpt's `put_char` (C543: kcrt's too).
+        kayak_heap::write::put_char(out, *self);
     }
 }
 
 impl Show for Str {
     fn show(&self, out: &mut String) {
-        out.push('"');
-        for c in self.text().chars() {
-            match c {
-                '"' => out.push_str("\\\""),
-                '\\' => out.push_str("\\\\"),
-                '\n' => out.push_str("\\n"),
-                '\t' => out.push_str("\\t"),
-                c => out.push(c),
-            }
-        }
-        out.push('"');
+        // Fixpt's `put_string` (C543), which writes `\r` and a control
+        // character's hex form too.
+        kayak_heap::write::put_string(out, &self.text());
     }
 }
 
@@ -210,5 +191,20 @@ impl<T: Copy> Show for [Cell<T>] {
             "#<flat-array {n} fields {} bytes>",
             n * std::mem::size_of::<T>()
         ));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Show;
+
+    /// A string's `\r` and control characters, and a control character,
+    /// as Fixpt writes them (C543: kayak-rt had written them raw).
+    #[test]
+    fn written_as_fixpt_writes_them() {
+        let mut out = String::new();
+        crate::leak_string("a\r\u{1}\"b".to_string()).show(&mut out);
+        '\u{1f}'.show(&mut out);
+        assert_eq!(out, "\"a\\r\\x1;\\\"b\"#\\x1f");
     }
 }

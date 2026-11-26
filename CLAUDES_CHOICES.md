@@ -17407,3 +17407,25 @@ Rust frames are, so everything kc's code held pinned its page.
   reaching 19,321 objects moved 16,588 (none at C541); 0.31 s and 71 MB,
   as at C541; with 2,000,000 kept, 0.42 s against 0.41.
 - **The full check**: `check: all passed`, 10 min 40 s (the mean of 106 runs 8 min 33 s); the pre-check passed first.
+
+## C543. Fixpt's writers once: `kayak_heap::write` (2026-11-25)
+
+Step 4's rest (`docs/research/one-runtime.md`), the primitives both
+runtimes had of their own, surveyed.
+- **Shared**: `put_char`, `put_string` (Fixpt's `print.rs`, its drift mark
+  at c5b5991, as the engine's and tier 1's `show` have), `write_f64` and
+  `f64_text` (`f64->string`, Fixpt's `format_flonum`), in a new
+  `kayak_heap::write`. kcrt-core's printer (`written`) and
+  `kcrt_f64_to_string` use them; kayak-rt's `Show` for `char` and `Str`,
+  `write_f64` (re-exported) and `f64_to_string` too. kcrt's flonum test
+  moved with them.
+- **A parity fix**: kayak-rt's `Show` wrote a string's `\r` and its
+  control characters raw, and a control character as itself; Fixpt
+  writes `\r`, `\xN;` and `#\xN`, as kcrt did. A kayak-rt test pins it.
+- **Not shared, and why**: string compare, append, substring, the char
+  predicates are a line each over the one `&[u32]` in both, and agree;
+  hashes and search are `kayak_heap::text`'s since C536. The printers
+  themselves stay two: kcrt's reads a value's words, kayak-rt's is
+  directed by its Rust types.
+- kc's identity takes `write.rs`.
+- **The full check**: `check: all passed`, 10 min 18 s (the mean of 107 runs 8 min 34 s); the pre-check passed first.

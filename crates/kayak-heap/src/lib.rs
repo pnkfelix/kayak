@@ -28,6 +28,7 @@ pub mod roots;
 #[allow(unsafe_code)]
 pub mod space;
 pub mod text;
+pub mod write;
 
 const TAG_MASK: u64 = layout::TAG_MASK;
 const TAG_HEADER: u64 = layout::tag("header");

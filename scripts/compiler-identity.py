@@ -71,7 +71,7 @@ UNITS = [
                        "../crates/kayak-kcrt/src/lib.rs", "../crates/kayak-kcrt-core/src/lib.rs",
                        "../crates/kayak-kcrt-core/src/heap.rs"]
      + ["../crates/kayak-heap/src/%s.rs" % m
-        for m in ["lib", "text", "roots", "space", "collect", "frames", "laid"]], kc_text),
+        for m in ["lib", "text", "roots", "space", "collect", "frames", "laid", "write"]], kc_text),
 ]
 
 
