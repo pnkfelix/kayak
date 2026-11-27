@@ -17915,3 +17915,39 @@ an option?", and "Go ahead".
 - **Not yet**: segments, opening by `list-dir`, compacting (step 2);
   kc-steps on one database (step 3).
 - **The full check**: `check: all passed`, 7 min 08 s (lib and kc changed, so the memoised jobs ran); the pre-check passed first (2 min 38 s).
+
+## C557. A macro's template expanded twice is two places (2026-11-27)
+
+Found moving the pin to Fixpt e98d0c8 (its new `macros/ellipsis-nested-labelled.fx`:
+Fixpt 8, kayak 9; the cells test failed on it); the user: "I think let's
+fix it before we move the pin". So the pin move's work was kept aside (a
+patch, outside the tree), the tree put back at C556 and the clone at
+3569ce51, and this fixed first.
+- **The bug** (before this pin too): what the checker finds of a form for
+  the lowering (`extract-index`, `blob-offset`, ...) is a fact keyed by
+  the form's place, `FILE:POS`; every expansion of one macro's template is
+  the template's one place, so the second's fact was the first's too:
+  `(get1 i refs)`, `(get1 i defs)` of `(extract e k)` both the last field.
+  Silently wrong values, the engine's, the cells machine's (`kayak-fx26
+  --cells`) and kc's (`(4 4 ...)` where Fixpt says `(3 4 ...)`).
+- **The fix** (fx26/macros-driver.kfx, `drive-position`): the expander
+  keeps, with each part, the expansion that made it (its `syn`'s last
+  field, "as the Rust front end's `Span` has it"), which the driver
+  dropped making a located datum. A part an expansion made has now, above
+  `expansion-span` (2^32; a position is below 10^9) in its position, the
+  expansion's number: each expansion's parts their own places. A part no
+  expansion made keeps its position; what a person reads, the file and
+  the line, is as it was.
+- **kc** (kc/expand.kfx, `expansions-renumbered`): each form is expanded by
+  an instance of its own, its numbers from 1; at the splice, each form's
+  are moved past those of the forms before it, so that two forms' uses of
+  one template are two places as in the engine (found by the test: `(3 3
+  ...)` before). After the queries, so the expansions kept are as they
+  were. Not done: two loaded files using one macro of a third, each file
+  expanded alone (kept for later, TODO).
+- **scripts/kc-expanded.py**: kc's numbers and the engine's differ (a form
+  against the program), so the positions are compared below 2^32.
+- **Test**: tests/fx26-kayak/macros/template-twice.fx: two uses in one
+  form, uses in two forms, a recursive macro (`get*`); Fixpt, the engine,
+  the cells machine and kc each `(3 4 3 4 3 4 2)`.
+- **The full check**: `check: all passed`, 7 min 54 s; the pre-check passed first (4 min 21 s).

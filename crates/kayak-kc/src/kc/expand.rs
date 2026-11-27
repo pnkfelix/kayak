@@ -5220,6 +5220,7 @@ pub mod made__load__1__expand {
         pub drive_at: std::cell::Cell<Option<RefAt<'mxp, Array<i64>>>>,
         pub drive_line: std::cell::Cell<Option<RefAt<'mxp, Array<i64>>>>,
         pub drive_count: std::cell::Cell<Option<RefAt<'mxp, i64>>>,
+        pub expansion_span: std::cell::Cell<Option<Int>>,
         pub drive_out: std::cell::Cell<Option<RefAt<'mxp, SynsA>>>,
         pub drive_put: std::cell::Cell<Option<RefAt<'mxp, MxParserTypesNames>>>,
         pub drive_macros_before: std::cell::Cell<Option<RefAt<'mxp, Int>>>,
@@ -5750,6 +5751,9 @@ pub mod made__load__1__expand {
                 kayak_rt::Trace::trace(v, t);
             }
             if let Some(v) = self.drive_count.get() {
+                kayak_rt::Trace::trace(v, t);
+            }
+            if let Some(v) = self.expansion_span.get() {
                 kayak_rt::Trace::trace(v, t);
             }
             if let Some(v) = self.drive_out.get() {
@@ -30466,12 +30470,21 @@ pub mod made__load__1__expand {
         }
     }
 
+    pub fn drive_position<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, s: kayak_rt::data::DataAt<'static, Syn>, p: i64) -> i64 {
+        let x = syn_expansion(s);
+        if _gt(x, int_lit(0)) {
+            i64_plus(p, i64_star(int_to_i64(x), int_to_i64(maker_st.expansion_span.get().unwrap())))
+        } else {
+            p
+        }
+    }
+
     /// Syntax as a located datum, where its place says.
     pub fn drive_loc<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, s: kayak_rt::data::DataAt<'static, Syn>) -> kayak_rt::value::Value {
         let w = drive_placed(mxp, maker_st, syn_start(s));
         let f = w.0;
         let l = w.1;
-        let p = w.2;
+        let p = drive_position(mxp, maker_st, s, w.2);
         let tagcase_ = s;
         if made__load__0__expander_kc::Syn::__is_Atom(tagcase_) {
             let (d, a, b, x,) = made__load__0__expander_kc::Syn::__Atom(tagcase_);
@@ -31432,6 +31445,7 @@ pub mod made__load__1__expand {
             drive_at: std::cell::Cell::new(None),
             drive_line: std::cell::Cell::new(None),
             drive_count: std::cell::Cell::new(None),
+            expansion_span: std::cell::Cell::new(None),
             drive_out: std::cell::Cell::new(None),
             drive_put: std::cell::Cell::new(None),
             drive_macros_before: std::cell::Cell::new(None),
@@ -31615,6 +31629,7 @@ pub mod made__load__1__expand {
         maker_st.drive_at.set(Some(new(make_array(int_lit(1), the::<i64>(0i64)))));
         maker_st.drive_line.set(Some(new(make_array(int_lit(1), the::<i64>(0i64)))));
         maker_st.drive_count.set(Some(new(0i64)));
+        maker_st.expansion_span.set(Some(int_lit(4294967296)));
         maker_st.drive_out.set(Some(new(nil::<kayak_rt::data::DataAt<'static, made__load__0__expander_kc::Syn>>())));
         maker_st.drive_put.set(Some(new(nil::<Symbol>())));
         maker_st.drive_macros_before.set(Some(new(int_lit(0))));
@@ -33304,6 +33319,92 @@ pub mod kc_expand {
         }
     }
 
+    // A part an expansion made has its expansion's number above
+    // `expansion-span` in its position (C557, fx26/macros-driver.kfx's
+    // `drive-position`), so that what the checker finds of each of a
+    // template's expansions is its own; kc's numbers are each form's
+    // instance's of the expander, so each form's are moved past the forms'
+    // before it (`expansions-renumbered`), and are the program's as the
+    // engine's are: a fact of one form's expansion is not another's.
+    #[inline]
+    pub fn expansion_span() -> i64 {
+        4294967296i64
+    }
+
+    pub fn expansion_most(e: kayak_rt::data::DataAt<'static, Sexp>, most: i64) -> i64 {
+        let x = i64_quotient(datum_pos(e), expansion_span());
+        let m = if i64_gt(x, most) {
+            x
+        } else {
+            most
+        };
+        let tagcase_ = e;
+        if Sexp::__is_Lst(tagcase_) {
+            let (xs, f, l, p,) = Sexp::__Lst(tagcase_);
+            expansions_most(xs, m)
+        } else {
+            let other = tagcase_;
+            m
+        }
+    }
+
+    pub fn expansions_most(mut xs: Sexps, mut most: i64) -> i64 {
+        loop {
+            if null_p(xs) {
+                return most;
+            } else {
+                (xs, most) = (cdr(xs), expansion_most(car(xs), most));
+                continue;
+            }
+        }
+    }
+
+    #[inline]
+    pub fn expansion_moved(p: i64, base: i64) -> i64 {
+        if i64_gt_eq(p, expansion_span()) {
+            i64_plus(p, i64_star(base, expansion_span()))
+        } else {
+            p
+        }
+    }
+
+    pub fn expansion_shifted(e: kayak_rt::data::DataAt<'static, Sexp>, base: i64) -> kayak_rt::data::DataAt<'static, Sexp> {
+        let tagcase_ = e;
+        if Sexp::__is_Lst(tagcase_) {
+            let (xs, f, l, p,) = Sexp::__Lst(tagcase_);
+            lst(map(kayak_rt::as_proc(kayak_rt::closure1s((base,), |(base,), x: kayak_rt::data::DataAt<'static, Sexp>| {
+                expansion_shifted(x, base)
+            })), xs), f, l, expansion_moved(p, base))
+        } else if Sexp::__is_Sym(tagcase_) {
+            let (n, f, p,) = Sexp::__Sym(tagcase_);
+            sym(n, f, expansion_moved(p, base))
+        } else if Sexp::__is_Str(tagcase_) {
+            let (t, f, p,) = Sexp::__Str(tagcase_);
+            str(t, f, expansion_moved(p, base))
+        } else if Sexp::__is_Num(tagcase_) {
+            let (i, f, p,) = Sexp::__Num(tagcase_);
+            num(i, f, expansion_moved(p, base))
+        } else if Sexp::__is_Big(tagcase_) {
+            let (t, f, p,) = Sexp::__Big(tagcase_);
+            big(t, f, expansion_moved(p, base))
+        } else if Sexp::__is_Chr(tagcase_) {
+            let (c, f, p,) = Sexp::__Chr(tagcase_);
+            chr(c, f, expansion_moved(p, base))
+        } else if Sexp::__is_Real(tagcase_) {
+            let (t, f, p,) = Sexp::__Real(tagcase_);
+            real(t, f, expansion_moved(p, base))
+        } else { kayak_rt::data::no_variant() }
+    }
+
+    /// Each form's expansion numbers past those of the forms before it.
+    pub fn expansions_renumbered(xs: Sexps, base: i64) -> Sexps {
+        if null_p(xs) {
+            nil::<kayak_rt::data::DataAt<'static, Sexp>>()
+        } else {
+            kayak_rt::heap_cons(expansion_shifted(car(xs), base), expansions_renumbered(cdr(xs), i64_plus(base, expansion_most(car(xs), 0i64))))
+        }
+    }
+
     pub fn kc_forms_spliced_x(d: Db, run: Runner, path: Str, text: Str, forms: Sexps, loaded: Fileds) -> () {
         if not(mentions_p(forms, macro_heads())) {
             kc_set_spliced_x(d, path, text, forms, loaded, str_lit!(""))
@@ -33359,7 +33460,8 @@ pub mod kc_expand {
             })), ks, forms)))), 0i64);
             let tagcase_ = expand_each(d, run, path, ks, fs, forms, ps, 0i64, nil::<kayak_rt::data::DataAt<'static, kc_expand::KxDefd>>(), nil::<kayak_rt::data::DataAt<'static, Sexp>>());
             if KxExpanded::__is_ExpandedForms(tagcase_) {
-                let (xs,) = KxExpanded::__ExpandedForms(tagcase_);
+                let (xs0,) = KxExpanded::__ExpandedForms(tagcase_);
+                let xs = expansions_renumbered(xs0, 0i64);
                 kc_set_spliced_x(d, path, text, xs, loaded, words_of(map(kayak_rt::as_proc(located), xs)));
                 ()
             } else if KxExpanded::__is_ExpandedRefused(tagcase_) {

@@ -602,6 +602,45 @@
                   (kc-load-forms! d path text ys (words-of (map located ys))))
                 (kc-load-forms! d path text xs expanded)))))))
 
+    "A part an expansion made has its expansion's number above
+     `expansion-span` in its position (C557, fx26/macros-driver.kfx's
+     `drive-position`), so that what the checker finds of each of a
+     template's expansions is its own; kc's numbers are each form's
+     instance's of the expander, so each form's are moved past the forms'
+     before it (`expansions-renumbered`), and are the program's as the
+     engine's are: a fact of one form's expansion is not another's."
+    (define expansion-span i64 4294967296)
+    (define-rec
+      (expansion-most (subr kfx (sexp i64) i64)
+        (lambda (e most)
+          (let ((x (i64-quotient (datum-pos e) expansion-span)))
+            (let ((m (if (i64> x most) x most)))
+              (tagcase e
+                (lst (xs f l p) (expansions-most xs m))
+                (else other m))))))
+      (expansions-most (subr kfx (sexps i64) i64)
+        (lambda (xs most) (if (null? xs) most (expansions-most (cdr xs) (expansion-most (car xs) most))))))
+    (define expansion-moved (subr kfx (i64 i64) i64)
+      (lambda (p base) (if (i64>= p expansion-span) (i64+ p (i64* base expansion-span)) p)))
+    (define-rec
+      (expansion-shifted (subr kfx (sexp i64) sexp)
+        (lambda (e base)
+          (tagcase e
+            (lst (xs f l p) (lst (map (lambda ((x sexp)) (expansion-shifted x base)) xs) f l (expansion-moved p base)))
+            (sym (n f p) (sym n f (expansion-moved p base)))
+            (str (t f p) (str t f (expansion-moved p base)))
+            (num (i f p) (num i f (expansion-moved p base)))
+            (big (t f p) (big t f (expansion-moved p base)))
+            (chr (c f p) (chr c f (expansion-moved p base)))
+            (real (t f p) (real t f (expansion-moved p base))))))
+      (expansions-renumbered (subr kfx (sexps i64) sexps)
+        (lambda (xs base)
+          "Each form's expansion numbers past those of the forms before it."
+          (if (null? xs)
+              nil
+              (cons (expansion-shifted (car xs) base)
+                    (expansions-renumbered (cdr xs) (i64+ base (expansion-most (car xs) 0))))))))
+
     (define kc-forms-spliced! (subr qe (db runner string string sexps fileds) unit)
       (lambda (d run path text forms loaded)
               (if (not (mentions? forms macro-heads))
@@ -635,7 +674,7 @@
                                                         (map2 (lambda ((k string) (f sexp)) (tuple k f)) ks forms))))
                                0)
                       (tagcase (expand-each d run path ks fs forms ps 0 nil nil)
-                        (expanded-forms (xs) (begin (kc-set-spliced! d path text xs loaded (words-of (map located xs))) #u))
+                        (expanded-forms (xs0) (let ((xs (expansions-renumbered xs0 0))) (begin (kc-set-spliced! d path text xs loaded (words-of (map located xs))) #u)))
                         (expanded-refused (m) (begin (kc-load-forms! d path text nil (string-append "(refused " (string-append (kc-datum (str m "" 0)) ")"))) #u))))))))
 
     "The program as expanded, located, each node a line, as the engine's

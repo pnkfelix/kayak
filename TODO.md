@@ -2573,3 +2573,14 @@ Fixpt's `layout.rs` and `value.rs`, every crate's constants from it).
   Rust, 13 MB as UTF-32), first measuring whether the output is held at
   once; (3) symbol names as `utf8` last (the checker throughout). And
   apart from the format, the growth policy's factor of three.
+
+## 57. kc: one macro's template expanded in two loaded files (C557)
+
+C557 made each expansion of a template a place of its own (an expansion's
+number above 2^32 in its parts' positions; kc's renumbered across a
+file's forms at the splice). kc expands each loaded file alone, so two
+files loaded by one program, each using a macro defined in a third, number
+their expansions from 1 each: their parts at the template's place may have
+one key, and a fact of one be read for the other (the bug C557 fixed).
+To do: renumber across `with-loads`' files too, or key the facts by file
+and form as well.

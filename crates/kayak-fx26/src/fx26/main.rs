@@ -5346,6 +5346,7 @@ pub mod made__load__3__main {
         pub drive_at: std::cell::Cell<Option<RefAt<'mxp, Array<i64>>>>,
         pub drive_line: std::cell::Cell<Option<RefAt<'mxp, Array<i64>>>>,
         pub drive_count: std::cell::Cell<Option<RefAt<'mxp, i64>>>,
+        pub expansion_span: std::cell::Cell<Option<Int>>,
         pub drive_out: std::cell::Cell<Option<RefAt<'mxp, SynsA>>>,
         pub drive_put: std::cell::Cell<Option<RefAt<'mxp, MxParserTypesNames>>>,
         pub drive_macros_before: std::cell::Cell<Option<RefAt<'mxp, Int>>>,
@@ -5876,6 +5877,9 @@ pub mod made__load__3__main {
                 kayak_rt::Trace::trace(v, t);
             }
             if let Some(v) = self.drive_count.get() {
+                kayak_rt::Trace::trace(v, t);
+            }
+            if let Some(v) = self.expansion_span.get() {
                 kayak_rt::Trace::trace(v, t);
             }
             if let Some(v) = self.drive_out.get() {
@@ -30592,12 +30596,21 @@ pub mod made__load__3__main {
         }
     }
 
+    pub fn drive_position<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, s: kayak_rt::data::DataAt<'static, Syn>, p: i64) -> i64 {
+        let x = syn_expansion(s);
+        if _gt(x, int_lit(0)) {
+            i64_plus(p, i64_star(int_to_i64(x), int_to_i64(maker_st.expansion_span.get().unwrap())))
+        } else {
+            p
+        }
+    }
+
     /// Syntax as a located datum, where its place says.
     pub fn drive_loc<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, s: kayak_rt::data::DataAt<'static, Syn>) -> kayak_rt::value::Value {
         let w = drive_placed(mxp, maker_st, syn_start(s));
         let f = w.0;
         let l = w.1;
-        let p = w.2;
+        let p = drive_position(mxp, maker_st, s, w.2);
         let tagcase_ = s;
         if made__load__2__expander::Syn::__is_Atom(tagcase_) {
             let (d, a, b, x,) = made__load__2__expander::Syn::__Atom(tagcase_);
@@ -31558,6 +31571,7 @@ pub mod made__load__3__main {
             drive_at: std::cell::Cell::new(None),
             drive_line: std::cell::Cell::new(None),
             drive_count: std::cell::Cell::new(None),
+            expansion_span: std::cell::Cell::new(None),
             drive_out: std::cell::Cell::new(None),
             drive_put: std::cell::Cell::new(None),
             drive_macros_before: std::cell::Cell::new(None),
@@ -31741,6 +31755,7 @@ pub mod made__load__3__main {
         maker_st.drive_at.set(Some(new(make_array(int_lit(1), the::<i64>(0i64)))));
         maker_st.drive_line.set(Some(new(make_array(int_lit(1), the::<i64>(0i64)))));
         maker_st.drive_count.set(Some(new(0i64)));
+        maker_st.expansion_span.set(Some(int_lit(4294967296)));
         maker_st.drive_out.set(Some(new(nil::<kayak_rt::data::DataAt<'static, made__load__2__expander::Syn>>())));
         maker_st.drive_put.set(Some(new(nil::<Symbol>())));
         maker_st.drive_macros_before.set(Some(new(int_lit(0))));

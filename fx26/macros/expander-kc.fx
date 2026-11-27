@@ -14115,11 +14115,28 @@
                                                         (loc-node 0 f l p (the datum (extract (car us) 6))))))
                  (drive-uses-in (cdr us) a b f l p)))
           (else (drive-uses-in (cdr us) a b f l p)))))
+"A place's position for a part an expansion made (C557, TODO.md §57): its
+ template's, and above `expansion-span` the expansion's number, so that two
+ expansions of one template are two places. The checker keys what it finds
+ of a form by its place (`extract-index`, `blob-offset`, ...), and two uses
+ of one macro, their template's one place, had one: the second's was the
+ first's too, a value silently wrong (`(get1 i refs)`, `(get1 i defs)`,
+ the last field each). What a person reads of a place is its file and
+ line, which this leaves as they were; a part no expansion made keeps its
+ position. An expansion's number is its instance's of the expander: the
+ engine's, of the program; kc's, of the form (`scripts/kc-expanded.py`
+ compares the positions below `expansion-span`)."
+(define expansion-span int 4294967296)
+(define drive-position (->* (syn i64) i64)
+  (lambda (s p)
+    (let ((x (syn-expansion s)))
+      (if (> x 0) (i64+ p (i64* (int->i64 x) (int->i64 expansion-span))) p))))
+
 (define-rec
   (drive-loc (->* (syn) datum)
     (lambda (s)
       "Syntax as a located datum, where its place says."
-      (let* ((w (drive-placed (syn-start s))) (f (extract w 1)) (l (extract w 2)) (p (extract w 3)))
+      (let* ((w (drive-placed (syn-start s))) (f (extract w 1)) (l (extract w 2)) (p (drive-position s (extract w 3))))
         (tagcase s
           (atom (d a b x) (loc-node 0 f l p d))
           (mx-eager-reader-types-lst (items d a b x)

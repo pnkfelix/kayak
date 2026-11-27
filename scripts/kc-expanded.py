@@ -21,6 +21,7 @@ fails the check, and a KNOWN one that agrees is said, to be taken out.
 
 import concurrent.futures
 import os
+import re
 import subprocess
 import sys
 
@@ -75,9 +76,23 @@ def run(argv):
     return r.stdout
 
 
+# A node's head, `(KIND "FILE" LINE POSITION`: a part an expansion made has
+# that expansion's number above EXPANSION_SPAN in its position (C557,
+# fx26/macros-driver.kfx's `drive-position`), the engine's of the program
+# and kc's of the form, so the two are compared below it.
+NODE = re.compile(r'\((0|1) ("(?:[^"\\]|\\.)*") (-?\d+) (\d+)')
+EXPANSION_SPAN = 1 << 32
+
+
+def placed(text):
+    """`text`, each node's position below EXPANSION_SPAN."""
+    return NODE.sub(lambda m: "(%s %s %s %d" % (m.group(1), m.group(2), m.group(3), int(m.group(4)) % EXPANSION_SPAN), text)
+
+
 def compare(path):
     whole = run([ENGINE, "--expanded-located", path])
     alone = run([KC, "--expanded-located", path])
+    whole, alone = placed(whole), placed(alone)
     if whole == alone:
         return path, None
     w, a = whole.splitlines(), alone.splitlines()
