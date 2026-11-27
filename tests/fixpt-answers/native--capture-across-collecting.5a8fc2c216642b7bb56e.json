@@ -23,6 +23,24 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 0,
+"out": [
+"u : (prompt-tag int int (maxeff (read @globals) (goto @p) (comefrom @p) spin) @p) ! (alloc @p)",
+"grab-c : (subr (maxeff (read @globals) (goto @p) (comefrom @p) spin) () int) ! pure",
+"under-n : (subr (maxeff (read @globals) (goto @p) (comefrom @p) spin) ((subr (maxeff (read @globals) (goto @p) (comefrom @p) spin) () int)) int) ! pure",
+"climb-c : (subr (maxeff (read @globals) (goto @p) (comefrom @p) spin) ((subr (maxeff (read @globals) (goto @p) (comefrom @p) spin) () int) int) int) ! pure",
+"times : (subr (maxeff (read @globals) (goto @p) (comefrom @p) spin) (int int) int) ! pure",
+"220 : int ! (maxeff (read @globals) (goto @p) (comefrom @p) spin)",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
 }
 ]
 }

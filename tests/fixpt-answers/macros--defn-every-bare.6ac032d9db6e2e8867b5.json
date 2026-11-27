@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"defn-every-bare.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/macros/defn-every-bare.fx:4:44: `c` is a repeated part's: `(c ...)`, every repetition's",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

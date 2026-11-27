@@ -1,0 +1,30 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"infer-rec-written.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (8 cells, cellular):",
+"     0: lit #t",
+"     2: lit #f",
+"     4: prim list 2",
+"     7: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

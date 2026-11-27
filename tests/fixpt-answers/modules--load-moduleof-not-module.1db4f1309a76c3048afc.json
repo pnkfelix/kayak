@@ -19,6 +19,20 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 1,
+"out": [
+"! <programs>/modules/load-moduleof-not-module.fx:3:23: what `../module-files/made-core.fx` makes, given these, is a (poly ((ed region) (world effect)) (subr (alloc ed) () (moduleof (abs ticket type) (desc counter (productof (#:state (ref int ed)))) (val issued (ref int ed)) (val spawn (subr (alloc ed) (int) counter)) (val peek (subr (read ed) (counter) int)) (val issue (subr (maxeff (read ed) (write ed)) () ticket)) (val number (subr pure (ticket) int))))), not a module",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
 }
 ]
 }

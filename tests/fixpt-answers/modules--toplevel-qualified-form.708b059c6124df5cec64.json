@@ -1,0 +1,54 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"toplevel-qualified-form.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (10 cells, cellular):",
+"     0: closure word g over 0",
+"     3: global! g",
+"     5: global g",
+"     7: tcall 0",
+"     9: exit",
+"",
+"word g (11 cells, cellular):",
+"     0: lit 1",
+"     2: lit 2",
+"     4: prim list 2",
+"     7: prim length 1",
+"    10: return",
+"  its register code (32 cells, not compiled):",
+"       0: args 0",
+"       2: save 0",
+"       4: const ()",
+"       6: setreg 2",
+"       8: const 2",
+"      10: setreg 1",
+"      12: cellular cons 2",
+"      15: setreg 2",
+"      17: const 1",
+"      19: setreg 1",
+"      21: cellular cons 2",
+"      24: setreg 1",
+"      26: prim length 1",
+"      29: pop 0",
+"      31: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

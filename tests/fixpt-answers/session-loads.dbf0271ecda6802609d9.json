@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"run",
+"session-loads.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"defined lib",
+"42",
+"4",
+"refused: cannot read `loads/missing.fx`: No such file or directory (os error 2)",
+"9",
+""
+],
+"err": [
+"fixpt: <kayak>/tests/fx26/stage/session-loads.fx:18:49: warning: a sum's label written `shadow`, not `#:shadow`: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:shadow`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

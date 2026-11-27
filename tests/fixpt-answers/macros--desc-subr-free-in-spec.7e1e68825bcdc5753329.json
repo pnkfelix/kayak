@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"desc-subr-free-in-spec.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/macros/desc-subr-free-in-spec.fx:8:72: `#%toplevel:limit` names no parameter or result here",
+"  in the expansion of `define-capped` at <programs>/macros/desc-subr-free-in-spec.fx:9:1",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

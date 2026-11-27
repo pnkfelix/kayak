@@ -28,6 +28,30 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 0,
+"out": [
+"b : o ! (alloc @b)",
+"arr : (blobref o (flat-arrayof shape 2)) ! (read (globals b))",
+"c : (blobref o f64) ! (maxeff (read @b) (write @b) (read (globals arr)))",
+"#u : unit ! (maxeff (write @b) (read (globals c)))",
+"sq : (blobref o (productof (#:w i32) (#:h i32))) ! (maxeff (read @b) (write @b) (read (globals arr)))",
+"#u : unit ! (maxeff (write @b) (read (globals sq)))",
+"#u : unit ! (maxeff (write @b) (read (globals sq)))",
+"what : (subr (read @b) ((blobref o shape)) int) ! pure",
+"kr : (blobref o k) ! (read (globals b))",
+"#u : unit ! (maxeff (read @b) (write @b) (read (globals kr)))",
+"(1 21 1 0 8 24 99 7 0 -1) : (listof int acyclic) ! (maxeff (read @b) (read (globals arr b c kr sq what)))",
+""
+],
+"err": [
+"fixpt: <programs>/bloblet/flat-sum.fx:7:29: warning: a sum's label written `circle`, not `#:circle`, and 1 more in this file: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:circle`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
 }
 ]
 }

@@ -31,6 +31,33 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 0,
+"out": [
+"bit : (subr pure (bool int) int) ! pure",
+"kind-of : (subr pure (io-error) int) ! pure",
+"buf : (bytevectorof @b) ! (alloc @b)",
+"w : int ! (io stdout)",
+"l : int ! (io stdin)",
+"b : int ! (io stdin)",
+"n0 : int ! (maxeff (write @b) (io stdin) (read (globals buf)))",
+"n1 : int ! (maxeff (write @b) (io stdin) (read (globals buf)))",
+"r : int ! (io stdin-poll)",
+"a : int ! (io args)",
+"f : int ! (maxeff (io fs-read) (read (globals kind-of)))",
+"d : int ! (maxeff (io fs-read) (read (globals kind-of)))",
+"t : int ! (io terminal)",
+"1023 : int ! (read (globals a b d f l n0 n1 r t w))",
+""
+],
+"err": [
+"fixpt: <kayak>/tests/fx26-kayak/io/streams.fx:4:34: warning: a sum's label written `line`, not `#:line`, and 8 more in this file: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:line`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
 }
 ]
 }

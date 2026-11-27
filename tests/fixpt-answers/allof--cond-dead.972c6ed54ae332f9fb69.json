@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"cond-dead.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"swap : (allof (subr pure (symbol symbol symbol) symbol) (subr pure (symbol symbol syms) syms)) ! pure",
+"(y b y x) : (pairof symbol (pairof symbol syms acyclic) acyclic) ! (read (globals swap))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

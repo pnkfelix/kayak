@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"dependent-moduleof-items.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define m : (moduleof (val base (moduleof (abs t type) (val zero t) (val next (subr pure (t) t)) (val value (subr pure (t) int)))) (val user (moduleof (val two (subr pure () (select base t)))))) ! (read (globals %shared:<programs>/modules/../module-files/dm-base.fx %shared:input:<programs>/modules/../module-files/dm-user.fx))",
+"int ! (read (globals m))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"ellipsis-nested-labelled.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"s : st ! pure",
+"8 : int ! (read (globals s))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"lib.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <kayak>/tests/fx26/stage/loads/lib.fx:4:3: `doubled-id` is declared a (subr pure (base.fx..id) int): a (subr pure (base.fx..id) int) is expected here, and this is a (subr (read (globals base double)) (base.fx..id) int)",
+"  beyond what is expected, it has (read (globals base double))",
+"; both checkers agree",
+"; checked as a program, whose globals a later definition may change: `fixpt check --module <kayak>/tests/fx26/stage/loads/lib.fx` checks it as a module file",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

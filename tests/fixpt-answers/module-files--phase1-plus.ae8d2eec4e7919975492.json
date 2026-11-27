@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"phase1-plus.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"b 465852310505086d6f64756c656f660564657363730476616c73046261736503696e740000040000000200010002010000000200000204030003030000010404",
+""
+],
+"err": [
+"fixpt: <programs>/module-files/phase1-plus.fx:4:41: `plus-base` is declared a (subr pure (int) int): a (subr pure (int) int) is expected here, and this is a (subr (read (globals b)) (int) int)",
+"  beyond what is expected, it has (read (globals b))",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

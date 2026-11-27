@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"mp-pure-item.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"; <programs>/module-files/mp-pure-item.fx, checked as a module file",
+"! <programs>/module-files/mp-pure-item.fx:1:1: in `mp-pure-item.fx`, 3:1: an expression among a module's items is run for what it does as the module is made, and this one only reads: name its value with `define`",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

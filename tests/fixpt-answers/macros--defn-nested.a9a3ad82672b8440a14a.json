@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"defn-nested.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"p : int ! pure",
+"q : int ! pure",
+"3 : int ! (read (globals p q))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

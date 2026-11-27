@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"len-by-member.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"len : (allof (subr pure ((listof int acyclic)) int) (subr (maxeff (read @heap) spin) (heap-ints) int)) ! pure",
+"xs : heap-ints ! (alloc @heap)",
+"(3 2) : (listof int acyclic) ! (maxeff (read @heap) spin (read (globals len xs)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

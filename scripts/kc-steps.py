@@ -113,8 +113,7 @@ def cutoff():
     p = os.path.join(WORK, "cutoff.fx")
     db = os.path.join(WORK, "cutoff.db")
     s = os.path.join(WORK, "cutoff.s")
-    if os.path.exists(db):
-        os.remove(db)
+    fresh(db)
     wrong = []
     # The forms are inputs, set by the driver from one reading of the text
     # (C414): no query reads the whole program but the checker. The whole
@@ -140,8 +139,7 @@ def cutoff():
     # program of them, cold, runs what `42` does, no `form` or `interface`
     # of `lambda`, `if`, `#t` ...
     for text in ["(let ((x 1)) (if (and #t #f) ((lambda ((y int)) y) x) (begin #u 2)))\n"]:
-        if os.path.exists(db):
-            os.remove(db)
+        fresh(db)
         open(p, "w").write(text)
         got = bodies_ran(run([KC, "--db", db, "--stats", "--asm", p, s]).stderr)
         if got != ["asm", "asm-item", "checked", "l0-item"]:
@@ -150,8 +148,7 @@ def cutoff():
     # procedure's body edited, it alone; then the kind's own edit.
     one = ["asm", "asm-item", "checked", "interface", "l0-item"]
     for kind, tmpl, edit, want in GROWN:
-        if os.path.exists(db):
-            os.remove(db)
+        fresh(db)
         for args, w in [(("a", "(* n 2)"), None), (("a", "(* n 2)"), []), (("a", "(* 2 n)"), one), (("b", "(* 2 n)"), want)]:
             open(p, "w").write(tmpl % (edit[args[0]], args[1]))
             r = run([KC, "--db", db, "--stats", "--asm", p, s])
@@ -166,8 +163,7 @@ def cutoff():
     # it was, runs what an edit of one item does. A file of no parameters'
     # value; a file of a place's procedure (its maker one item, C471).
     for kind, prog, name, loaded, edits in LOADS:
-        if os.path.exists(db):
-            os.remove(db)
+        fresh(db)
         open(p, "w").write(prog)
         for k, w in [(0, None), (0, []), (1, one)]:
             open(os.path.join(WORK, name), "w").write(loaded % edits[k])
@@ -252,8 +248,7 @@ def expansions():
     how many of each ran."""
     p = os.path.join(WORK, "expansions.fx")
     db = os.path.join(WORK, "expansions.db")
-    if os.path.exists(db):
-        os.remove(db)
+    fresh(db)
     wrong = []
     body = "(* n 2)"
     for text, want, why in [(MACROS % ("(+ e 1)", body), (5, 5), "cold"),
@@ -284,8 +279,7 @@ def expansions():
     # the database: cold, its 9 definitions' code (the prelude's 6, the
     # transformer, kc's reader and `%phase1-apply`, C448); a use's operand
     # edited, none: the use is given to the program built, a run alone.
-    if os.path.exists(db):
-        os.remove(db)
+    fresh(db)
     for text, want, why in [(PROCEDURAL % "n", (4, 4, 9), "procedural, cold"),
                             (PROCEDURAL % "n", (0, 0, 0), "procedural, the same"),
                             (PROCEDURAL % "(+ n 1)", (1, 1, 0), "procedural, a use's operand edited")]:

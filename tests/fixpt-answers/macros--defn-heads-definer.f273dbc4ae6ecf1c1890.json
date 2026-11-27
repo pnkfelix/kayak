@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"defn-heads-definer.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"%w:1405393251.2 : int ! pure",
+"four : int ! (read (globals %w:1405393251.2))",
+"4 : int ! (read (globals four))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

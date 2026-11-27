@@ -1,0 +1,26 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"dependent-moduleof-param-path.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"e : (moduleof (val m-base (moduleof (abs t type) (val zero t) (val next (subr pure (t) t)) (val value (subr pure (t) int))))) ! (read (globals %shared:<programs>/modules/../module-files/dm-base.fx %shared:<programs>/modules/../module-files/dm-penv.fx))",
+"e2 : (moduleof (val m-frame (moduleof (val start e.m-base..t)))) ! (read (globals %shared:input:<programs>/modules/../module-files/dm-penv2.fx %shared:input:<programs>/modules/../module-files/dm-pframe.fx e))",
+"u : (moduleof (val v int)) ! (read (globals %shared:input:<programs>/modules/../module-files/dm-puser.fx e e2))",
+"2 : int ! (read (globals u))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

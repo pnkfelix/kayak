@@ -1,0 +1,28 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"defn-generative-own.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"%mk:316594504.2 : (subr pure (int) %c:316594504.1) ! pure",
+"%get:316594504.3 : (subr pure (%c:316594504.1) int) ! pure",
+"z : %c:316594504.1 ! (read (globals %mk:316594504.2))",
+"next : (subr (read (globals %get:316594504.3 %mk:316594504.2)) (%c:316594504.1) %c:316594504.1) ! pure",
+"count : (subr (read (globals %get:316594504.3)) (%c:316594504.1) int) ! pure",
+"2 : int ! (read (globals %get:316594504.3 %mk:316594504.2 count next z))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

@@ -1,0 +1,27 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"template-twice.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"i : inner ! pure",
+"o : outer ! (read (globals i))",
+"a : int ! (read (globals i))",
+"b : int ! (read (globals i))",
+"(3 4 3 4 3 4 2) : (listof int acyclic) ! (read (globals a b i o))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

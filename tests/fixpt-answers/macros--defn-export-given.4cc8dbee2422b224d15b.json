@@ -1,0 +1,23 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"defn-export-given.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: read error: <programs>/macros/defn-export-given.fx:6:20: what a use defines is said in what it makes, `(macro/addressed σ (defn (ℓ δ) …))`, not by `(export σ (rho (ℓ δ) …))` around its parts: the `rho`'s entries go in the `defn`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

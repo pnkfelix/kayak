@@ -1,0 +1,26 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"flat-tagcase-no-tag.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"b : o ! (alloc @b)",
+"r : (blobref o (sumof (#:a f64) (#:b i32))) ! (read (globals b))",
+""
+],
+"err": [
+"fixpt: <programs>/bloblet/flat-tagcase-no-tag.fx:6:30: warning: a sum's label written `a`, not `#:a`, and 1 more in this file: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:a`",
+"fixpt: <programs>/bloblet/flat-tagcase-no-tag.fx:7:17: a (sumof (#:a (blobref o f64)) (#:b (blobref o i32))) has no tag `c`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

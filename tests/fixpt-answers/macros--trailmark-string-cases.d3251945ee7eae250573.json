@@ -1,0 +1,42 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"trailmark-string-cases.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (33 cells, cellular):",
+"     0: lit \"b\"",
+"     2: slot 0",
+"     4: lit \"a\"",
+"     6: prim string=? 2",
+"     9: 0branch → 15",
+"    11: lit \"A\"",
+"    13: branch → 30",
+"    15: slot 0",
+"    17: lit \"b\"",
+"    19: prim string=? 2",
+"    22: 0branch → 28",
+"    24: lit \"B\"",
+"    26: branch → 30",
+"    28: lit \"?\"",
+"    30: slot! 0",
+"    32: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

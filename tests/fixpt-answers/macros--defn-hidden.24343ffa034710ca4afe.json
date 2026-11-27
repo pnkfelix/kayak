@@ -1,0 +1,28 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"defn-hidden.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"count : int ! pure",
+"%count:1903821381.1 : (ref int @r.%count:1903821381.1.1) ! (alloc @r.%count:1903821381.1.1)",
+"tick : (subr (maxeff (read @r.%count:1903821381.1.1) (write @r.%count:1903821381.1.1) (read (globals %count:1903821381.1))) () int) ! pure",
+"1 : int ! (maxeff (read @r.%count:1903821381.1.1) (write @r.%count:1903821381.1.1) (read (globals %count:1903821381.1 tick)))",
+"2 : int ! (maxeff (read @r.%count:1903821381.1.1) (write @r.%count:1903821381.1.1) (read (globals %count:1903821381.1 tick)))",
+"103 : int ! (maxeff (read @r.%count:1903821381.1.1) (write @r.%count:1903821381.1.1) (read (globals %count:1903821381.1 count tick)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

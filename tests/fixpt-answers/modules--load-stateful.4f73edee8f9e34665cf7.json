@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"load-stateful.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/modules/load-stateful.fx:4:11: a loaded file is one value for all its loads, made once, so making it must be pure, and this one has (alloc @c)",
+"  a file whose definitions make state as it is made is a program's: run it with `,load FILE` or `fixpt run`; or, a module, give its state in a `lambda` it gives, which each caller applies",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

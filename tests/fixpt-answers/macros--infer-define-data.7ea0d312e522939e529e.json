@@ -1,0 +1,28 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"infer-define-data.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"circle : (subr pure (int) shape) ! pure",
+"rect : (subr pure (int int) shape) ! pure",
+"none : (subr pure () shape) ! pure",
+"area : (subr pure (shape) int) ! pure",
+"18 : int ! (read (globals area circle none rect))",
+""
+],
+"err": [
+"fixpt: <programs>/macros/infer-define-data.fx:13:34: warning: a sum's label written `t`, not `#:t`: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:t`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

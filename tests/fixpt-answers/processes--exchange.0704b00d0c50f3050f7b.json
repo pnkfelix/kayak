@@ -25,6 +25,27 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 0,
+"out": [
+"done : (icell int @d) ! (alloc @d)",
+"play : (poly ((r place)) (subr (maxeff (init @d) (send @p) (receive r) spin nondet (read (globals done))) ((inbox msg r)) unit)) ! pure",
+"a : (addr msg @p) ! (maxeff (alloc @p) (init @d) (send @p) spin nondet (read (globals done play)))",
+"b : (addr msg @p) ! (maxeff (alloc @p) (init @d) (send @p) spin nondet (read (globals done play)))",
+"#u : unit ! (maxeff (send @p) spin (read (globals a b)))",
+"#u : unit ! (maxeff (send @p) spin (read (globals a b)))",
+"#u : unit ! (maxeff (send @p) spin (read (globals a)))",
+"10 : int ! (maxeff (await @d) (read (globals done)))",
+""
+],
+"err": [
+"fixpt: <programs>/processes/exchange.fx:6:26: warning: a sum's label written `peer`, not `#:peer`, and 5 more in this file: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:peer`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
 }
 ]
 }

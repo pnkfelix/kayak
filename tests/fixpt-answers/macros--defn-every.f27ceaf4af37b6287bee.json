@@ -1,0 +1,67 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"defn-every.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (41 cells, cellular):",
+"     0: closure word make-thing over 0",
+"     3: global! make-thing",
+"     5: lit 7",
+"     7: global make-thing",
+"     9: tcall 1",
+"    11: global! it",
+"    13: global it",
+"    15: slot 0",
+"    17: field 2",
+"    19: lit |k|",
+"    21: eq",
+"    22: 0branch → 35",
+"    24: slot 0",
+"    26: field 3",
+"    28: slot 1",
+"    30: slot! 0",
+"    32: drop",
+"    33: branch → 40",
+"    35: lit #f",
+"    37: lit 0",
+"    39: field@",
+"    40: exit",
+"",
+"word make-thing (10 cells, cellular):",
+"     0: lit 36",
+"     2: lit |k|",
+"     4: slot 0",
+"     6: prim %make-frozen 3",
+"     9: return",
+"  its register code (24 cells, not compiled):",
+"       0: args 1",
+"       2: save 1",
+"       4: store 1 0",
+"       7: const 36",
+"       9: setreg 1",
+"      11: const |k|",
+"      13: setreg 2",
+"      15: load 3 0",
+"      18: prim %make-frozen 3",
+"      21: pop 1",
+"      23: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

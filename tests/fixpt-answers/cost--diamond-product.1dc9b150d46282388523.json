@@ -1,0 +1,63 @@
+{
+"args": [
+"check",
+"diamond-product.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define double : (subr (alloc @heap) (elt-sig) (moduleof (desc t (productof (1 (select $1 t)) (2 (select $1 t)))) (val v t))) ! pure",
+"define m0 : (moduleof (desc t int) (val v int)) ! pure",
+"define m1 : (moduleof (desc t (productof (1 int) (2 int))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m0)))",
+"define m2 : (moduleof (desc t (productof (1 (select m1 t)) (2 (select m1 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m1)))",
+"define m3 : (moduleof (desc t (productof (1 (select m2 t)) (2 (select m2 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m2)))",
+"define m4 : (moduleof (desc t (productof (1 (select m3 t)) (2 (select m3 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m3)))",
+"define m5 : (moduleof (desc t (productof (1 (select m4 t)) (2 (select m4 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m4)))",
+"define m6 : (moduleof (desc t (productof (1 (select m5 t)) (2 (select m5 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m5)))",
+"define m7 : (moduleof (desc t (productof (1 (select m6 t)) (2 (select m6 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m6)))",
+"define m8 : (moduleof (desc t (productof (1 (select m7 t)) (2 (select m7 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m7)))",
+"define m9 : (moduleof (desc t (productof (1 (select m8 t)) (2 (select m8 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m8)))",
+"define m10 : (moduleof (desc t (productof (1 (select m9 t)) (2 (select m9 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m9)))",
+"define m11 : (moduleof (desc t (productof (1 (select m10 t)) (2 (select m10 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m10)))",
+"define m12 : (moduleof (desc t (productof (1 (select m11 t)) (2 (select m11 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m11)))",
+"define m13 : (moduleof (desc t (productof (1 (select m12 t)) (2 (select m12 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m12)))",
+"define m14 : (moduleof (desc t (productof (1 (select m13 t)) (2 (select m13 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m13)))",
+"define m15 : (moduleof (desc t (productof (1 (select m14 t)) (2 (select m14 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m14)))",
+"define m16 : (moduleof (desc t (productof (1 (select m15 t)) (2 (select m15 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m15)))",
+"define m17 : (moduleof (desc t (productof (1 (select m16 t)) (2 (select m16 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m16)))",
+"define m18 : (moduleof (desc t (productof (1 (select m17 t)) (2 (select m17 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m17)))",
+"define m19 : (moduleof (desc t (productof (1 (select m18 t)) (2 (select m18 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m18)))",
+"define m20 : (moduleof (desc t (productof (1 (select m19 t)) (2 (select m19 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m19)))",
+"define m21 : (moduleof (desc t (productof (1 (select m20 t)) (2 (select m20 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m20)))",
+"define m22 : (moduleof (desc t (productof (1 (select m21 t)) (2 (select m21 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m21)))",
+"define m23 : (moduleof (desc t (productof (1 (select m22 t)) (2 (select m22 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m22)))",
+"define m24 : (moduleof (desc t (productof (1 (select m23 t)) (2 (select m23 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m23)))",
+"define m25 : (moduleof (desc t (productof (1 (select m24 t)) (2 (select m24 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m24)))",
+"define m26 : (moduleof (desc t (productof (1 (select m25 t)) (2 (select m25 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m25)))",
+"define m27 : (moduleof (desc t (productof (1 (select m26 t)) (2 (select m26 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m26)))",
+"define m28 : (moduleof (desc t (productof (1 (select m27 t)) (2 (select m27 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m27)))",
+"define m29 : (moduleof (desc t (productof (1 (select m28 t)) (2 (select m28 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m28)))",
+"define m30 : (moduleof (desc t (productof (1 (select m29 t)) (2 (select m29 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m29)))",
+"define m31 : (moduleof (desc t (productof (1 (select m30 t)) (2 (select m30 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m30)))",
+"define m32 : (moduleof (desc t (productof (1 (select m31 t)) (2 (select m31 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m31)))",
+"define m33 : (moduleof (desc t (productof (1 (select m32 t)) (2 (select m32 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m32)))",
+"define m34 : (moduleof (desc t (productof (1 (select m33 t)) (2 (select m33 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m33)))",
+"define m35 : (moduleof (desc t (productof (1 (select m34 t)) (2 (select m34 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m34)))",
+"define m36 : (moduleof (desc t (productof (1 (select m35 t)) (2 (select m35 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m35)))",
+"define m37 : (moduleof (desc t (productof (1 (select m36 t)) (2 (select m36 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m36)))",
+"define m38 : (moduleof (desc t (productof (1 (select m37 t)) (2 (select m37 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m37)))",
+"define m39 : (moduleof (desc t (productof (1 (select m38 t)) (2 (select m38 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m38)))",
+"define m40 : (moduleof (desc t (productof (1 (select m39 t)) (2 (select m39 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m39)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

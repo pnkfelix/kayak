@@ -1,0 +1,26 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"hypothesis-twice.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"up-tree : (poly ((a type)) (subr pure ((sumof (#:leaf a) (#:node (productof (#:l (tree a)) (#:r (tree a)))))) (tree a))) ! pure",
+"down-tree : (poly ((a type)) (subr pure ((tree a)) (sumof (#:leaf a) (#:node (productof (#:l (tree a)) (#:r (tree a))))))) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/lemmas/hypothesis-twice.fx:3:44: warning: a sum's label written `leaf`, not `#:leaf`, and 3 more in this file: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:leaf`",
+"fixpt: <programs>/lemmas/hypothesis-twice.fx:8:37: argument 1 is a b, where a a is expected",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

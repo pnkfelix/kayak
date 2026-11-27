@@ -1,0 +1,26 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"acyclic-by-default.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"sum-of : (subr pure (ints) int) ! pure",
+"xs : ints ! pure",
+"ys : ints ! (read (globals xs))",
+"(3 3) : ints ! (read (globals sum-of xs ys))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

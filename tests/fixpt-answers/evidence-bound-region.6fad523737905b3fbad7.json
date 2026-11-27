@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"run",
+"evidence-bound-region.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <kayak>/tests/fx26/stage/evidence-bound-region.fx:9:33: `stage` is given a bound of `t`, which may be of less than `t` is: `t` may stand only where less is safe, in the effect, and in what is given, not taken; or give its exact evidence",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

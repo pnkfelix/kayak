@@ -1,0 +1,27 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"named.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"to-meters : (subr pure (int) meters) ! pure",
+"from-meters : (subr pure (meters) int) ! pure",
+"d : meters ! (read (globals to-meters))",
+""
+],
+"err": [
+"fixpt: <programs>/generative/named.fx:5:43: `twice` is declared a (subr pure (meters) meters): a (subr pure (meters) meters) is expected here, and this is a (subr (read (globals from-meters to-meters)) (meters) meters)",
+"  beyond what is expected, it has (read (globals from-meters to-meters))",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

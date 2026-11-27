@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"continuation-escapes.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"t 4658523106060a70726f6d70742d746167046261736503696e74066566666563740672636f6e737402407000000400000004000100010002000301000001040203010000040000010405",
+""
+],
+"err": [
+"fixpt: <programs>/regions/continuation-escapes.fx:6:5: a continuation captured in `letreap r` could outlive its region: its effect is (maxeff (goto @p) (comefrom @p) (read (globals t)))",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

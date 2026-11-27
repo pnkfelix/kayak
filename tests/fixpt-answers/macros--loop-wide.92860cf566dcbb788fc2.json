@@ -1,0 +1,39 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"loop-wide.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/macros/loop-wide.fx:5:59: this macro's expansion does not end: 10000 uses expanded in one form, the last of `t`, inside `t`, `t`, `t`, `t`",
+"  in the expansion of `t` at <programs>/macros/loop-wide.fx:5:65",
+"  in the expansion of `t` at <programs>/macros/loop-wide.fx:5:59",
+"  in the expansion of `t` at <programs>/macros/loop-wide.fx:5:59",
+"  in the expansion of `t` at <programs>/macros/loop-wide.fx:5:59",
+"  in the expansion of `t` at <programs>/macros/loop-wide.fx:5:59",
+"  in the expansion of `t` at <programs>/macros/loop-wide.fx:5:65",
+"  in the expansion of `t` at <programs>/macros/loop-wide.fx:5:65",
+"  in the expansion of `t` at <programs>/macros/loop-wide.fx:5:65",
+"  in the expansion of `t` at <programs>/macros/loop-wide.fx:5:59",
+"  in the expansion of `t` at <programs>/macros/loop-wide.fx:5:59",
+"  in the expansion of `t` at <programs>/macros/loop-wide.fx:5:65",
+"  in the expansion of `t` at <programs>/macros/loop-wide.fx:5:59",
+"  in the expansion of `t` at <programs>/macros/loop-wide.fx:6:1",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

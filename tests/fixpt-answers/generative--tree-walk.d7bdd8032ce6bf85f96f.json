@@ -1,0 +1,29 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"tree-walk.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"up-nest : (poly ((a type)) (subr pure ((sumof (#:none unit) (#:more (productof (1 a) (2 (nest (productof (1 a) (2 a)))))))) (nest a))) ! pure",
+"down-nest : (poly ((a type)) (subr pure ((nest a)) (sumof (#:none unit) (#:more (productof (1 a) (2 (nest (productof (1 a) (2 a))))))))) ! pure",
+"up-tree : (poly ((a type)) (subr pure ((sumof (#:leaf a) (#:node (productof (1 (tree a)) (2 (tree a)))))) (tree a))) ! pure",
+"down-tree : (poly ((a type)) (subr pure ((tree a)) (sumof (#:leaf a) (#:node (productof (1 (tree a)) (2 (tree a))))))) ! pure",
+"total : (subr (read (globals down-tree)) ((tree int)) int) ! pure",
+"3 : int ! (read (globals down-tree total up-tree))",
+""
+],
+"err": [
+"fixpt: <programs>/generative/tree-walk.fx:5:11: warning: a sum's label written `none`, not `#:none`, and 6 more in this file: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:none`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

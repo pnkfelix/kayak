@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"defn-define-type-fresh.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"c : (ref int @heap) ! (alloc @heap)",
+"3 : int ! (maxeff (read @heap) (read (globals c)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

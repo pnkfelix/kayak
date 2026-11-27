@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"toplevel-qualified-include.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"lib : (moduleof (desc u int)) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/modules/toplevel-qualified-include.fx:5:43: `u` is not a type",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

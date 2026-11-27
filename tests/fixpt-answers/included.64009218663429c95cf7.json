@@ -1,0 +1,30 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"included.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define a : (moduleof (desc pt (productof (#:x int) (#:y int))) (val scale int) (val mk (subr pure (int int) pt))) ! (read (globals %shared:<kayak>/tests/fx26/stage/included/a.fx))",
+"define b : (moduleof (desc label string) (val show (subr pure ((select a pt)) string))) ! (read (globals %shared:input:<kayak>/tests/fx26/stage/included/b.fx a))",
+"define c : (moduleof (desc behaviour (subr spin ((select a pt)) string)) (val shown (ref behaviour @ed)) (val reload! (subr (maxeff (io stdout) (write @ed) spin stage) (datum) unit)) (val try (subr (maxeff (read @ed) spin) () string))) ! (maxeff (alloc @ed) (read (globals %shared:input:<kayak>/tests/fx26/stage/included/c.fx a b)))",
+"unit ! (maxeff (io stdout) (read (globals c)) (write @ed) spin stage)",
+"(sumof (#:done unit) (#:failed io-error)) ! (maxeff (io stdout) (read (globals c)) (read @ed) spin)",
+"unit ! (maxeff (io stdout) (read (globals c)) (write @ed) spin stage)",
+"(sumof (#:done unit) (#:failed io-error)) ! (maxeff (io stdout) (read (globals c)) (read @ed) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

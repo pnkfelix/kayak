@@ -1,0 +1,27 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"race-deadline.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"spin-forever : (subr (maxeff spin (read (globals spin-forever))) (int) int) ! pure",
+"timeout : (icell int @c) ! (alloc @c)",
+"start : i64 ! (io clock-read)",
+"timer : (addr int @p) ! (maxeff (alloc @p) (init @c) (io clock) nondet (read (globals start timeout)))",
+"-1 : int ! (maxeff (await @c) spin nondet (read (globals spin-forever timeout)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

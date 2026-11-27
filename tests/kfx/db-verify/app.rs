@@ -60,6 +60,21 @@ pub fn k_text(k: kayak_rt::data::DataAt<'static, Sexp>) -> Str {
     }
 }
 
+#[inline]
+pub fn files_named(fs: List<kayak_rt::data::DataAt<'static, DbFile>>) -> List<Str> {
+    if null_p(fs) {
+        nil::<Str>()
+    } else {
+        kayak_rt::heap_cons({
+            let tagcase_ = car(fs);
+            if DbFile::__is_DbFile(tagcase_) {
+                let (n, t,) = DbFile::__DbFile(tagcase_);
+                n
+            } else { kayak_rt::data::no_variant() }
+        }, files_named(cdr(fs)))
+    }
+}
+
 pub fn file_in(mut fs: List<kayak_rt::data::DataAt<'static, DbFile>>, mut name: Str, mut before: Reader) -> Str {
     loop {
         if null_p(fs) {
@@ -86,10 +101,12 @@ pub fn file_in(mut fs: List<kayak_rt::data::DataAt<'static, DbFile>>, mut name: 
 pub fn reread(d: Db, whose: Str) -> Db {
     let fs = db_saved(d, str_lit!("test"), kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: kayak_rt::data::DataAt<'static, Sexp>| {
         true
-    })));
+    })), str_lit!("000000000001-test"));
     let before = db_reader(d);
     db_opened(kayak_rt::closure1((fs, before,), |(fs, before,), name: Str| {
         file_in(fs, name, before)
+    }), kayak_rt::closure0((fs,), |(fs,)| {
+        files_named(fs)
     }), whose)
 }
 

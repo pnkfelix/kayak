@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"budget-past.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"p : (productof (1 ib) (2 ib) (3 ib) (4 ib) (5 ib) (6 ib) (7 ib)) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/anyof/budget-past.fx:137:15: `q` is declared a all: a all is expected here, and this is a (productof (1 ib) (2 ib) (3 ib) (4 ib) (5 ib) (6 ib) (7 ib))",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

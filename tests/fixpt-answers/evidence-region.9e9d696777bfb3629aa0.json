@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"run",
+"evidence-region.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"5",
+"refused: a (subr (read %region-1) () int) is expected here, and this is a (subr (maxeff (read %region-1) (write %region-1)) () int)",
+"  beyond what is expected, it has (write %region-1)",
+"7",
+"refused: a (subr (read @a) () int) is expected here, and this is a (subr (maxeff (read @a) (write @a)) () int)",
+"  beyond what is expected, it has (write @a)",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

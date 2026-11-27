@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"colons-missing.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"mid 465852310707086d6f64756c656f660564657363730476616c7301610178046261736503696e74000006000000020001000201000000020000020403000300000002000100040200000204040005050000010406",
+""
+],
+"err": [
+"fixpt: <programs>/modules/colons-missing.fx:4:9: `mid::a` gives no value `y`, which the path `mid::a::y` takes from it alone",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

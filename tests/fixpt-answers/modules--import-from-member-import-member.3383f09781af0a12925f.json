@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"import-from-member-import-member.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"m-ab : (moduleof (val m-a (moduleof (desc t (productof (#:x int))) (val mk (subr pure (int) t)) (val r (ref int @ed)))) (val m-b (moduleof (desc u (productof (#:inner (productof (#:x int))) (#:tag string))) (val wrap (subr pure (int) u)))) (val core (moduleof (desc t (productof (#:x int))) (desc u (productof (#:inner t) (#:tag string))) (val mk (subr pure (int) t)) (val r (ref int @ed)) (val wrap (subr pure (int) u))))) ! (maxeff (alloc @ed) (read (globals %shared:<programs>/modules/../module-files/ifm-a.fx %shared:<programs>/modules/../module-files/ifm-ab.fx %shared:input:<programs>/modules/../module-files/ifm-b.fx)))",
+"m-c : (moduleof (val x41 (subr pure () int))) ! (read (globals %shared:input:<programs>/modules/../module-files/ifm-c-import-member.fx m-ab))",
+"41 : int ! (read (globals m-c))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

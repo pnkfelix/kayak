@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"tagcase-out-of-order.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/tuples/tagcase-out-of-order.fx:3:55: `p` carries a (productof (2 int) (1 string)), which cannot be taken apart into 2 name(s): only a product labelled 1, 2, …, a `tupleof`, is taken apart by position; bind it to one name and `extract` its fields",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

@@ -1,0 +1,27 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"io-parts.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"now : (subr (io clock-read) () i64) ! pure",
+"ready : (subr (io stdin-poll) () bool) ! pure",
+"news : (subr (io process-control) () int) ! pure",
+"old : (subr (io clock) () i64) ! pure",
+"nap : (subr (io clock) () unit) ! pure",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

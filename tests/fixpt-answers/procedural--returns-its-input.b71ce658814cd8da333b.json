@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"returns-its-input.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: read error: <programs>/procedural/returns-its-input.fx:5:1: this use of `same` is one it was expanded from, unchanged: its expansion would never end",
+"  in the expansion of `same` at <programs>/procedural/returns-its-input.fx:5:1",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

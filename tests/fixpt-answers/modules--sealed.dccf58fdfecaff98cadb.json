@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"sealed.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"counter : (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int))) ! pure",
+"sealed : (moduleof (abs t type) (val zero t) (val value (subr pure (t) int))) ! (read (globals counter))",
+""
+],
+"err": [
+"fixpt: <programs>/modules/sealed.fx:10:15: unbound variable `inc`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

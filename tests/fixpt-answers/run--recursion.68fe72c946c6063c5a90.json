@@ -20,6 +20,21 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 0,
+"out": [
+"sum-to : (subr (maxeff spin (read (globals sum-to))) (int) int) ! pure",
+"count : (subr spin (int) int) ! pure",
+"(55 . 1000) : (pairof int int acyclic) ! (maxeff spin (read (globals count sum-to)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
 }
 ]
 }

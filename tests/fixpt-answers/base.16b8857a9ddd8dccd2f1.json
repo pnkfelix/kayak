@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"run",
+"base.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <kayak>/tests/fx26/stage/loads/base.fx:2:38: `make-id` is declared a (subr pure (int) id): a (subr pure (int) id) is expected here, and this is a (subr (read (globals up-id)) (int) id)",
+"  beyond what is expected, it has (read (globals up-id))",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

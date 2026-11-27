@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"modnames-kind.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"m : (moduleof (desc t int) (val x int)) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/modules/modnames-kind.fx:5:23: `t` is a transparent type of (moduleof (desc t int) (val x int)): `(desc t)`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

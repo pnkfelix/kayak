@@ -1,0 +1,29 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"macro-literals.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"#utf8\"héllo\" : utf8 ! pure",
+"\"héllo\" : string ! pure",
+"#u8(1 2 255) : bytevector ! pure",
+"3 : nat ! pure",
+"(#utf8\"a\" #utf8\"b\") : datum ! pure",
+"#utf8\"x\" : utf8 ! pure",
+"#u8(97 98) : bytevector ! pure",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

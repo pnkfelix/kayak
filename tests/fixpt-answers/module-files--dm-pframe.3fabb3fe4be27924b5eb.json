@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"dm-pframe.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"; <programs>/module-files/dm-pframe.fx, checked as a module file",
+"(subr pure ((moduleof (val m-base (moduleof (abs t type) (val zero t) (val next (subr pure (t) t)) (val value (subr pure (t) int)))))) (moduleof (val start (select (with $1 m-base) t)))) ! (read (globals %shared:input:<programs>/module-files/dm-pframe.fx))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

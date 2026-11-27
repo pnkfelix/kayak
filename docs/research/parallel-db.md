@@ -85,6 +85,45 @@ empty, and its queries run again: never wrong). Until Fixpt has it, the
 scripts that make databases (kc-steps, the check) remove old segments
 from Python, as they remove whole databases now.
 
+## 3a. Step 2 as built (`kayak-db 5`)
+
+Reading the format against two runs at once found what §3 left open:
+
+- **A node is named in the files by its shard's place in the head times
+  `shard-span` plus its place in the shard, and what it read by those
+  numbers.** Two runs from one head give the same numbers to different
+  keys, so files of two heads cannot be put together while they say
+  numbers. `kayak-db 5` says none: a shard's file has its own keys,
+  labelled by their place in it, and the keys of other groups its nodes
+  read, each by its text once, labelled too (`(reads #J=KEY ...)`); a
+  node's reads are labels. A label of another group's key is resolved to
+  this run's number only when it is walked (verification), so that a
+  shard read does not read every shard its nodes name (C472's measure: a
+  run beside the expander's 43 MB shard).
+- **A value's own file is named by its key's hash and its fingerprint**,
+  `vKEYHASH.FP`, not its node's number: two runs that write one are
+  writing the same text.
+- **A shard's file is `gHASH.RUN`**, RUN this save's (the clock and the
+  process), never written again; **a head `h.GEN.RUN`**, GEN one past its
+  parents'. Opening lists the directory and reads the heads of the
+  greatest GEN: one, most often; several when runs from one head saved at
+  once, put together group by group, each group's newest file (by RUN: a
+  file a run wrote is newer than the one it had), and `last` moved at
+  every durability. A head of a lesser GEN that is no one's parent (a slow
+  run's, others having saved twice since) is left: its work lost, never
+  wrong.
+- **One group's two versions are not merged node by node** (§3 said a
+  union): the newer file is taken whole. Sound either way; only work is
+  lost, and kc-steps' workers write the runtime's shared groups at once
+  rarely (each program is its own group). A union is for later if
+  measures want it.
+- **Collecting needs no Fixpt extension**: kc runs commands already
+  (`run-command`, its `mkdir -p`), so after a save it removes, by one
+  `rm`, each head of a GEN two or more below its own, and each shard and
+  value file no head kept names, older than a minute (`file-info`): a
+  slower reader of an older head finds a file gone, reads its group as
+  empty and runs its queries again.
+
 ## 4. What it costs
 
 - Each node's record grows by a fingerprint for each key it read (step 1).
@@ -109,8 +148,9 @@ longer sends its reader to run again (`db-verify`: 276 bodies run, not
 
 1. Fingerprints with reads, verification by them (`kayak-db 4`, C556): the
    model first, then `lib/db.kfx`; one head and slots still.
-2. Segments by run, nodes by key in the files; opening by `list-dir`;
-   compacting. Ask the user about a Fixpt `delete-file`.
+2. Files by run, nodes named in them by key; heads by generation, opened
+   by `list-dir` and put together; collecting by kc's own `rm` (C559, §3a;
+   no Fixpt `delete-file` needed).
 3. kc-steps' workers on one database, kept from check to check.
 
 ## 7. The alternatives

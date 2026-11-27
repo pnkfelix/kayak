@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"knot-effect-var-any.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"tbl : box ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/redefine/knot-effect-var-any.fx:5:1: calling `g` may read any global, `g` too, so `g` may reach itself through a global: its type must say `spin`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

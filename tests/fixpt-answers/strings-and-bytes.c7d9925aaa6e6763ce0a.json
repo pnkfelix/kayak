@@ -1,0 +1,26 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"strings-and-bytes.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"b : (bytevectorof @heap) ! (alloc @heap)",
+"s : (stringof @heap) ! (alloc @heap)",
+"main : (subr (maxeff (read @heap) (write @heap) (alloc @heap) (read (globals b s))) () string) ! pure",
+"\"13 200 7 11 za 9 héllo, wörld\" : string ! (maxeff (read @heap) (write @heap) (alloc @heap) (read (globals b main s)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

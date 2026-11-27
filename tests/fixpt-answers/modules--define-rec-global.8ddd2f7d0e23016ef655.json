@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"define-rec-global.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"counter : (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int))) ! pure",
+"count : (subr (maxeff spin (read (globals count counter))) (counter..t int) counter..t) ! pure",
+"5 : int ! (maxeff spin (read (globals count counter)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

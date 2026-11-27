@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"moduleof-desc-apart.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"m : (moduleof (desc d int) (val x int) (val flag bool)) ! pure",
+"y : int ! (read (globals m))",
+"9 : int ! (read (globals y))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

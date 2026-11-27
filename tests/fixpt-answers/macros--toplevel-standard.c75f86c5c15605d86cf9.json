@@ -1,0 +1,47 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"toplevel-standard.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (27 cells, cellular):",
+"     0: closure word string-length over 0",
+"     3: global! string-length",
+"     5: lit \"abc\"",
+"     7: lit 100",
+"     9: slot 0",
+"    11: global string-length",
+"    13: tcall 1",
+"    15: prim %fx26-mul 2",
+"    18: slot 0",
+"    20: prim string-length 1",
+"    23: int-add",
+"    24: slot! 0",
+"    26: exit",
+"",
+"word string-length (3 cells, cellular):",
+"     0: lit 42",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 1",
+"       2: const 42",
+"       4: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

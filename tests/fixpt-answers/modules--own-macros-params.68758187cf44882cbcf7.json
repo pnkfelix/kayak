@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"own-macros-params.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define b : (moduleof (val one int)) ! (read (globals %shared:<programs>/modules/../module-files/own-macros-base.fx))",
+"define u : (moduleof (val g (subr pure (int) int)) (val h (subr pure (int) int)) (val %frame:7dc9fc924faf9c7f (moduleof (val one int)))) ! (read (globals %shared:input:<programs>/modules/../module-files/own-macros-params.fx b))",
+"define g : (subr pure (int) int) ! (read (globals u))",
+"define h : (subr pure (int) int) ! (read (globals u))",
+"int ! (read (globals g h))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

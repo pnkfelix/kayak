@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"with-effect-missing.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"a : (moduleof (desc n int)) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/modules/with-effect-missing.fx:4:20: `nope` is not an effect",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

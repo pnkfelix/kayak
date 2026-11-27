@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"within-spins.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"forever : (subr (maxeff spin (read (globals forever))) (int) int) ! pure",
+"-2 : int ! (maxeff spin nondet (read (globals forever)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

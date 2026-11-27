@@ -1,0 +1,27 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"dependent-moduleof-other-base.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"env-t = (moduleof (val base (moduleof (abs t type) (val zero t) (val next (subr pure (t) t)) (val value (subr pure (t) int)))) (val user (moduleof (val two (subr pure () (select base t))))))",
+"b : (moduleof (abs t type) (val zero t) (val next (subr pure (t) t)) (val value (subr pure (t) int))) ! (read (globals %shared:<programs>/modules/../module-files/dm-base.fx))",
+"b2 : (moduleof (abs t type) (val zero t) (val next (subr pure (t) t)) (val value (subr pure (t) int))) ! (read (globals %shared:<programs>/modules/../module-files/dm-base.fx))",
+"u2 : (moduleof (val two (subr pure () b2..t))) ! (read (globals %shared:input:<programs>/modules/../module-files/dm-user.fx b2))",
+""
+],
+"err": [
+"fixpt: <programs>/modules/dependent-moduleof-other-base.fx:8:17: `e` is declared a env-t: a env-t is expected here, and this is a (moduleof (val base (moduleof (abs t type) (val zero b..t) (val next (subr pure (b..t) b..t)) (val value (subr pure (b..t) int)))) (val user (moduleof (val two (subr pure () b2..t)))))",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

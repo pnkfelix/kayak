@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"modnames-nested.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"outer : (moduleof (val inner (moduleof (val a int) (val b int))) (val y int) (val z int)) ! pure",
+"s : (moduleof (val inner (moduleof (val a int) (val b int))) (val y int)) ! (read (globals outer))",
+"4 : int ! (read (globals s))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

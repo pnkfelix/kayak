@@ -1,0 +1,27 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"poly-global-read.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"base : code ! pure",
+"go : (subr (maxeff (read @heap) (alloc @heap) (read (globals base))) () int) ! pure",
+"again : code ! (read (globals base))",
+"go2 : (subr (maxeff (read @heap) (alloc @heap) (read (globals again))) () int) ! pure",
+"7 : int ! (maxeff (read @heap) (alloc @heap) (read (globals again base go go2)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

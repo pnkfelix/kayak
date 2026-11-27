@@ -1,0 +1,27 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"toplevel-redefined.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"limit : int ! pure",
+"f : (subr (read (globals limit)) (int) int) ! pure",
+"; `limit` redefined: every use sees the new one",
+"limit : int ! pure",
+"13 : int ! (read (globals f limit))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

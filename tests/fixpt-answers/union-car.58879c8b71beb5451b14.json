@@ -19,6 +19,20 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 0,
+"out": [
+"first : (subr (read @heap) ((oneof nil (pairof int bool @heap))) int) ! pure",
+"7 : int ! (maxeff (read @heap) (alloc @heap) (read (globals first)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
 }
 ]
 }

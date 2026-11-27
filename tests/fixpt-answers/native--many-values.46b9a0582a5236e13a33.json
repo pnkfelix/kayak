@@ -30,6 +30,31 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 0,
+"out": [
+"ten : (subr pure (int int int int int int int int int int) int) ! pure",
+"25 : int ! (read (globals ten))",
+"spin10 : (subr (maxeff spin (read (globals spin10))) (int int int int int int int int int int) int) ! pure",
+"1012 : int ! (maxeff spin (read (globals spin10)))",
+"cell10 : (subr (maxeff (read @globals) spin) (int int int int int int int int int int) int) ! pure",
+"to-cell : (subr (maxeff (read @globals) spin) (int) int) ! pure",
+"-154 : int ! (maxeff (read @globals) spin)",
+"from-cell : (subr (maxeff (read @globals) spin) (int) int) ! pure",
+"119 : int ! (maxeff (read @globals) spin)",
+"over10 : (subr (alloc @heap) (int int int int int int int int int int) adder) ! pure",
+"1025 : int ! (maxeff (read @globals) (alloc @heap))",
+"fields10 : (subr (maxeff (read @heap) (alloc @heap)) (int) int) ! pure",
+"1001 : int ! (maxeff (read @heap) (alloc @heap) (read (globals fields10)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
 }
 ]
 }

@@ -26,6 +26,28 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 1,
+"out": [
+"total : (icell int @d) ! (alloc @d)",
+"never : (icell int @e) ! (alloc @e)",
+"collector : (addr report @p) ! (maxeff (alloc @p) (init @d) nondet (read (globals total)))",
+"failed : (subr pure (string) report) ! pure",
+"count : (subr (maxeff spin (read (globals count))) (int int) int) ! pure",
+"w : (addr int @w) ! (maxeff (alloc @w) (send @p) spin nondet (read (globals collector count failed)))",
+"#u : unit ! (maxeff (send @w) (read (globals w)))",
+" : int ! (maxeff (await @d) (await @e) (read (globals never total)))",
+""
+],
+"err": [
+"fixpt: <programs>/monitors/race-cancelled.fx:6:29: warning: a sum's label written `ok`, not `#:ok`, and 3 more in this file: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:ok`",
+"! evaluation failed: an i-cell read before it was written, and no task is left to write it: a deadlock",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
 }
 ]
 }

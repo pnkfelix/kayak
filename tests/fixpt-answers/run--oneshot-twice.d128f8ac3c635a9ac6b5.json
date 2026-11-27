@@ -20,6 +20,21 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 1,
+"out": [
+"t : (prompt-tag int int (read @globals) @p) ! (alloc @p)",
+" : int ! (read @globals)",
+""
+],
+"err": [
+"! evaluation failed: a one-shot continuation resumed twice",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
 }
 ]
 }

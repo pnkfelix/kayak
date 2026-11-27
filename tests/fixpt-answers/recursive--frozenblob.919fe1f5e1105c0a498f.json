@@ -19,6 +19,21 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 0,
+"out": [
+"f : (subr pure (b2) int) ! pure",
+"g : (subr (read (globals f)) (b1) int) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/recursive/frozenblob.fx:2:25: warning: a sum's label written `a`, not `#:a`, and 2 more in this file: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:a`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
 }
 ]
 }

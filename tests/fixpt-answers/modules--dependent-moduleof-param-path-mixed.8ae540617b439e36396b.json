@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"dependent-moduleof-param-path-mixed.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/modules/dependent-moduleof-param-path-mixed.fx:8:58: argument 2 is a (moduleof (val m-frame (moduleof (val start e-b.m-base..t)))), where a (moduleof (val m-frame (moduleof (val start e.m-base..t)))) is expected",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

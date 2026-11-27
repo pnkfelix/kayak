@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"write-a-string.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"s 465852310202046261736506737472696e67000001000000010401",
+""
+],
+"err": [
+"fixpt: <programs>/regions/write-a-string.fx:4:1: this writes frozen data, whose region is `const`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

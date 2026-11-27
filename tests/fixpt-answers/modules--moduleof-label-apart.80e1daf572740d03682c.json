@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"moduleof-label-apart.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"m : sig ! pure",
+"x : m..t ! (read (globals m))",
+"5 : int ! (read (globals m x))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

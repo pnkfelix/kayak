@@ -1,0 +1,54 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"ellipsis-nested-labelled.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (54 cells, cellular):",
+"     0: lit 37",
+"     2: lit 37",
+"     4: lit 3",
+"     6: lit 4",
+"     8: prim %make-frozen 3",
+"    11: lit \"x\"",
+"    13: prim %make-frozen 3",
+"    16: global! s",
+"    18: global s",
+"    20: slot 0",
+"    22: field 2",
+"    24: field 2",
+"    26: slot 0",
+"    28: field 2",
+"    30: field 3",
+"    32: slot 0",
+"    34: field 3",
+"    36: slot 1",
+"    38: slot 2",
+"    40: slot 3",
+"    42: prim string-length 1",
+"    45: int-add",
+"    46: int-add",
+"    47: slot! 1",
+"    49: drop",
+"    50: drop",
+"    51: slot! 0",
+"    53: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

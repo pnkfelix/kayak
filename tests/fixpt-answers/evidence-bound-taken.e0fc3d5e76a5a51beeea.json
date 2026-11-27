@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"evidence-bound-taken.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"FX-26: define api : (moduleof (val x int)) ! pure",
+"FX-26: define taking : (poly ((e effect)) (subr (maxeff (read (globals api)) e spin stage) ((effectbound e) datum) int)) ! pure",
+"FX-26: int ! pure",
+"Rust:  ! <kayak>/tests/fx26/stage/evidence-bound-taken.fx:8:14: `stage` is given a bound of `e`, which may be of less than `e` is: `e` may stand only where less is safe, in the effect, and in what is given, not taken; or give its exact evidence",
+"; the checkers disagree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

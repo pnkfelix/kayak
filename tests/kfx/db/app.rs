@@ -77,13 +77,30 @@ pub fn file_in(mut fs: List<kayak_rt::data::DataAt<'static, DbFile>>, mut name: 
     }
 }
 
+#[inline]
+pub fn files_named(fs: List<kayak_rt::data::DataAt<'static, DbFile>>) -> List<Str> {
+    if null_p(fs) {
+        nil::<Str>()
+    } else {
+        kayak_rt::heap_cons({
+            let tagcase_ = car(fs);
+            if DbFile::__is_DbFile(tagcase_) {
+                let (n, t,) = DbFile::__DbFile(tagcase_);
+                n
+            } else { kayak_rt::data::no_variant() }
+        }, files_named(cdr(fs)))
+    }
+}
+
 pub fn reread(d: Db, whose: Str) -> Db {
     let fs = db_saved(d, str_lit!("test"), kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: kayak_rt::data::DataAt<'static, Sexp>| {
         true
-    })));
+    })), str_lit!("000000000001-test"));
     let before = db_reader(d);
     db_opened(kayak_rt::closure1((fs, before,), |(fs, before,), name: Str| {
         file_in(fs, name, before)
+    }), kayak_rt::closure0((fs,), |(fs,)| {
+        files_named(fs)
     }), whose)
 }
 
@@ -176,6 +193,48 @@ pub fn asked(d: Db, what: Str) -> Str {
     string_append(what, string_append(str_lit!("="), string_append(v, string_append(str_lit!("/"), i64_to_string(i64_minus(db_runs(d), before))))))
 }
 
+// Runs at once on one database (kayak-db 5, docs/research/parallel-db.md):
+// `base`'s files opened by two runs, each editing one file and saving under
+// its own name; a third opens all their files, the heads of one generation
+// put together, each group's newer file taken (`total`'s, both wrote, B's):
+// what it gives is what the two edits make, its stale `total` run again,
+// verified by its reads' fingerprints.
+#[inline]
+pub fn opened_from(fs: List<kayak_rt::data::DataAt<'static, DbFile>>, before: Reader) -> Db {
+    db_opened(kayak_rt::closure1((fs, before,), |(fs, before,), name: Str| {
+        file_in(fs, name, before)
+    }), kayak_rt::closure0((fs,), |(fs,)| {
+        files_named(fs)
+    }), str_lit!("test"))
+}
+
+pub fn at_once(base: Db) -> Str {
+    let fs0 = db_saved(base, str_lit!("test"), kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: kayak_rt::data::DataAt<'static, Sexp>| {
+        true
+    })), str_lit!("000000000002-base"));
+    let before = db_reader(base);
+    let a = opened_from(fs0, before);
+    let b = opened_from(fs0, before);
+    let fa = {
+        db_set_x(a, k_of(str_lit!("file a")), str_lit!("abcdefg"), 0i64);
+        db_get(a, kayak_rt::as_proc(run), k_of(str_lit!("total")));
+        db_saved(a, str_lit!("test"), kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: kayak_rt::data::DataAt<'static, Sexp>| {
+            true
+        })), str_lit!("000000000003-a"))
+    };
+    let fb = {
+        db_set_x(b, k_of(str_lit!("file b")), str_lit!("hi"), 0i64);
+        db_get(b, kayak_rt::as_proc(run), k_of(str_lit!("total")));
+        db_saved(b, str_lit!("test"), kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: kayak_rt::data::DataAt<'static, Sexp>| {
+            true
+        })), str_lit!("000000000003-b"))
+    };
+    let m = opened_from(onto(fb, onto(fa, fs0)), before);
+    db_set_x(m, k_of(str_lit!("file a")), str_lit!("abcdefg"), 0i64);
+    db_set_x(m, k_of(str_lit!("file b")), str_lit!("hi"), 0i64);
+    string_append(str_lit!("at-once-"), asked(m, str_lit!("merged")))
+}
+
 pub fn main() -> Str {
     let d = db_make();
     db_set_x(d, k_of(str_lit!("files")), str_lit!("a b"), 2i64);
@@ -204,6 +263,7 @@ pub fn main() -> Str {
         asked(d2, str_lit!("edited"))
     };
     let other = string_append(str_lit!("another's-keys="), i64_to_string(size(db_keys(reread(d, str_lit!("another"))))));
-    string_list_append(kayak_rt::heap_cons(first, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(again, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(same, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(longer, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(side, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(read_back, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(edited, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(other, kayak_rt::nil()))))))))))))))))
+    let merged = at_once(d2);
+    string_list_append(kayak_rt::heap_cons(first, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(again, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(same, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(longer, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(side, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(read_back, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(edited, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(other, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(merged, kayak_rt::nil()))))))))))))))))))
 }
 

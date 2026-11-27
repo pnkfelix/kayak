@@ -1,0 +1,27 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"colons.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"make : (subr pure () (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int)))) ! pure",
+"mid : (moduleof (val a (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int)))) (val b int) (val add (subr pure (int) int))) ! (read (globals make))",
+"bump : (subr (read (globals mid)) (mid.a..t) mid.a..t) ! pure",
+"one : mid.a..t ! (read (globals bump mid))",
+"(2 2 3 4) : (listof int acyclic) ! (read (globals bump mid one))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"nested.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"rows : (listof (listof int acyclic) acyclic) ! pure",
+"deep : tree ! pure",
+"2 : nat ! (read (globals rows))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

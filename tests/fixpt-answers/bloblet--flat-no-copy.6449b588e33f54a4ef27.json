@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"flat-no-copy.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"b 46585231030307626c6f626c65740672636f6e73740240620000020000000206000001010000010402",
+""
+],
+"err": [
+"fixpt: <programs>/bloblet/flat-no-copy.fx:6:1: only a scalar's bytes are read or written, and this points to a (productof (#:x f64) (#:y f64))",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

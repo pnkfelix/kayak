@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"stable-path-param.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"make : (subr pure (bool) sig) ! pure",
+"both : (moduleof (val m1 sig) (val m2 sig)) ! (read (globals make))",
+""
+],
+"err": [
+"fixpt: <programs>/modules/stable-path-param.fx:16:40: argument 1 is a b.m2..t, where a b.m1..t is expected",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

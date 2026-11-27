@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"stack-by-poly.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"stacks : stack-sig ! pure",
+"(3 2 1) : (listof int acyclic) ! (maxeff (read @heap) (alloc @heap) (read (globals stacks)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

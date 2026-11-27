@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"path-escape.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"make 465852310c0c04737562720863656c6c756c61720665666665637406706172616d73086d6f64756c656f6601740662696e64657204747970650564657363730476616c73047a65726f0376617200000a00000004000100020003000401000000020100000300000004000105030005000700080600000200060600070000000800000009000002040a00090b000001010400",
+""
+],
+"err": [
+"fixpt: <programs>/modules/path-escape.fx:9:1: this is a m.a..t, and `m.a..t` is a module's abstract type, not known outside the scope where the module is named",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

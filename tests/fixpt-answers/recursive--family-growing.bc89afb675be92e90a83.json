@@ -18,6 +18,20 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/recursive/family-growing.fx:4:38: warning: a sum's label written `end`, not `#:end`, and 2 more in this file: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:end`",
+"fixpt: <programs>/recursive/family-growing.fx:4:51: `grow` expands without end: a type family may mention itself only with the same descriptions",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
 }
 ]
 }

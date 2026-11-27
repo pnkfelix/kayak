@@ -19,6 +19,21 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 0,
+"out": [
+"; <programs>/module-files/layer3.fx, checked as a module file",
+"(poly ((s region)) (subr (maxeff (alloc s) (read (globals %shared:<programs>/module-files/layer1.fx %shared:<programs>/module-files/layer2.fx))) () (moduleof (desc cell (ref int s)) (desc own (maxeff (read s) (write s))) (val p (moduleof (desc own (maxeff (read s) (write s))) (val rd (moduleof (desc own (maxeff (read s) (write s))) (desc cell (ref int s)) (val c cell) (val bump (subr (maxeff (read s) (write s)) () int)))) (val bump (subr (maxeff (read s) (write s)) () int)) (val twice (subr (maxeff (read s) (write s)) () int)))) (val rd (moduleof (desc own (maxeff (read s) (write s))) (desc cell (ref int s)) (val c cell) (val bump (subr (maxeff (read s) (write s)) () int)))) (val bump (subr (maxeff (read s) (write s)) () int)) (val twice (subr (maxeff (read s) (write s)) () int)) (val thrice (subr (maxeff (read s) (write s)) () int)) (val peek (subr (read s) (cell) int))))) ! (read (globals %shared:<programs>/module-files/layer3.fx))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
 }
 ]
 }

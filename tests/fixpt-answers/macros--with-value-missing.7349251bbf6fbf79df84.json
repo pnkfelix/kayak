@@ -1,0 +1,26 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"with-value-missing.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"int-order : (moduleof (desc t int) (val less (subr pure (int int) bool))) ! pure",
+"more : (subr pure (int) int) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/macros/with-value-missing.fx:12:23: `int-order` gives no value `more`, which a template's `(with int-order more)` takes from it alone",
+"  in the expansion of `call-more` at <programs>/macros/with-value-missing.fx:13:1",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

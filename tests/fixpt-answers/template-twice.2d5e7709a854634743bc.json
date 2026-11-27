@@ -1,0 +1,59 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"template-twice.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (69 cells, cellular):",
+"     0: lit 37",
+"     2: lit 3",
+"     4: lit 4",
+"     6: prim %make-frozen 3",
+"     9: global! i",
+"    11: lit 37",
+"    13: global i",
+"    15: lit \"xy\"",
+"    17: prim %make-frozen 3",
+"    20: global! o",
+"    22: global i",
+"    24: field 2",
+"    26: global! a",
+"    28: global i",
+"    30: field 3",
+"    32: global! b",
+"    34: global a",
+"    36: global b",
+"    38: global i",
+"    40: field 2",
+"    42: global i",
+"    44: field 3",
+"    46: global o",
+"    48: field 2",
+"    50: field 2",
+"    52: global o",
+"    54: field 2",
+"    56: field 3",
+"    58: global o",
+"    60: field 3",
+"    62: prim string-length 1",
+"    65: prim list 7",
+"    68: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

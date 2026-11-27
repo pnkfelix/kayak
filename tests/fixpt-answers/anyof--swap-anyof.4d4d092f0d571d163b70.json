@@ -1,0 +1,27 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"swap-anyof.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"swap : swapper ! pure",
+"swap-eop : (subr (read (globals swap)) (eop) eop) ! pure",
+"name-of : (subr pure (eop) symbol) ! pure",
+"(y m) : (listof symbol acyclic) ! (read (globals name-of swap swap-eop))",
+""
+],
+"err": [
+"fixpt: <programs>/anyof/swap-anyof.fx:7:28: warning: a sum's label written `var`, not `#:var`, and 18 more in this file: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:var`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"defn-heads-scoped.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"fifteen 465852310303036e6174036c696e057465726d7300000300000001000101000002051e000202010000",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

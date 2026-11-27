@@ -22,6 +22,23 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 0,
+"out": [
+"id : (poly ((f (=> (type) type)) (a type)) (subr pure ((f a)) (f a))) ! pure",
+"id2 : (poly ((f (=> (type region) type)) (a type) (r region)) (subr pure ((f a r)) (f a r))) ! pure",
+"b : (productof (#:v int)) ! (read (globals id))",
+"l : (listof int @heap) ! (maxeff (alloc @heap) (read (globals id)))",
+"(1 2) : (listof int @heap) ! (read (globals id2 l))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
 }
 ]
 }

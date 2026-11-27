@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"typed-letrec-pure.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/macros/typed-letrec-pure.fx:10:48: `%f:1593428241.1` is declared a (subr pure (int) int): a (subr pure (int) int) is expected here, and this is a (subr spin (int) int)",
+"  beyond what is expected, it has spin; it may not end: `%f:1593428241.1` is named in `%f:1593428241.1` other than as a call's operator: whoever is given it may call it again, with anything",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

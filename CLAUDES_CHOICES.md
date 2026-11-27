@@ -18027,3 +18027,50 @@ Read and not carried, the marks moved to the pin:
   (arm64's, `hand.kfx`) have no write barrier, as at the old pin, so
   there is no card marking there to replace.
 - **The full check**: `check: all passed`, 2 min 06 s (the memoised jobs passed under these inputs in the runs before, which failed at kc-steps, io-programs and lang-items, each fixed above); the pre-check passed first (2 min 07 s).
+
+## C559. kc's database safe for runs at once (kayak-db 5) (2026-11-27)
+
+The user, of `docs/research/parallel-db.md`'s steps: "Okay your plan sounds
+goods" (step 2 after C558). Its §3a has the design as built; reading the
+format against two runs found two things §3 had left open.
+- **No run's numbers in the files.** A node's number is its shard's place
+  in the head times `shard-span` plus its place in the shard, and what a
+  node read was written by those numbers: two runs from one head give the
+  same numbers to different keys. Now a shard's file labels its own keys
+  by their place in it, and the other groups' keys its nodes read, each
+  written whole once, `(reads @J=KEY ...)`; a read `#L# FP` or `@J@ FP`.
+  Another group's key is made this run's number only when its read is
+  walked (`dep-resolved`), so that reading a shard reads no other (C472's
+  measure). `db-dep` holds the key until then.
+- **Files never written again**: a shard's `gHASH.RUN`, a value's
+  `vKEYHASH.FP` (two runs that write one write the same text), a head
+  `h.GEN.RUN`, its generation one past its parents'. RUN is the clock's
+  seconds and the process's number, by `sh` (FX-26's `clock` is the
+  run's own, and it has no process number; kc runs commands already).
+- **Opening** lists the directory (`list-dir`, `lister`) and reads the
+  heads of the greatest generation: several when runs from one head saved
+  at once, put together group by group, each group's newer file taken
+  whole (not node by node: sound, a little work lost; `models/db.qnt`'s
+  `merge` takes any set of another run's nodes), the revision past theirs
+  and `last` that at every durability. A slower run's head of a lesser
+  generation is left: its work lost, never wrong.
+- **Collecting** (kc, after a save): `db-collectable` names the heads two
+  or more generations back and the files the saved head does not name;
+  kc removes those not written in the last minute (`file-info`'s
+  `modified`) by one `rm`. No Fixpt `delete-file` needed: FX-26 runs
+  processes. A file gone reads as none: its queries run again.
+- **Tests**: tests/kfx/db's `at-once`: two runs from one saved database,
+  each editing one file and saving under its own name, a third opening
+  all their files: `at-once-merged=9/2` (Fixpt's answer, kayak's the
+  same), the stale `total` run again. By hand: kc on one database twice,
+  then four at once (four heads of generation 3), then one opening them
+  together; the files aged two minutes and collected after a save.
+- **Not yet** (step 3): kc-steps' workers on one database, kept between
+  checks.
+- **kc-bench's cold step** removed `kc.db` alone, the head of kayak-db 4;
+  its heads in `kc.db.d/` now, it was warm (9 bodies, not 3014: seen in
+  the check's kc-bench rows). It removes `kc.db.d/` too; and so do
+  kc-steps' cutoff, expansions and loads cases (`fresh`), which removed
+  `DB` alone and so ran warm on a second check (found by it: "procedural,
+  cold: ran 2 expansions ..., not 4").
+- **The full check**: `check: all passed`, 113 s (the memoised jobs passed under these inputs before); the pre-check passed first (2 min 08 s). kc-bench cold 638.8 ms for 1000 procedures, 3014 bodies (C558: 624.6 ms), 152.7 for 100 (146.1): a little dearer, the other groups' keys written by text.

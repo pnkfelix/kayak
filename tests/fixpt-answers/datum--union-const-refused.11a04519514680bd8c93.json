@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"union-const-refused.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"ring 46585231080804737562720863656c6c756c61720665666665637406706172616d7306706169726f66046261736503696e740666726f7a656e000007000000040001000200030004010000000201000003000000040000040005000400060601050000010406070000010600",
+""
+],
+"err": [
+"fixpt: <programs>/datum/union-const-refused.fx:8:17: `d` is declared a datum: a datum is expected here, and this is a (listof int const)",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

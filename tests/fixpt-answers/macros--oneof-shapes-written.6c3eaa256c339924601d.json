@@ -1,0 +1,36 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"oneof-shapes-written.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (19 cells, cellular):",
+"     0: lit \"Hello\"",
+"     2: lit \"Hello\"",
+"     4: prim string=? 2",
+"     7: 0branch → 16",
+"     9: lit 1",
+"    11: lit 41",
+"    13: int-add",
+"    14: branch → 18",
+"    16: lit 0",
+"    18: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

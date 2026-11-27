@@ -21,6 +21,20 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 1,
+"out": [
+"up : (subr pure (int int) int) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/terminate/invariant-bound.fx:7:1: calling `down` may read any global, `down` too, so `down` may reach itself through a global: its type must say `spin`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
 }
 ]
 }

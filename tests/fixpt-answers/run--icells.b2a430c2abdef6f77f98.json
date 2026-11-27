@@ -23,6 +23,24 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 0,
+"out": [
+"even-cell : (icell parity-test @k) ! (alloc @k)",
+"odd-cell : (icell parity-test @k) ! (alloc @k)",
+"#u : unit ! (maxeff (init @k) (read (globals even-cell)))",
+"#u : unit ! (maxeff (init @k) (read (globals odd-cell)))",
+"parity : (subr spin (int) bool) ! pure",
+"(#t #f #f #t) : (listof bool acyclic) ! (maxeff (await @k) spin (read (globals even-cell odd-cell parity)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
 }
 ]
 }

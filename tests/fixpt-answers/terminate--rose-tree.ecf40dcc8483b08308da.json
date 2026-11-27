@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"rose-tree.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/terminate/rose-tree.fx:11:20: `each` is declared a (subr pure ((listof rose acyclic) int) int): a (subr pure ((listof rose acyclic) int) int) is expected here, and this is a (subr (maxeff spin (read (globals total))) ((listof rose acyclic) int) int)",
+"  beyond what is expected, it has (maxeff spin (read (globals total)))",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

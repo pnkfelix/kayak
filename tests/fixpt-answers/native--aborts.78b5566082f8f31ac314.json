@@ -28,6 +28,29 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 0,
+"out": [
+"t : (prompt-tag int int (maxeff (read @globals) spin) @z) ! (alloc @z)",
+"raise : (subr (maxeff (goto @z) (read (globals t))) (int) void) ! pure",
+"in-cellular : (subr (maxeff (read @globals) (goto @z) spin) (int) int) ! pure",
+"15 : int ! (maxeff (read @globals) (goto @z) spin)",
+"raise-cellular : (subr (maxeff (goto @z) spin (read (globals t))) (int) int) ! pure",
+"mid : (subr (maxeff (read @globals) (goto @z) spin) (int) int) ! pure",
+"in-native : (subr (maxeff (read @globals) (goto @z) spin) (int) int) ! pure",
+"105 : int ! (maxeff (read @globals) (goto @z) spin)",
+"deep : (subr (maxeff (read @globals) (goto @z) spin) (int int) int) ! pure",
+"many : (subr (maxeff (read @globals) (goto @z) spin) (int int) int) ! pure",
+"400200 : int ! (maxeff (read @globals) (goto @z) spin)",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
 }
 ]
 }

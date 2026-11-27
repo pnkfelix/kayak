@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"dm-frame-paths.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"; <programs>/module-files/dm-frame-paths.fx, checked as a module file",
+"(subr pure ((moduleof (val base (moduleof (abs t type) (val zero t) (val next (subr pure (t) t)) (val value (subr pure (t) int)))) (val user (moduleof (val two (subr pure () (select base t))))))) (moduleof (val three (subr pure () int)) (val four (subr pure () int)))) ! (read (globals %shared:input:<programs>/module-files/dm-frame-paths.fx))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

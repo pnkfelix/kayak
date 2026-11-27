@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"session-macros.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define api : api-type ! pure",
+"define s : (sessionof api-type @heap) ! (maxeff (alloc @heap) (read (globals api)))",
+"define message : (subr pure (stage-failure) string) ! pure",
+"define form : (subr (maxeff (read (globals message s)) (read @heap) (write @heap) spin stage) (datum) string) ! pure",
+"define line : (subr (io stdout) (string) unit) ! pure",
+"define main : (subr (maxeff (io stdout) (read (globals form line message s)) (read @heap) (write @heap) spin stage) () int) ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

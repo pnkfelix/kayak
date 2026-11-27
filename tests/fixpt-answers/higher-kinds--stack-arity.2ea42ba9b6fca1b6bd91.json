@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"stack-arity.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"list-stack : stack-sig ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/higher-kinds/stack-arity.fx:23:1: `list-stack..stack` takes 1 description(s), and has 2",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

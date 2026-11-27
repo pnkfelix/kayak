@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"with-two-of-one-type-each.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"make : (subr pure (bool) sig) ! pure",
+"both : (moduleof (val m1 sig) (val m2 sig)) ! (read (globals make))",
+"13 : int ! (read (globals both))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

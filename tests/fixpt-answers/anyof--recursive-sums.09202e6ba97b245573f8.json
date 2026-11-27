@@ -1,0 +1,27 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"recursive-sums.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"total : (subr pure (tree) int) ! pure",
+"leaf : (subr pure (int) tree) ! pure",
+"node : (subr pure (tree tree) tree) ! pure",
+"6 : int ! (read (globals leaf node total))",
+""
+],
+"err": [
+"fixpt: <programs>/anyof/recursive-sums.fx:5:18: warning: a sum's label written `leaf`, not `#:leaf`, and 3 more in this file: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:leaf`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

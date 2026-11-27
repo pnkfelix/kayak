@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"not-smaller.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/terminate/not-smaller.fx:2:27: warning: a sum's label written `leaf`, not `#:leaf`, and 1 more in this file: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:leaf`",
+"fixpt: <programs>/terminate/not-smaller.fx:4:3: `f` is declared a (subr pure (tree tree) int): a (subr pure (tree tree) int) is expected here, and this is a (subr (maxeff spin (read (globals f))) (tree tree) int)",
+"  beyond what is expected, it has (maxeff spin (read (globals f))); it may not end: no argument keeps shrinking around every loop of calls",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

@@ -1,0 +1,26 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"greatest-pair.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"first : (subr pure (ns) int) ! pure",
+"v : ns ! pure",
+"w : ns ! pure",
+"(4 -1) : (listof int acyclic) ! (read (globals first v w))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

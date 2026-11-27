@@ -1,0 +1,30 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"module-abstract.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"make-int : (subr pure () (moduleof (abs t type) (val zero t) (val value (subr pure (t) int)))) ! pure",
+"make-str : (subr pure () (moduleof (abs t type) (val zero t) (val value (subr pure (t) int)))) ! pure",
+"a : (moduleof (abs t type) (val zero t) (val value (subr pure (t) int))) ! (read (globals make-int))",
+"one : a..t ! (read (globals a))",
+"use : (subr (read (globals a one)) () int) ! pure",
+"; `a` redefined; run again, as they use it: `one`, `use`",
+"a : (moduleof (abs t type) (val zero t) (val value (subr pure (t) int))) ! (read (globals make-str))",
+"5 : int ! (read (globals a one use))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

@@ -23,6 +23,21 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 1,
+"out": [
+"leaf : (poly ((t type) (r region)) (subr pure (t) (mu %3 (sumof (#:leaf (productof (1 t))) (#:node (productof (1 (listof %3 r)))))))) ! pure",
+"node : (poly ((t type) (r region)) (subr pure ((mu %3 (listof (sumof (#:leaf (productof (1 t))) (#:node (productof (1 %3)))) r))) (mu %3 (sumof (#:leaf (productof (1 t))) (#:node (productof (1 (listof %3 r)))))))) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/recursive/parametric-rose.fx:7:1: calling `total` may read any global, `total` too, so `total` may reach itself through a global: its type must say `spin`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
 }
 ]
 }

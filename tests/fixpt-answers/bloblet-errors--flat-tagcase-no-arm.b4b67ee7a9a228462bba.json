@@ -21,6 +21,23 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 1,
+"out": [
+"b : o ! (alloc @b)",
+"r : (blobref o (sumof (#:a f64) (#:b i32))) ! (read (globals b))",
+" : int ! (maxeff (read @b) (read (globals r)))",
+""
+],
+"err": [
+"fixpt: <programs>/bloblet-errors/flat-tagcase-no-arm.fx:6:30: warning: a sum's label written `a`, not `#:a`, and 1 more in this file: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:a`",
+"! evaluation failed: tagcase: no arm for this flat sum's tag",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
 }
 ]
 }

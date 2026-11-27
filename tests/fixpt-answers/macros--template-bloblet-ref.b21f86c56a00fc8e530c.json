@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"template-bloblet-ref.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"bl : (bloblet (fields int int) @t) ! (alloc @t)",
+"33 : int ! (maxeff (read @t) (read (globals bl)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

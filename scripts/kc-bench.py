@@ -52,6 +52,7 @@ step after it.
 """
 
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -214,8 +215,11 @@ def bench(n, runs, fx):
     best = {}
     for rnd in range(runs):
         db = os.path.join(d, "kc.db")
+        # Cold: no database, its files in DB.d too (kayak-db 5, C559: its
+        # heads there, so that removing DB alone left it warm).
         if os.path.exists(db):
             os.remove(db)
+        shutil.rmtree(db + ".d", ignore_errors=True)
         server = Serve()
         for i, (name, text, need) in enumerate(session(n)):
             # One file for kc, one for Fixpt, so that neither's caches are

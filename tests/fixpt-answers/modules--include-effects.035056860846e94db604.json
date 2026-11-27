@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"include-effects.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"effects : (moduleof (desc touches (maxeff (read @globals) spin)) (desc n int)) ! pure",
+"m : (moduleof (desc touches (maxeff (read @globals) spin)) (desc n int) (val get (subr (maxeff (read @globals) spin) () int))) ! (read (globals effects))",
+"42 : int ! (maxeff (read @globals) spin)",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

@@ -31,6 +31,10 @@
   (lambda (k) (if (string=? (key-arg k 0) "") (key-query k) (string-append (key-query k) (string-append " " (key-arg k 0))))))
 
 (define-rec
+  (files-named (subr kfx ((listof db-file acyclic)) (listof string acyclic))
+    (lambda (fs) (if (null? fs) nil (cons (tagcase (car fs) (db-file (n t) n)) (files-named (cdr fs)))))))
+
+(define-rec
   (file-in (subr qe ((listof db-file acyclic) string reader) string)
     (lambda (fs name before)
       (cond ((null? fs) (before name))
@@ -41,9 +45,10 @@
   (lambda (d whose)
     ;; Its files as `db-saved` gives them (C472), those it does not (the
     ;; shards and values as they were) read as before.
-    (let* ((fs (db-saved d "test" (lambda ((k sexp)) #t)))
+    (let* ((fs (db-saved d "test" (lambda ((k sexp)) #t) "000000000001-test"))
            (before (db-reader d)))
-      (db-opened (lambda ((name string)) (file-in fs name before)) whose))))
+      ;; Listed (kayak-db 5): this save's files, its head the newest.
+      (db-opened (lambda ((name string)) (file-in fs name before)) (lambda () (files-named fs)) whose))))
 
 (define-rec
   (digits (subr kfx ((listof char acyclic) i64) i64)

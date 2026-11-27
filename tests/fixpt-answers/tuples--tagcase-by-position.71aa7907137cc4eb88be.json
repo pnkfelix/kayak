@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"tagcase-by-position.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"flip : (subr pure (shape) (listof keyword acyclic)) ! pure",
+"(#:b #:a) : (listof keyword acyclic) ! (read (globals flip))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

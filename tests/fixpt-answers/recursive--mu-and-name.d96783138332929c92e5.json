@@ -21,6 +21,23 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 0,
+"out": [
+"f : (subr pure (ilist) int) ! pure",
+"g : (subr (read (globals f)) (ilist) int) ! pure",
+"h : (subr (read (globals f g)) (ilist) int) ! pure",
+"k : (mu %1 (subr pure (%1) int)) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/recursive/mu-and-name.fx:4:30: warning: a sum's label written `nil`, not `#:nil`, and 5 more in this file: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:nil`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
 }
 ]
 }

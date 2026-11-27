@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"effect-family-given.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"run : (poly ((e effect)) (subr e ((subr e () int)) int)) ! pure",
+"go : (subr (maxeff (read @h) (write @h) (alloc @h) (read (globals run))) () int) ! pure",
+"4 : int ! (maxeff (read @h) (write @h) (alloc @h) (read (globals go run)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

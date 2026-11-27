@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"effect-within.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"run : (poly ((r region) (e effect (within (maxeff (read r) (write r))))) (subr (maxeff (read r) (write r)) ((subr e () int)) int)) ! pure",
+"(2 2 6) : (listof int acyclic) ! (read (globals run))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

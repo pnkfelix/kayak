@@ -1,0 +1,36 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"defn-scope.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (17 cells, cellular):",
+"     0: lit 3",
+"     2: global! a",
+"     4: global a",
+"     6: lit 1",
+"     8: int-add",
+"     9: global! b",
+"    11: global a",
+"    13: global b",
+"    15: int-add",
+"    16: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

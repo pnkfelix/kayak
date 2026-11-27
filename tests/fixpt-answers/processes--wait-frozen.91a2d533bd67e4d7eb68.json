@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"wait-frozen.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/processes/wait-frozen.fx:5:3: `stuck` is declared a (subr pure (int) int): a (subr pure (int) int) is expected here, and this is a (subr spin (int) int)",
+"  beyond what is expected, it has spin",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

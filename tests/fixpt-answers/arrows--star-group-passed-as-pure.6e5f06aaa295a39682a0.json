@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"star-group-passed-as-pure.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"twice 46585231060604737562720863656c6c756c61720665666665637406706172616d73046261736503696e7400000700000004000100020003000601000000020100000300000200040006000000040001000200050006030000010006040000010405",
+""
+],
+"err": [
+"fixpt: <programs>/arrows/star-group-passed-as-pure.fx:6:70: argument 1 is a (subr (maxeff spin (read (globals twice))) (int) int), where a (subr pure (int) int) is expected",
+"  beyond what is expected, it has (maxeff spin (read (globals twice)))",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

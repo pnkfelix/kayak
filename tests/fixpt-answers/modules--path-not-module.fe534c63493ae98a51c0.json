@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"path-not-module.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"mid : (moduleof (val b int)) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/modules/path-not-module.fx:4:1: `(select (with mid b) t)`: `(with mid b)` is no path to a module from a variable bound to one, a module of each step",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"ifm-c-import-member.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"; <programs>/module-files/ifm-c-import-member.fx, checked as a module file",
+"(subr pure ((moduleof (val m-a (moduleof (desc t (productof (#:x int))) (val mk (subr pure (int) t)) (val r (ref int @ed)))) (val m-b (moduleof (desc u (productof (#:inner (productof (#:x int))) (#:tag string))) (val wrap (subr pure (int) u)))) (val core (moduleof (desc t (productof (#:x int))) (desc u (productof (#:inner t) (#:tag string))) (val mk (subr pure (int) t)) (val r (ref int @ed)) (val wrap (subr pure (int) u)))))) (moduleof (val x41 (subr pure () int)))) ! (read (globals %shared:input:<programs>/module-files/ifm-c-import-member.fx))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

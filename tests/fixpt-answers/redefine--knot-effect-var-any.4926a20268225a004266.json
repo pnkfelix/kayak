@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"knot-effect-var-any.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"tbl 465852310b0b0970726f647563746f66017004706f6c7901650662696e6465720665666665637404737562720863656c6c756c617206706172616d73046261736503696e7400000b000000020401000102000103020002000404000002000306000500000006000004000500060007000a070000000501000101010008000001000806000004000500060009000a0800000009000001040a",
+""
+],
+"err": [
+"fixpt: <programs>/redefine/knot-effect-var-any.fx:5:1: calling `g` may read any global, `g` too, so `g` may reach itself through a global: its type must say `spin`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

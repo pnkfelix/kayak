@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"made-in-procedure.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"make : (subr pure (int) counters) ! pure",
+"use : (subr pure (counters) int) ! pure",
+"42 : int ! (read (globals make use))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

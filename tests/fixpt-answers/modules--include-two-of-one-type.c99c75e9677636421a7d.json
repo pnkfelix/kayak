@@ -1,0 +1,26 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"include-two-of-one-type.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"make : (subr pure (int) sig) ! pure",
+"make2 : (subr (read (globals make)) () (moduleof (val p sig) (val q sig))) ! pure",
+"m : (moduleof (val p sig) (val q sig) (val x int) (val y int)) ! (read (globals make make2))",
+"3 : int ! (read (globals m))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"run",
+"included.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"new 40",
+"refused: a (subr spin ((select stage-module pt)) string) is expected here, and this is a (subr (io stdout) ((select stage-module pt)) string)",
+"  beyond what is expected, it has (io stdout)",
+"new 40",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

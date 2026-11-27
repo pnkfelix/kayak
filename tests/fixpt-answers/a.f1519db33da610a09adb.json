@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"a.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define scale : int ! pure",
+"define mk : (subr pure (int int) pt) ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

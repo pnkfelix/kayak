@@ -20,6 +20,21 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 0,
+"out": [
+"shapes : (moduleof (desc point (productof (1 int) (2 int))) (val origin point)) ! pure",
+"m : (moduleof (desc touches (read @globals)) (val norm (subr pure ((select shapes point)) int)) (val at-origin int)) ! (read (globals shapes))",
+"7 : int ! (read (globals m))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
 }
 ]
 }

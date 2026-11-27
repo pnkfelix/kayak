@@ -1,0 +1,36 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"distribute-product.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (20 cells, cellular):",
+"     0: lit 37",
+"     2: lit #t",
+"     4: lit 2",
+"     6: prim %make-frozen 3",
+"     9: global! p",
+"    11: global p",
+"    13: global! q",
+"    15: global p",
+"    17: field 3",
+"    19: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

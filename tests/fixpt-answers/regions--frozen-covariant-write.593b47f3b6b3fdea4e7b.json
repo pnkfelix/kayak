@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"frozen-covariant-write.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"heap-list 46585231040406706169726f66046261736503696e740666726f7a656e000003000000040001000000020601010000010402030000010601",
+""
+],
+"err": [
+"fixpt: <programs>/regions/frozen-covariant-write.fx:3:77: this writes frozen data, whose region is `const`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

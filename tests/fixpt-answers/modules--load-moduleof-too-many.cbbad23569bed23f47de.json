@@ -18,6 +18,19 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/modules/load-moduleof-too-many.fx:3:23: what `../module-files/made-core.fx` makes is a (moduleof (abs ticket type) (desc counter (productof (#:state (ref int @heap)))) (val issued (ref int @heap)) (val spawn (subr (alloc @heap) (int) counter)) (val peek (subr (read @heap) (counter) int)) (val issue (subr (maxeff (read @heap) (write @heap)) () ticket)) (val number (subr pure (ticket) int))), given no more",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
 }
 ]
 }

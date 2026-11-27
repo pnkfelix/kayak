@@ -1,0 +1,64 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"diamond-pair.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"double : (subr (alloc @heap) (elt-sig) (moduleof (desc t (pairof (select $1 t) (select $1 t) @heap)) (val v t))) ! pure",
+"m0 : (moduleof (desc t int) (val v int)) ! pure",
+"m1 : (moduleof (desc t (pairof int int @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m0)))",
+"m2 : (moduleof (desc t (pairof (select m1 t) (select m1 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m1)))",
+"m3 : (moduleof (desc t (pairof (select m2 t) (select m2 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m2)))",
+"m4 : (moduleof (desc t (pairof (select m3 t) (select m3 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m3)))",
+"m5 : (moduleof (desc t (pairof (select m4 t) (select m4 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m4)))",
+"m6 : (moduleof (desc t (pairof (select m5 t) (select m5 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m5)))",
+"m7 : (moduleof (desc t (pairof (select m6 t) (select m6 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m6)))",
+"m8 : (moduleof (desc t (pairof (select m7 t) (select m7 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m7)))",
+"m9 : (moduleof (desc t (pairof (select m8 t) (select m8 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m8)))",
+"m10 : (moduleof (desc t (pairof (select m9 t) (select m9 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m9)))",
+"m11 : (moduleof (desc t (pairof (select m10 t) (select m10 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m10)))",
+"m12 : (moduleof (desc t (pairof (select m11 t) (select m11 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m11)))",
+"m13 : (moduleof (desc t (pairof (select m12 t) (select m12 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m12)))",
+"m14 : (moduleof (desc t (pairof (select m13 t) (select m13 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m13)))",
+"m15 : (moduleof (desc t (pairof (select m14 t) (select m14 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m14)))",
+"m16 : (moduleof (desc t (pairof (select m15 t) (select m15 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m15)))",
+"m17 : (moduleof (desc t (pairof (select m16 t) (select m16 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m16)))",
+"m18 : (moduleof (desc t (pairof (select m17 t) (select m17 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m17)))",
+"m19 : (moduleof (desc t (pairof (select m18 t) (select m18 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m18)))",
+"m20 : (moduleof (desc t (pairof (select m19 t) (select m19 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m19)))",
+"m21 : (moduleof (desc t (pairof (select m20 t) (select m20 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m20)))",
+"m22 : (moduleof (desc t (pairof (select m21 t) (select m21 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m21)))",
+"m23 : (moduleof (desc t (pairof (select m22 t) (select m22 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m22)))",
+"m24 : (moduleof (desc t (pairof (select m23 t) (select m23 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m23)))",
+"m25 : (moduleof (desc t (pairof (select m24 t) (select m24 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m24)))",
+"m26 : (moduleof (desc t (pairof (select m25 t) (select m25 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m25)))",
+"m27 : (moduleof (desc t (pairof (select m26 t) (select m26 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m26)))",
+"m28 : (moduleof (desc t (pairof (select m27 t) (select m27 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m27)))",
+"m29 : (moduleof (desc t (pairof (select m28 t) (select m28 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m28)))",
+"m30 : (moduleof (desc t (pairof (select m29 t) (select m29 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m29)))",
+"m31 : (moduleof (desc t (pairof (select m30 t) (select m30 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m30)))",
+"m32 : (moduleof (desc t (pairof (select m31 t) (select m31 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m31)))",
+"m33 : (moduleof (desc t (pairof (select m32 t) (select m32 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m32)))",
+"m34 : (moduleof (desc t (pairof (select m33 t) (select m33 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m33)))",
+"m35 : (moduleof (desc t (pairof (select m34 t) (select m34 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m34)))",
+"m36 : (moduleof (desc t (pairof (select m35 t) (select m35 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m35)))",
+"m37 : (moduleof (desc t (pairof (select m36 t) (select m36 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m36)))",
+"m38 : (moduleof (desc t (pairof (select m37 t) (select m37 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m37)))",
+"m39 : (moduleof (desc t (pairof (select m38 t) (select m38 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m38)))",
+"m40 : (moduleof (desc t (pairof (select m39 t) (select m39 t) @heap)) (val v t)) ! (maxeff (alloc @heap) (read (globals double m39)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

@@ -21,6 +21,22 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 0,
+"out": [
+"first : (poly ((a type)) (subr (read @b) ((bloblet (fields a) @b)) a)) ! pure",
+"b : (bloblet (fields int bool) @b) ! (alloc @b)",
+"c : (bloblet (fields bool int) @b) ! (alloc @b)",
+"(7 . #t) : (pairof int bool acyclic) ! (maxeff (read @b) (read (globals b c first)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
 }
 ]
 }

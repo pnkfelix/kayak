@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"flat-variant-not-sum.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"b 46585231050507626c6f626c65740672636f6e737402406204626173650673796d626f6c00000300000003060000010002010000010402030000010404",
+""
+],
+"err": [
+"fixpt: <programs>/bloblet/flat-variant-not-sum.fx:5:19: a blobref to a flat sum is expected here, and this is a (blobref o f64)",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

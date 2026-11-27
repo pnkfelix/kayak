@@ -1,0 +1,45 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"ellipsis-nested-three.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (42 cells, cellular):",
+"     0: lit 1",
+"     2: lit 2",
+"     4: prim list 2",
+"     7: lit 3",
+"     9: prim list 1",
+"    12: prim list 2",
+"    15: prim length 1",
+"    18: lit 4",
+"    20: lit 5",
+"    22: lit 6",
+"    24: prim list 3",
+"    27: prim list 1",
+"    30: prim length 1",
+"    33: slot 0",
+"    35: slot 1",
+"    37: int-add",
+"    38: slot! 0",
+"    40: drop",
+"    41: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

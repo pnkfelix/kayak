@@ -1,0 +1,46 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"typed-any-type.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (16 cells, cellular):",
+"     0: closure word lambda@149 over 0",
+"     3: global! %template:same:1979756644.2",
+"     5: lit #t",
+"     7: 0branch → 13",
+"     9: lit 5",
+"    11: branch → 15",
+"    13: lit 5",
+"    15: exit",
+"",
+"word lambda@149 (12 cells, cellular):",
+"     0: lit #t",
+"     2: 0branch → 8",
+"     4: slot 0",
+"     6: ttailcall 0",
+"     8: slot 0",
+"    10: ttailcall 0",
+"  its register code (7 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: tailinvoke 0 1",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

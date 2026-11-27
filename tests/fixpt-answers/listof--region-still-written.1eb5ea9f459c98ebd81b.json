@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"region-still-written.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"xs : ints ! (alloc @heap)",
+""
+],
+"err": [
+"fixpt: <programs>/listof/region-still-written.fx:6:19: a (listof int acyclic) is expected here, and this is a ints",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

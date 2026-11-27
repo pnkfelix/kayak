@@ -31,13 +31,18 @@
             ((tagcase (car fs) (db-file (n t) (string=? n name))) (tagcase (car fs) (db-file (n t) t)))
             (else (file-in (cdr fs) name before))))))
 
+(define-rec
+  (files-named (subr kfx ((listof db-file acyclic)) (listof string acyclic))
+    (lambda (fs) (if (null? fs) nil (cons (tagcase (car fs) (db-file (n t) n)) (files-named (cdr fs)))))))
+
 (define reread (subr qe (db string) db)
   (lambda (d whose)
     ;; Its files as `db-saved` gives them (C472), those it does not (the
     ;; shards and values as they were) read as before.
-    (let* ((fs (db-saved d "test" (lambda ((k sexp)) #t)))
+    (let* ((fs (db-saved d "test" (lambda ((k sexp)) #t) "000000000001-test"))
            (before (db-reader d)))
-      (db-opened (lambda ((name string)) (file-in fs name before)) whose))))
+      ;; Listed (kayak-db 5): this save's files, its head the newest.
+      (db-opened (lambda ((name string)) (file-in fs name before)) (lambda () (files-named fs)) whose))))
 
 (define-rec
   (words-from (subr kfx ((listof char acyclic) (listof char acyclic) (listof string acyclic)) (listof string acyclic))
@@ -78,6 +83,32 @@
     (let* ((before (db-runs d)) (v (db-get d run (k-of "total"))))
       (string-append what (string-append "=" (string-append v (string-append "/" (i64->string (i64- (db-runs d) before)))))))))
 
+"Runs at once on one database (kayak-db 5, docs/research/parallel-db.md):
+ `base`'s files opened by two runs, each editing one file and saving under
+ its own name; a third opens all their files, the heads of one generation
+ put together, each group's newer file taken (`total`'s, both wrote, B's):
+ what it gives is what the two edits make, its stale `total` run again,
+ verified by its reads' fingerprints."
+(define opened-from (subr qe ((listof db-file acyclic) reader) db)
+  (lambda (fs before)
+    ;; Its files `fs`, those it does not have (unchanged since an earlier
+    ;; save) read as `before` reads them, as one directory has them all.
+    (db-opened (lambda ((name string)) (file-in fs name before)) (lambda () (files-named fs)) "test")))
+(define at-once (subr qe (db) string)
+  (lambda (base)
+    (let* ((fs0 (db-saved base "test" (lambda ((k sexp)) #t) "000000000002-base"))
+           (before (db-reader base))
+           (a (opened-from fs0 before))
+           (b (opened-from fs0 before))
+           (fa (begin (db-set! a (k-of "file a") "abcdefg" 0) (db-get a run (k-of "total")) (db-saved a "test" (lambda ((k sexp)) #t) "000000000003-a")))
+           (fb (begin (db-set! b (k-of "file b") "hi" 0) (db-get b run (k-of "total")) (db-saved b "test" (lambda ((k sexp)) #t) "000000000003-b")))
+           ;; Each run's inputs its own: the third sets them as a run does.
+           (m (opened-from (onto fb (onto fa fs0)) before)))
+      (begin
+        (db-set! m (k-of "file a") "abcdefg" 0)
+        (db-set! m (k-of "file b") "hi" 0)
+        (string-append "at-once-" (asked m "merged"))))))
+
 (define main (subr qe () string)
   (lambda ()
     (let ((d (db-make)))
@@ -97,5 +128,6 @@
                (side (string-append "side=" (string-append (db-side d2 "short") (string-append "," (i64->string (string-length-i64 (db-side d2 "long")))))))
                (read-back (asked d2 "read-back"))
                (edited (begin (db-set! d2 (k-of "file a") "abcd" 0) (asked d2 "edited")))
-               (other (string-append "another's-keys=" (i64->string (size (db-keys (reread d "another")))))))
-          (string-list-append (list first " " again " " same " " longer " " side " " read-back " " edited " " other)))))))
+               (other (string-append "another's-keys=" (i64->string (size (db-keys (reread d "another"))))))
+               (merged (at-once d2)))
+          (string-list-append (list first " " again " " same " " longer " " side " " read-back " " edited " " other " " merged)))))))

@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"tuple-in-template.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"area : (subr pure (p) int) ! pure",
+"12 : int ! (read (globals area))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

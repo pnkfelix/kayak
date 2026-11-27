@@ -19,6 +19,20 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 1,
+"out": [
+"! <programs>/module-files/include-in-file.fx:2:10: a top-level `include` names a module bound here: `(include m)`, or `(include m (only name …))` or `(except name …)`",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
 }
 ]
 }

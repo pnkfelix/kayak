@@ -1,0 +1,26 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"defn-generative.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"to-m : (subr pure (int) meters) ! pure",
+"from-m : (subr pure (meters) int) ! pure",
+"d : meters ! (read (globals to-m))",
+"5 : int ! (read (globals d from-m))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

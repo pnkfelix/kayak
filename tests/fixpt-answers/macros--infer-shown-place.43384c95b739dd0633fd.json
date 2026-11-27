@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"infer-shown-place.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: read error: <programs>/macros/infer-shown-place.fx:5:40: `with-arena` is refused: no signature is written, and the one inferred from its clauses does not fit them: `body` is placed in no scope of the pattern's binders, but its signature says it is in the scope of `p` and `p`, a description",
+"  inferred: (macro (_ p @ place body @ (many expr)) expr (bind p in body))",
+"  write one: (define-syntax with-arena SIGNATURE (syntax-rules …))",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

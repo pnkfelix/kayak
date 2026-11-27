@@ -1,0 +1,43 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"nested.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (37 cells, cellular):",
+"     0: lit 1",
+"     2: prim list 1",
+"     5: lit 2",
+"     7: lit 3",
+"     9: prim list 2",
+"    12: prim list 2",
+"    15: global! rows",
+"    17: lit |a|",
+"    19: lit |b|",
+"    21: prim list 1",
+"    24: prim list 2",
+"    27: global! deep",
+"    29: global rows",
+"    31: pair-cdr",
+"    32: pair-car",
+"    33: prim length 1",
+"    36: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

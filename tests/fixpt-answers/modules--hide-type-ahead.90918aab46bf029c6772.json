@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"hide-type-ahead.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"m : (moduleof (val one (mu %2 (listof (productof (#:v int) (#:next %2)) acyclic))) (val count (subr pure ((mu %3 (listof (productof (#:v int) (#:next %3)) acyclic))) int))) ! pure",
+"1 : int ! (read (globals m))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

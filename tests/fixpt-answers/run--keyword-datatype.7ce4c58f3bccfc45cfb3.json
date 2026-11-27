@@ -1,0 +1,27 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"keyword-datatype.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"circle : (subr pure (int) shape) ! pure",
+"rect : (subr pure (int int) shape) ! pure",
+"area : (subr pure (shape) int) ! pure",
+"made : (subr pure ((subr pure (int) shape) int) shape) ! pure",
+"24 : int ! (read (globals area circle made rect))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

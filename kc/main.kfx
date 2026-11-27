@@ -123,21 +123,59 @@
             (done u #u)
             (failed e (fail-with (string-append "cannot write " (string-append path (string-append ": " (extract e detail)))) 1)))))
 
-      "The database's files (C472, `lib/db.kfx`'s `kayak-db 4`): its head
-       at DB, its shards and values in DB.d/, each written only if it
-       changed; a whole program's output not kept, made again from its
-       items when it is asked for."
+      "The database's files (C472, `lib/db.kfx`'s `kayak-db 5`): in DB.d/,
+       its heads, `h.GEN.RUN`, its shards and its values, each written once
+       and never again, so that runs at once on one database each read
+       files as the head they opened wrote them; a whole program's output
+       not kept, made again from its items when it is asked for."
       (define db-path (subr kfx (string string) string)
-        (lambda (dbp name) (if (string=? name "") dbp (string-append dbp (string-append ".d/" name)))))
+        (lambda (dbp name) (string-append dbp (string-append ".d/" name))))
+
+      "This save's name (kayak-db 5): the clock's seconds, twelve digits, so
+       that a later save's names sort after, and the process's number, so
+       that two at once are two; `` if the shell will not say."
+      (define run-name (subr qe () string)
+        (lambda () (command-output (list "sh" "-c" "printf '%012d-%s' \"$(date +%s)\" \"$$\"") "")))
 
       (define save-db (subr driving (db string) unit)
         (lambda (d dbp)
-          (let ((dir (string-append dbp ".d")))
-            (begin
-              (tagcase (file-info dir)
-                (info x #u)
-                (failed e (begin (run-command (list "mkdir" "-p" dir) "") #u)))
-              (files-written dbp (db-saved d kc-whose (lambda ((k sexp)) (not (or (string=? (key-query k) "asm") (string=? (key-query k) "rust"))))))))))
+          (let ((dir (string-append dbp ".d")) (run (run-name)))
+            (if (i64< (string-length-i64 run) 13)
+                (fail-with "kc: cannot name this save of the database (`sh`, `date`)" 1)
+                (begin
+                  (tagcase (file-info dir)
+                    (info x #u)
+                    (failed e (begin (run-command (list "mkdir" "-p" dir) "") #u)))
+                  (files-written dbp (db-saved d kc-whose (lambda ((k sexp)) (not (or (string=? (key-query k) "asm") (string=? (key-query k) "rust")))) run))
+                  (collected d dbp (digits-of (string-chars (substring run 0 12)) 0)))))))
+
+      (define-rec
+        (digits-of (subr kfx ((listof char acyclic) i64) i64)
+          (lambda (cs n) (if (null? cs) n (digits-of (cdr cs) (i64+ (i64* n 10) (i64- (char->i64 (car cs)) 48)))))))
+
+      (define-rec
+        (written-before (subr qe (string (listof string acyclic) i64 (listof string acyclic)) (listof string acyclic))
+          (lambda (dir ns t acc)
+            "Of files `ns` of `dir`, those last written before `t` (seconds)."
+            (if (null? ns)
+                (reverse acc)
+                (written-before dir (cdr ns) t
+                                (tagcase (file-info (string-append dir (string-append "/" (car ns))))
+                                  (info x (if (i64< (int->i64 (extract x modified)) t) (cons (car ns) acc) acc))
+                                  (failed e acc)))))))
+
+      "After a save, what of the database's files it may remove
+       (`db-collectable`) and not written in the last minute removed, by
+       one `rm` (FX-26 has no `delete-file`; kc runs commands already):
+       a run at once with this one may be reading an older head's files,
+       or have written its own and not yet its head."
+      (define collected (subr driving (db string i64) unit)
+        (lambda (d dbp now)
+          (let* ((dir (string-append dbp ".d"))
+                 (old (written-before dir (db-collectable d (listed dir)) (i64- now 60) nil)))
+            (if (null? old)
+                #u
+                (begin (run-command (cons "rm" (cons "-f" (map (lambda ((n string)) (string-append dir (string-append "/" n))) old))) "") #u)))))
 
       (define-rec
         (files-written (subr qe (string (listof db-file acyclic)) unit)
@@ -149,12 +187,22 @@
                 ;; written last, names what is believed, and a value is
                 ;; believed only if its fingerprint is the graph's, so one lost
                 ;; in a crash is made again.
-                (begin (tagcase (car fs) (db-file (name text) (if (string=? name "") (write-text (db-path dbp name) text) (write-text-unflushed (db-path dbp name) text))))
+                (begin (tagcase (car fs) (db-file (name text) (if (db-prefix? name "h.") (write-text (db-path dbp name) text) (write-text-unflushed (db-path dbp name) text))))
                        (files-written dbp (cdr fs)))))))
 
       (define-rec
         (strings-at-io (subr (alloc @io) ((listof string acyclic)) (listof string @io))
           (lambda (xs) (if (null? xs) (the (listof string @io) nil) (the (listof string @io) (cons (car xs) (strings-at-io (cdr xs))))))))
+
+      "A program run in `dir` to its end: what it wrote, if it exits 0; else ``."
+      (define command-output (subr qe ((listof string acyclic) string) string)
+        (lambda (argv dir)
+          (tagcase (process-start (strings-at-io argv) dir)
+            (started p
+              (tagcase (process-exit p)
+                (exited c (if (i64= (int->i64 c) 0) (process-output p) ""))
+                (else other "")))
+            (failed e ""))))
 
       (define run-command (subr qe ((listof string acyclic) string) string)
         (lambda (argv dir)
@@ -549,7 +597,9 @@
       (lambda ()
         (tagcase (opts-of (the (listof string acyclic) (args)) "" #f "" nil)
           (opts (dbp stats rt0 rest)
-            (let* ((d (if (string=? dbp "") (db-make) (db-opened (lambda ((name string)) (read-text-or-none (db-path dbp name))) kc-whose)))
+            (let* ((d (if (string=? dbp "") (db-make) (db-opened (lambda ((name string)) (read-text-or-none (db-path dbp name)))
+                                                              (lambda () (listed (string-append dbp ".d")))
+                                                              kc-whose)))
                    ;; The runtime, where not given, the one beside this kc (C447).
                    (rt (if (not (string=? rt0 ""))
                            rt0

@@ -19,6 +19,21 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 0,
+"out": [
+"m : (moduleof (desc a (sumof (#:stop (productof)) (#:more (productof (1 (select m b)))))) (desc b (sumof (#:end (productof)) (#:again (productof (1 a))))) (val x a)) ! pure",
+"1 : int ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/modules/types-mutual.fx:4:26: warning: a sum's label written `stop`, not `#:stop`, and 4 more in this file: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:stop`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
 }
 ]
 }

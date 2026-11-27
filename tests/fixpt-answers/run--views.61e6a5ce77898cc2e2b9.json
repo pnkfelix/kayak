@@ -1,0 +1,52 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"views.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"s : string ! pure",
+"len : (poly ((r region)) (subr pure ((strof r)) nat)) ! pure",
+"12 : nat ! (read (globals len s))",
+"w : str ! (read (globals s))",
+"\"world\" : str ! (read (globals w))",
+"5 : nat ! (read (globals len w))",
+"#\\w : char ! (read (globals w))",
+"\"or\" : str ! (read (globals w))",
+"(#t #t #f) : (listof bool acyclic) ! (read (globals w))",
+"\"world\" : string ! (read (globals w))",
+"\"orl\" : string ! (read (globals w))",
+"#utf8\"world\" : utf8 ! (read (globals w))",
+"seen : (subr (maxeff (read @heap) (write @heap) (alloc @heap)) () char) ! pure",
+"#\\z : char ! (maxeff (read @heap) (write @heap) (alloc @heap) (read (globals seen)))",
+"bv : bytevector ! pure",
+"bs : bytes ! (read (globals bv))",
+"#u8(7 7) : bytes ! (read (globals bs))",
+"2 : nat ! (read (globals bs))",
+"7 : u8 ! (read (globals bs))",
+"#t : bool ! (read (globals bs bv))",
+"#u8(7 7) : (bytevectorof @r2.1) ! (maxeff (alloc @r2.1) (read (globals bs)))",
+"#u8(7) : (bytevectorof @r2.1) ! (maxeff (alloc @r2.1) (read (globals bs)))",
+"#utf8\"bc\" : utf8 ! pure",
+"fb : bytevector ! pure",
+"u : utf8 ! (read (globals fb))",
+"#utf8\"héllo\" : utf8 ! (read (globals u))",
+"(5 6) : (listof nat acyclic) ! (read (globals u))",
+"#utf8\"é\" : utf8 ! (read (globals u))",
+"1 : int ! (read (globals fb))",
+"#utf8\"llo\" : utf8 ! (read (globals fb))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

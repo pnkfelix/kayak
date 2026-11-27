@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"bytevector-printed.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"made : (subr (alloc @heap) () (bytevectorof @heap)) ! pure",
+"#u8(65 195 169 0) : (bytevectorof @heap) ! (maxeff (alloc @heap) (read (globals made)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

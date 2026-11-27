@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"data-kind-refused.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"same 46585231090904706f6c7901740662696e646572046461746104737562720863656c6c756c61720665666665637406706172616d7303766172000008000001010200010003020000020002060003000000040000040004000500060007050000000601000007000001000708000001010000",
+""
+],
+"err": [
+"fixpt: <programs>/datum/data-kind-refused.fx:3:1: `t` is bound as data, and a (subr pure (int) int) is not data",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

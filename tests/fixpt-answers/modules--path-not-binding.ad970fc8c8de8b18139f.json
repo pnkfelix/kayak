@@ -1,0 +1,27 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"path-not-binding.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"make : (subr pure () (moduleof (abs t type) (val zero t) (val value (subr pure (t) int)))) ! pure",
+"mid0 : (moduleof (val a (moduleof (abs t type) (val zero t) (val value (subr pure (t) int))))) ! (read (globals make))",
+"other0 : (moduleof (val a (moduleof (abs t type) (val zero t) (val value (subr pure (t) int))))) ! (read (globals make))",
+"outer : (moduleof (val m (moduleof (val a (moduleof (abs t type) (val zero t) (val value (subr pure (t) int))))))) ! (read (globals mid0 other0))",
+""
+],
+"err": [
+"fixpt: <programs>/modules/path-not-binding.fx:14:38: argument 1 is a mid0.a..t, where a outer.m.a..t is expected",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

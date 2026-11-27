@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"run",
+"session-knot.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"refused: `tbl` keeps a procedure that reads `@globals`, so it could reach itself through a global: it must say `spin`, and it is a (subr (read @globals) () int)",
+"refused: calling `g` may read any global, `g` too, so `g` may reach itself through a global: its type must say `spin`",
+"defined g",
+"running",
+""
+],
+"err": [
+"fixpt: <kayak>/tests/fx26/stage/session-knot.fx:18:48: warning: a sum's label written `shadow`, not `#:shadow`: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:shadow`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

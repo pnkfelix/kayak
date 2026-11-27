@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"fresh-nested.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"mk 465852310f0f05616c6c6f6604737562720863656c6c756c61720665666665637405616c6c6f630672636f6e737402406806706172616d73037265660573756d6f6601610162046261736503696e74016300000f000000020001000b0100000400020003000600070200000003010001000404000001000505000001040607000000010000040002000300060008080000020009000509000004040a000a040b000a0c000001040d01000004000200030006000c01000004000200030006000d08000002000e000509000004040a000a040e000a",
+""
+],
+"err": [
+"fixpt: <programs>/allof/fresh-nested.fx:11:1: this call fits a (subr (alloc @h) () (subr (alloc @h) () (ref ab @h))) and a (subr (alloc @h) () (subr (alloc @h) () (ref ac @h))), whose results are procedures that may keep what the call allocates: one value would be both",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

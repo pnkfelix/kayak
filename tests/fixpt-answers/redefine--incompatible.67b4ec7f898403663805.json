@@ -24,6 +24,25 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 1,
+"out": [
+"n : int ! pure",
+"m : int ! (read (globals n))",
+"p : bool ! (read (globals n))",
+"; `n` redefined; run again, as they use it: `p`",
+"; broken until defined again: `m` (argument 1 is a string, where a int is expected)",
+"n : string ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/redefine/incompatible.fx:5:1: `m` is broken, since `n` was redefined (argument 1 is a string, where a int is expected): define it again to use it",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
 }
 ]
 }

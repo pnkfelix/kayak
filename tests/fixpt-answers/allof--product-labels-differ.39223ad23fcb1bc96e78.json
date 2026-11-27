@@ -1,0 +1,23 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"product-labels-differ.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/allof/product-labels-differ.fx:2:18: an `allof` of products: its members are products of the same labels, in order, and a (productof (#:f (subr pure (int) int)) (#:n int)) and a (productof (#:n int) (#:f (subr pure (string) string))) are not",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

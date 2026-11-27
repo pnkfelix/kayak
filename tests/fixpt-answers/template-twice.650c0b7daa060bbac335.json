@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"template-twice.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define i : inner ! pure",
+"define o : outer ! (read (globals i))",
+"define a : int ! (read (globals i))",
+"define b : int ! (read (globals i))",
+"(listof int acyclic) ! (read (globals a b i o))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

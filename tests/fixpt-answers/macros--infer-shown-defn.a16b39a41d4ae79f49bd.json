@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"infer-shown-defn.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: read error: <programs>/macros/infer-shown-defn.fx:5:73: `define-twice` is refused: no signature is written, and the one inferred from its clauses does not fit them: `body` is placed in the scope of `a`, and inside that of `a`, but its signature says it is in the scope of `a`",
+"  inferred: (macro (_ a @ bvar expr body @ (many expr)) (defn a) (bind a in body))",
+"  write one: (define-syntax define-twice SIGNATURE (syntax-rules …))",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

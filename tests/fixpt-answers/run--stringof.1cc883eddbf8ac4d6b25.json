@@ -25,6 +25,26 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 0,
+"out": [
+"joined : (subr pure (string string) string) ! pure",
+"upcased! : (subr (maxeff (read @s) (write @s) spin (read (globals upcased!))) ((stringof @s) int) unit) ! pure",
+"\"abcdéfg\" : string ! (read (globals joined))",
+"#t : bool ! (read (globals joined))",
+"\"HELLO, WORLD\" : string ! (maxeff (read @s) (write @s) (alloc @s) spin (read (globals upcased!)))",
+"(#\\b #\\c #\\b) : (listof char acyclic) ! pure",
+"#t : bool ! pure",
+"#utf8\"é!\" : utf8 ! (read (globals joined))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
 }
 ]
 }

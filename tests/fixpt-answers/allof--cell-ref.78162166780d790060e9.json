@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"cell-ref.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"mk : (allof (subr (alloc @h) () (ref ab @h)) (subr (alloc @h) () (ref ac @h))) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/allof/cell-ref.fx:5:26: warning: a sum's label written `a`, not `#:a`, and 5 more in this file: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:a`",
+"fixpt: <programs>/allof/cell-ref.fx:9:10: this call fits a (subr (alloc @h) () (ref ab @h)) and a (subr (alloc @h) () (ref ac @h)), whose results have no meet",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

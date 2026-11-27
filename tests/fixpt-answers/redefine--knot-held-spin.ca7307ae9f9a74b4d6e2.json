@@ -1,0 +1,26 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"knot-held-spin.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"tbl : box ! pure",
+"f : (subr (maxeff (read @globals) spin) () int) ! pure",
+"; `tbl` redefined: every use sees the new one",
+"tbl : box ! (read (globals f))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

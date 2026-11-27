@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"with-shadows-macro.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"m : (moduleof (val clamp (subr pure (int) int))) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/macros/with-shadows-macro.fx:7:10: `clamp` is a macro here, and `m` gives a value of that name, which this `with` would seem to call",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

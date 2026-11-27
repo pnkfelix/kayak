@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"blobref-not-flat.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/bloblet/blobref-not-flat.fx:3:53: a flat is `f64`, `f32`, `i32`, `u32`, `i64`, `u64`, `(productof (label flat) …)`, `(sumof [key] (label flat) …)`, `(arrayof flat n)`, or a variable of kind `flat`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

@@ -1,0 +1,30 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"procedural.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define m : (moduleof (val one int)) ! pure",
+"define staged : (subr (maxeff (io stdout) (read @globals) spin stage) (datum) (sumof (#:done unit) (#:failed io-error))) ! pure",
+"(sumof (#:done unit) (#:failed io-error)) ! (maxeff (io stdout) (read @globals) spin stage)",
+"define s : (sessionof (moduleof (val one int)) @heap) ! (maxeff (alloc @heap) (read (globals m)))",
+"define stepped : (subr (maxeff (io stdout) (read (globals s)) (read @heap) (write @heap) spin stage) (datum) (sumof (#:done unit) (#:failed io-error))) ! pure",
+"(sumof (#:done unit) (#:failed io-error)) ! (maxeff (io stdout) (read (globals s stepped)) (read @heap) (write @heap) spin stage)",
+"(sumof (#:done unit) (#:failed io-error)) ! (maxeff (io stdout) (read (globals s stepped)) (read @heap) (write @heap) spin stage)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

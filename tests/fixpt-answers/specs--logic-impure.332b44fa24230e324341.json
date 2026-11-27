@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"logic-impure.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"first-pos? 465852310b0b04737562720863656c6c756c61720665666665637404726561640672636f6e737405406865617006706172616d7306706169726f66046261736503696e7404626f6f6c0000090000000400010002000500080100000002010001000303000001000404000001040506000001000607000004000700060004060108000001040908000001040a",
+""
+],
+"err": [
+"fixpt: <programs>/specs/logic-impure.fx:6:52: `first-pos?` is called in a specification, so must be `pure`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

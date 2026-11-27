@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"c.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"; <kayak>/tests/fx26/stage/included/c.fx, checked as a module file",
+"(subr (alloc @ed) ((moduleof (desc pt (productof (#:x int) (#:y int))) (val scale int) (val mk (subr pure (int int) pt))) (moduleof (desc label string) (val show (subr pure ((productof (#:x int) (#:y int))) string)))) (moduleof (desc behaviour (subr spin ((productof (#:x int) (#:y int))) string)) (val shown (ref behaviour @ed)) (val reload! (subr (maxeff (io stdout) (write @ed) spin stage) (datum) unit)) (val try (subr (maxeff (read @ed) spin) () string)))) ! (read (globals %shared:input:<kayak>/tests/fx26/stage/included/c.fx))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

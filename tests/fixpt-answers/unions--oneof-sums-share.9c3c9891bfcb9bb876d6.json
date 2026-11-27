@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"oneof-sums-share.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/unions/oneof-sums-share.fx:3:24: warning: a sum's label written `x`, not `#:x`, and 3 more in this file: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:x`",
+"fixpt: <programs>/unions/oneof-sums-share.fx:5:23: a `oneof`'s sums must have no tag in common: a a and a b both have `x`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

@@ -1,0 +1,32 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"loads.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define base : (moduleof (desc id base.fx..id) (val make-id (subr pure (int) base.fx..id)) (val id-number (subr pure (base.fx..id) int))) ! (read (globals %shared:<kayak>/tests/fx26/stage/loads/base.fx))",
+"define m : (moduleof (val one int)) ! pure",
+"define say : (subr (maxeff (io stdout) (read @globals) spin stage) (datum) (sumof (#:done unit) (#:failed io-error))) ! pure",
+"(sumof (#:done unit) (#:failed io-error)) ! (maxeff (io stdout) (read @globals) spin stage)",
+"(sumof (#:done unit) (#:failed io-error)) ! (maxeff (io stdout) (read @globals) spin stage)",
+"(sumof (#:done unit) (#:failed io-error)) ! (maxeff (io stdout) (read @globals) spin stage)",
+"(sumof (#:done unit) (#:failed io-error)) ! (maxeff (io stdout) (read @globals) spin stage)",
+"unit ! stage",
+"(sumof (#:done unit) (#:failed io-error)) ! (maxeff (io stdout) (read @globals) spin stage)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

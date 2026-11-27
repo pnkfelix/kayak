@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"b.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"; <kayak>/tests/fx26/stage/included/b.fx, checked as a module file",
+"(subr pure ((moduleof (desc pt (productof (#:x int) (#:y int))) (val scale int) (val mk (subr pure (int int) pt)))) (moduleof (desc label string) (val show (subr pure ((productof (#:x int) (#:y int))) string)))) ! (read (globals %shared:input:<kayak>/tests/fx26/stage/included/b.fx))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

@@ -46,6 +46,46 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
+},
+{
+"code": 0,
+"out": [
+"",
+"word program (29 cells, cellular):",
+"     0: lit 37",
+"     2: prim %make-frozen 1",
+"     5: global! %shared:<programs>/module-files/answer-types.fx",
+"     7: global %shared:<programs>/module-files/answer-types.fx",
+"     9: closure word twice@290 over 0",
+"    12: lit 21",
+"    14: lit 37",
+"    16: slot 1",
+"    18: slot 2",
+"    20: prim %make-frozen 3",
+"    23: slot! 1",
+"    25: drop",
+"    26: slot! 0",
+"    28: exit",
+"",
+"word twice@290 (8 cells, cellular):",
+"     0: lit 2",
+"     2: slot 0",
+"     4: prim %fx26-mul 2",
+"     7: return",
+"  its register code (8 cells, not compiled):",
+"       0: args 1",
+"       2: const 2",
+"       4: prim2 %fx26-mul 1",
+"       7: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
 }
 ]
 }

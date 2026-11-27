@@ -1,0 +1,26 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"desc-subr-spec.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"pos? : (subr pure ((x : int)) bool (ensures r (or (not r) (< 0 x)))) ! pure",
+"add : (subr pure ((a : int) (%b:806578284.1 : int)) int (requires (and (<= 0 %b:806578284.1) (implies (pos? a) (<= 0 %b:806578284.1)))) (ensures %r:806578284.2 (<= a %r:806578284.2))) ! pure",
+"int-test : (subr pure ((oneof int string)) (bool (then (shape 0 int)) (else))) ! pure",
+"7 : int ! (read (globals add int-test))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

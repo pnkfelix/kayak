@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"dependent-moduleof-sealed.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/modules/dependent-moduleof-sealed.fx:9:17: argument 1 is a e.base..t, where a b..t is expected",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

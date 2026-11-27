@@ -1,0 +1,34 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"run",
+"session-types.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"4",
+"defined g",
+"7",
+"2",
+"defined h",
+"refused: a (subr pure () int) is expected here, and this is a (subr (maxeff (read @heap) spin) () int)",
+"  beyond what is expected, it has (maxeff (read @heap) spin)",
+"7",
+"defined z",
+"7",
+"refused: a stage-module..t is expected here, and this is a int",
+""
+],
+"err": [
+"fixpt: <kayak>/tests/fx26/stage/session-types.fx:27:62: warning: a sum's label written `shadow`, not `#:shadow`, and 1 more in this file: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:shadow`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

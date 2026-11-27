@@ -1,0 +1,45 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"utf8.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"t : utf8 ! pure",
+"walk : (subr (maxeff (alloc @heap) spin (read (globals walk))) (utf8 int) (listof char @heap)) ! pure",
+"4 : nat ! (read (globals t))",
+"8 : nat ! (read (globals t))",
+"(#\\a #\\é #\\😀 #\\z) : (listof char @heap) ! (maxeff (alloc @heap) spin (read (globals t walk)))",
+"#utf8\"é😀\" : utf8 ! (read (globals t))",
+"\"😀z\" : string ! (read (globals t))",
+"(#t #f #t #f) : (listof bool acyclic) ! (read (globals t))",
+"#t : bool ! (read (globals t))",
+"1 : int ! (read (globals t))",
+"4 : int ! (read (globals t))",
+"count : (subr pure (utf8) nat) ! pure",
+"(3 1 4) : (listof nat acyclic) ! (read (globals count t))",
+"s : utf8 ! (read (globals t))",
+"#utf8\"é😀\" : utf8 ! (read (globals s))",
+"(2 6) : (listof nat acyclic) ! (read (globals s))",
+"\"é😀\" : string ! (read (globals s))",
+"#t : bool ! (read (globals s t))",
+"(#\\a #\\é #\\😀 #\\z) : (listof char @heap) ! (maxeff (alloc @heap) spin (read (globals t walk)))",
+"w : utf8 ! pure",
+"#utf8\"world\" : utf8 ! (read (globals w))",
+"(5 5) : (listof nat acyclic) ! (read (globals count w))",
+"(#\\w #\\o #\\r #\\l #\\d) : (listof char @heap) ! (maxeff (alloc @heap) spin (read (globals w walk)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

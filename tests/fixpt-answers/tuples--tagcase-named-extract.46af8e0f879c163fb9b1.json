@@ -1,0 +1,49 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"tagcase-named-extract.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (44 cells, cellular):",
+"     0: lit 36",
+"     2: lit |rect|",
+"     4: lit 37",
+"     6: lit 1",
+"     8: lit 2",
+"    10: prim %make-frozen 3",
+"    13: prim %make-frozen 3",
+"    16: slot 0",
+"    18: field 2",
+"    20: lit |rect|",
+"    22: eq",
+"    23: 0branch → 38",
+"    25: slot 0",
+"    27: field 3",
+"    29: slot 1",
+"    31: field 3",
+"    33: slot! 0",
+"    35: drop",
+"    36: branch → 43",
+"    38: lit #f",
+"    40: lit 0",
+"    42: field@",
+"    43: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

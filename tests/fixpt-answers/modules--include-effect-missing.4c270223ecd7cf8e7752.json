@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"include-effect-missing.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"a 465852310606086d6f64756c656f660564657363730476616c730178046261736503696e740000040000000200010002010000000200000204030003040000010405",
+""
+],
+"err": [
+"fixpt: <programs>/modules/include-effect-missing.fx:5:11: `nope` is not an effect, nor one a module included gives",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

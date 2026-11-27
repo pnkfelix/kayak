@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"defn-recursive.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"fact : (subr (maxeff spin (read (globals fact))) (int) int) ! pure",
+"fact2 : (subr (maxeff spin (read (globals fact2))) (int) int) ! pure",
+"120 : int ! (maxeff spin (read (globals fact fact2)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

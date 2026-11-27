@@ -1,0 +1,23 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"defn-export-unsaid.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: read error: <programs>/macros/defn-export-unsaid.fx:11:54: `x` is bound in a use of `define-const`, whose signature does not say its uses define it: say so (`(macro σ (defn (ℓ δ) …))`), or write `(with #%toplevel x)` for the top level's",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

@@ -1,0 +1,29 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"frozen-ring.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"ring2 : (poly ((t type)) (subr pure (t) (listof t const))) ! pure",
+"mk : (allof (subr (read (globals ring2)) (ab) (subr pure () (listof ab const))) (subr (read (globals ring2)) (ac) (subr pure () (listof ac const)))) ! pure",
+"g : (allof (subr pure () (listof ab const)) (subr pure () (listof ac const))) ! (read (globals mk ring2))",
+"as-ab : (subr pure () (listof ab const)) ! (read (globals g))",
+"as-ac : (subr pure () (listof ac const)) ! (read (globals g))",
+"(1 1) : (listof int acyclic) ! (read (globals as-ab as-ac))",
+""
+],
+"err": [
+"fixpt: <programs>/allof/frozen-ring.fx:6:25: warning: a sum's label written `a`, not `#:a`, and 4 more in this file: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:a`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

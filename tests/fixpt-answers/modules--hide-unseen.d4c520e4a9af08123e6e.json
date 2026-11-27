@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"hide-unseen.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"m 465852310606086d6f64756c656f660564657363730476616c730573686f776e046261736503696e740000040000000200010002010000000200000204030003040000010405",
+""
+],
+"err": [
+"fixpt: <programs>/modules/hide-unseen.fx:4:9: unbound variable `secret`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

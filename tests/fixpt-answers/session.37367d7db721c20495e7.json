@@ -1,0 +1,41 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"run",
+"session.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"defined a",
+"33",
+"defined f",
+"120",
+"defined g",
+"a: int to string, used by g",
+"fresh",
+"not defined: `a` is defined already, and the redefinition was refused",
+"12",
+"defined a",
+"101",
+"defined twice",
+"3",
+"not defined: the session changed since this definition was checked: check it again",
+"refused: argument 2 is a string, where a int is expected",
+"refused: argument 1 is a int, where a (oneof nil (pairof ? ? r)) is expected",
+"defined a",
+"refused: `g` is broken, since `a` was redefined (argument 2 is a string, where a int is expected): define it again to use it",
+""
+],
+"err": [
+"fixpt: <kayak>/tests/fx26/stage/session.fx:45:50: warning: a sum's label written `shadow`, not `#:shadow`, and 16 more in this file: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:shadow`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

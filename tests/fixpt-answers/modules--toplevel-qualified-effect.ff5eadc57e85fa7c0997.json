@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"toplevel-qualified-effect.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"cell : (ref int @heap) ! (alloc @heap)",
+"g : (poly ((loud effect)) (subr (maxeff (read @heap) (read (globals cell))) () int)) ! pure",
+"7 : int ! (maxeff (read @heap) (read (globals cell g)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

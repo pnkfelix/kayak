@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"swapping.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define diff : (subr pure (int int) int) ! pure",
+"define ten : int ! (read (globals diff))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

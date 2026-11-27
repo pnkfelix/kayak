@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"extend-sees-types.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"a : (moduleof (desc touches (maxeff (read @globals) spin)) (desc n int) (val x int)) ! pure",
+"b : (moduleof (desc touches (maxeff (read @globals) spin)) (desc n int) (val x int) (val f (subr (maxeff (read @globals) spin) () int))) ! (read (globals a))",
+"2 : int ! (maxeff (read @globals) spin)",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

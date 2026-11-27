@@ -1,0 +1,26 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"flat-tagcase-apart.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"b : o ! (alloc @b)",
+"r : (blobref o (sumof (#:p (productof (#:x i32) (#:y i32))))) ! (read (globals b))",
+""
+],
+"err": [
+"fixpt: <programs>/bloblet/flat-tagcase-apart.fx:6:30: warning: a sum's label written `p`, not `#:p`: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:p`",
+"fixpt: <programs>/bloblet/flat-tagcase-apart.fx:7:21: `p` carries a (blobref o (productof (#:x i32) (#:y i32))), which cannot be taken apart into 2 name(s)",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

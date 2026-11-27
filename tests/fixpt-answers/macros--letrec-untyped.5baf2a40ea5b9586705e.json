@@ -1,0 +1,38 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"letrec-untyped.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (7 cells, cellular):",
+"     0: lit 3",
+"     2: lit closure of g@328",
+"     4: tcall 1",
+"     6: exit",
+"",
+"word g@328 (3 cells, cellular):",
+"     0: slot 0",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}
