@@ -1,0 +1,34 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"include-except.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"m : (moduleof (desc t include-lib.fx..t) (desc pair-of-t (pairof include-lib.fx..t include-lib.fx..t @heap)) (desc touches (read @heap)) (val zero include-lib.fx..t) (val value (subr pure (include-lib.fx..t) int)) (val both (subr (alloc @heap) (include-lib.fx..t) pair-of-t))) ! (read (globals %shared:<programs>/top-include/../module-files/include-lib.fx))",
+"zero : include-lib.fx..t ! (read (globals m))",
+"value : (subr pure (include-lib.fx..t) int) ! (read (globals m))",
+"t = (select m t)",
+"pair-of-t = (select m pair-of-t)",
+"touches = (select m touches)",
+"both : int ! pure",
+"42 : int ! (read (globals both value zero))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

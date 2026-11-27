@@ -25,22 +25,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 0,
-"out": [
-"core-sig = (moduleof (abs ticket type) (desc counter (productof (#:state (ref int @heap)))) (val issued (ref int @heap)) (val spawn (subr (alloc @heap) (int) counter)) (val peek (subr (read @heap) (counter) int)) (val issue (subr (maxeff (read @heap) (write @heap)) () ticket)) (val number (subr pure (ticket) int)))",
-"tickets = (moduleof (abs %hidden:ticket type) (val issue (subr (maxeff (read @heap) (write @heap)) () %hidden:ticket)) (val number (subr pure (%hidden:ticket) int)))",
-"first : (subr (maxeff (read @heap) (write @heap)) (tickets) int) ! pure",
-"1 : int ! (maxeff (read @heap) (write @heap) (alloc @heap) (read (globals %shared:<programs>/modules/../module-files/made-core.fx first)))",
-""
-],
-"err": [
-""
-],
-"by": [
-"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
-]
 }
 ]
 }

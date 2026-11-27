@@ -50,6 +50,7 @@ pub mod made__load__0__fx26_arm64 {
         fn arm_ubfx() -> ArmOp4;
         fn arm_asr_imm() -> ArmOp3;
         fn arm_lsr_imm() -> ArmOp3;
+        fn arm_barrier(a__0: Int, a__1: Int, a__2: Int, a__3: Int, a__4: Int, a__5: Int, a__6: Int, a__7: Int, a__8: Int, a__9: Int, a__10: Int, a__11: Int) -> ArmCode;
         fn arm_strb() -> ArmOp2;
         fn arm_csel() -> ArmOp4;
         fn arm_movz() -> ArmOp3;
@@ -170,6 +171,7 @@ pub mod made__load__0__fx26_arm64 {
         fn arm_fmov_to_s() -> ArmOp2;
         fn arm_fmov_from_s() -> ArmOp2;
         fn arm_card_mark(a__0: Int, a__1: Int, a__2: Int, a__3: Int, a__4: Int, a__5: Int) -> ArmCode;
+        fn arm_barrier(a__0: Int, a__1: Int, a__2: Int, a__3: Int, a__4: Int, a__5: Int, a__6: Int, a__7: Int, a__8: Int, a__9: Int, a__10: Int, a__11: Int) -> ArmCode;
     }
 }
 
@@ -454,6 +456,11 @@ pub mod a64 {
     }
 
     #[inline]
+    pub fn arm_ldrb(t: Int, n: Int) -> Int {
+        arm_sum3(int_lit(960495616), arm_reg_at(n, int_lit(5)), arm_reg(t))
+    }
+
+    #[inline]
     pub fn arm_csel(d: Int, n: Int, m: Int, c: Int) -> Int {
         arm_n_t(int_lit(2592079872), arm_sum(arm_reg_at(m, int_lit(16)), arm_f(c, int_lit(12))), n, d)
     }
@@ -609,6 +616,11 @@ pub mod a64 {
     }
 
     #[inline]
+    pub fn arm_add_lsr(d: Int, n: Int, m: Int, s: Int) -> Int {
+        arm_check(arm_in_p(s, int_lit(0), int_lit(64)), arm_n_t(int_lit(2336227328), arm_sum(arm_reg_at(m, int_lit(16)), arm_f(s, int_lit(10))), n, d))
+    }
+
+    #[inline]
     pub fn arm_cmp_sp(m: Int) -> Int {
         arm_sum(int_lit(3944768511), arm_reg_at(m, int_lit(16)))
     }
@@ -691,6 +703,44 @@ pub mod a64 {
         } else {
             arm_add_imm(t1, obj, off)
         }, kayak_rt::heap_cons(arm_lsr_imm(t1, t1, int_lit(9)), kayak_rt::heap_cons(arm_ldr(t2, state, cards), kayak_rt::heap_cons(arm_add(t2, t2, t1), kayak_rt::heap_cons(arm_movz(t1, int_lit(1), int_lit(0)), kayak_rt::heap_cons(arm_strb(t1, t2), nil::<Int>()))))))
+    }
+
+    pub fn arm_barrier(obj: Int, off: Int, v: Int, st: Int, gens: Int, cards: Int, call: Int, heap: Int, limit: Int, t1: Int, t2: Int, t3: Int) -> ArmCode {
+        let (gen_of, regs) = (kayak_rt::closure2s((st, gens,), |(st, gens,), d: Int, of: Int| {
+            arm_k(kayak_rt::heap_cons(arm_ldr(d, st, gens), kayak_rt::heap_cons(arm_add_lsr(d, d, of, int_lit(30)), kayak_rt::heap_cons(arm_ldrb(d, d), kayak_rt::heap_cons(arm_ubfx(d, d, int_lit(0), int_lit(7)), kayak_rt::nil())))))
+        }), the::<List<Int>>(kayak_rt::heap_cons(int_lit(0), kayak_rt::heap_cons(int_lit(2), kayak_rt::heap_cons(int_lit(4), kayak_rt::heap_cons(int_lit(6), kayak_rt::heap_cons(int_lit(8), kayak_rt::heap_cons(int_lit(10), kayak_rt::heap_cons(int_lit(12), kayak_rt::heap_cons(int_lit(14), kayak_rt::heap_cons(int_lit(16), kayak_rt::heap_cons(int_lit(30), kayak_rt::nil()))))))))))));
+        append(arm_k(kayak_rt::heap_cons(if _lt(off, int_lit(0)) {
+            arm_sub_imm(t1, obj, _minus(int_lit(0), off))
+        } else {
+            arm_add_imm(t1, obj, off)
+        }, kayak_rt::nil())), append(gen_of.call(t2, t1), append(arm_k(kayak_rt::heap_cons(arm_cbz(t2, int_lit(47)), kayak_rt::heap_cons(arm_ubfx(t3, v, int_lit(0), int_lit(3)), kayak_rt::heap_cons(arm_cmp_imm(t3, int_lit(1)), kayak_rt::heap_cons(arm_b_cond(int_lit(0), int_lit(6)), kayak_rt::heap_cons(arm_cmp_imm(t3, int_lit(4)), kayak_rt::heap_cons(arm_b_cond(int_lit(0), int_lit(4)), kayak_rt::heap_cons(arm_cmp_imm(t3, int_lit(2)), kayak_rt::heap_cons(arm_b_cond(int_lit(1), int_lit(40)), kayak_rt::heap_cons(arm_b(int_lit(12)), kayak_rt::nil())))))))))), append(gen_of.call(t3, v), append(arm_k(kayak_rt::heap_cons(arm_cmp(t2, t3), kayak_rt::heap_cons(arm_b_cond(int_lit(9), int_lit(33)), kayak_rt::heap_cons(arm_cbnz(t3, int_lit(5)), kayak_rt::heap_cons(arm_ldr(t3, st, cards), kayak_rt::heap_cons(arm_add_lsr(t3, t3, t1, int_lit(9)), kayak_rt::heap_cons(arm_ldrb(t3, t3), kayak_rt::heap_cons(arm_cbnz(t3, int_lit(28)), kayak_rt::nil())))))))), append(arm_k(arm_pairs(regs, true)), append(arm_k(kayak_rt::heap_cons(arm_mov(int_lit(0), v), kayak_rt::heap_cons(arm_mov(int_lit(1), t1), kayak_rt::heap_cons(arm_mov(int_lit(2), int_lit(0)), kayak_rt::heap_cons(arm_ldr(int_lit(0), st, heap), kayak_rt::heap_cons(arm_ldr(int_lit(16), st, call), kayak_rt::heap_cons(arm_blr(int_lit(16)), kayak_rt::heap_cons(arm_str(int_lit(0), st, limit), kayak_rt::nil())))))))), arm_k(reverse(arm_pairs(regs, false))))))))))
+    }
+
+    pub fn arm_pairs(rs: List<Int>, push: bool) -> List<Int> {
+        if null_p(rs) {
+            nil::<Int>()
+        } else {
+            let r = car(rs);
+            let r2 = if _eq(r, int_lit(30)) {
+                int_lit(31)
+            } else {
+                _plus(r, int_lit(1))
+            };
+            kayak_rt::heap_cons(if push {
+                arm_stp_pre(r, r2, int_lit(31), int_lit(-16))
+            } else {
+                arm_ldp_post(r, r2, int_lit(31), int_lit(16))
+            }, arm_pairs(cdr(rs), push))
+        }
+    }
+
+    #[inline]
+    pub fn arm_k(ws: List<Int>) -> ArmCode {
+        if null_p(ws) {
+            nil::<Int>()
+        } else {
+            kayak_rt::heap_cons(car(ws), arm_k(cdr(ws)))
+        }
     }
 
     #[inline]

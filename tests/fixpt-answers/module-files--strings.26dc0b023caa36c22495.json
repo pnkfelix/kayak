@@ -21,25 +21,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 0,
-"out": [
-"\"A module file whose top-level forms include strings: comments, as in a\\nmodule's items (`docs/fx26.md`, Modules).\" : string ! pure",
-"base : int ! pure",
-"\"Between two definitions.\" : string ! pure",
-"\"Inside a hide.\" : string ! pure",
-"secret : int ! pure",
-"answer : int ! (read (globals base secret))",
-"\"Last.\" : string ! pure",
-""
-],
-"err": [
-""
-],
-"by": [
-"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
-]
 }
 ]
 }

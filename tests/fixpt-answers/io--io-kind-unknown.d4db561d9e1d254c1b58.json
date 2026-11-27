@@ -18,19 +18,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 1,
-"out": [
-""
-],
-"err": [
-"fixpt: <programs>/io/io-kind-unknown.fx:3:24: an I/O effect's kind is one of `stdin`, `stdout`, `stderr`, `fs-read`, `fs-write`, `clock`, `args`, `exit`, `terminal`, `native`, `sys`, `process`, `clock-read`, `stdin-poll`, `process-control`, `env-read`",
-""
-],
-"by": [
-"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
-]
 }
 ]
 }

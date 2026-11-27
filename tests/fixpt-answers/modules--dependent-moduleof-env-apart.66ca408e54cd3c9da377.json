@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"dependent-moduleof-env-apart.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/modules/dependent-moduleof-env-apart.fx:5:30: argument 1 is a e2.base..t, where a e1.base..t is expected",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

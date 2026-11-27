@@ -19,20 +19,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 0,
-"out": [
-"opt : (moduleof (desc option (dlambda ((a type)) (sumof (#:none (productof)) (#:some (productof (1 a)))))) (val none (poly ((a type)) (subr pure () (sumof (#:none (productof)) (#:some (productof (1 a))))))) (val some (poly ((a type)) (subr pure (a) (sumof (#:none (productof)) (#:some (productof (1 a))))))) (val seven (sumof (#:none (productof)) (#:some (productof (1 int)))))) ! (read (globals %shared:<programs>/module-files/option.fx))",
-"eight : int ! (read (globals opt))",
-""
-],
-"err": [
-""
-],
-"by": [
-"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
-]
 }
 ]
 }

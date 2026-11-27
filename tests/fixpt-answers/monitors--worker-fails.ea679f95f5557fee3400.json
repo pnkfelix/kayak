@@ -31,8 +31,32 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"total : (icell int @c) ! (alloc @c)",
+"collector : (addr report @p) ! (maxeff (alloc @p) (init @c) spin nondet (read (globals total)))",
+"work : (subr spin (int) int) ! pure",
+"failed : (subr pure (string) report) ! pure",
+"start : (subr (maxeff (alloc @w) (send @p) spin nondet (read (globals collector failed work))) () (addr int @w)) ! pure",
+"w1 : (addr int @w) ! (maxeff (alloc @w) (send @p) spin nondet (read (globals collector failed start work)))",
+"w2 : (addr int @w) ! (maxeff (alloc @w) (send @p) spin nondet (read (globals collector failed start work)))",
+"w3 : (addr int @w) ! (maxeff (alloc @w) (send @p) spin nondet (read (globals collector failed start work)))",
+"#u : unit ! (maxeff (send @w) (read (globals w1)))",
+"#u : unit ! (maxeff (send @w) (read (globals w2)))",
+"#u : unit ! (maxeff (send @w) (read (globals w3)))",
+"102 : int ! (maxeff (await @c) (read (globals total)))",
+""
+],
+"err": [
+"fixpt: <programs>/monitors/worker-fails.fx:6:29: warning: a sum's label written `ok`, not `#:ok`, and 3 more in this file: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:ok`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
 ]
 }
 ]

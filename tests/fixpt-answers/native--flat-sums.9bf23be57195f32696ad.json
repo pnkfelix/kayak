@@ -25,8 +25,26 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"fill : (subr (maxeff (read @heap) (write @heap) (alloc @heap) spin (read (globals fill))) (shapes int) int) ! pure",
+"area : (subr (read @heap) ((blobref o shape)) int) ! pure",
+"total : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals area total))) (shapes int int) int) ! pure",
+"keyed : (subr (read @heap) ((blobref o k)) int) ! pure",
+"flat-sums : (subr (maxeff (read @heap) (write @heap) (alloc @heap) spin (read (globals area fill keyed total))) (int) ints) ! pure",
+"(3295581 128 1 0 7 0) : ints ! (maxeff (read @heap) (write @heap) (alloc @heap) spin (read (globals area fill flat-sums keyed total)))",
+""
+],
+"err": [
+"fixpt: <programs>/native/flat-sums.fx:6:29: warning: a sum's label written `circle`, not `#:circle`, and 1 more in this file: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:circle`",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
 ]
 }
 ]

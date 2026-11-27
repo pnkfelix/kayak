@@ -35,11 +35,12 @@
 ""
 ],
 "err": [
+"fixpt: <programs>/bloblet-errors/flat-tagcase-no-arm.fx:6:30: warning: a sum's label written `a`, not `#:a`, and 1 more in this file: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:a`",
 "! evaluation failed: tagcase: no arm for this flat sum's tag",
 ""
 ],
 "by": [
-"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
 ]
 }
 ]

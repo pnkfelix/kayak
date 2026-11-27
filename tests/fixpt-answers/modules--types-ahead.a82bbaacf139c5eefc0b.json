@@ -19,20 +19,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 0,
-"out": [
-"m : (moduleof (desc tree (sumof (#:leaf (productof)) (#:node (productof (1 (select m tree)) (2 (select m tree)))))) (desc forest (listof tree acyclic)) (desc pair-of (productof (1 tree) (2 forest))) (val size (subr pure (tree) int)) (val leaf (subr pure () tree)) (val node (subr pure (tree tree) tree))) ! pure",
-"1 : int ! (read (globals m))",
-""
-],
-"err": [
-""
-],
-"by": [
-"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
-]
 }
 ]
 }

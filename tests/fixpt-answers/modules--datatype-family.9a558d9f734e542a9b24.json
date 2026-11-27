@@ -19,20 +19,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 0,
-"out": [
-"trees : (moduleof (desc tree (dlambda ((t type)) (sumof (#:leaf (productof)) (#:node (productof (1 t)))))) (val leaf (poly ((t type)) (subr pure () (sumof (#:leaf (productof)) (#:node (productof (1 t))))))) (val node (poly ((t type)) (subr pure (t) (sumof (#:leaf (productof)) (#:node (productof (1 t))))))) (val size (poly ((t type)) (subr pure ((sumof (#:leaf (productof)) (#:node (productof (1 t))))) int)))) ! pure",
-"1 : int ! (read (globals trees))",
-""
-],
-"err": [
-""
-],
-"by": [
-"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
-]
 }
 ]
 }

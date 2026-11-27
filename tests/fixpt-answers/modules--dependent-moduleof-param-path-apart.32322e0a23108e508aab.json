@@ -1,0 +1,30 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"dependent-moduleof-param-path-apart.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"e : (moduleof (val m-base (moduleof (abs t type) (val zero t) (val next (subr pure (t) t)) (val value (subr pure (t) int))))) ! (read (globals %shared:<programs>/modules/../module-files/dm-base.fx %shared:<programs>/modules/../module-files/dm-penv.fx))",
+"e-b : (moduleof (val m-base (moduleof (abs t type) (val zero t) (val next (subr pure (t) t)) (val value (subr pure (t) int))))) ! (read (globals %shared:<programs>/modules/../module-files/dm-base.fx %shared:<programs>/modules/../module-files/dm-penv.fx))",
+"e2 : (moduleof (val m-frame (moduleof (val start e-b.m-base..t)))) ! (read (globals %shared:input:<programs>/modules/../module-files/dm-penv2.fx %shared:input:<programs>/modules/../module-files/dm-pframe.fx e-b))",
+""
+],
+"err": [
+"fixpt: <programs>/modules/dependent-moduleof-param-path-apart.fx:7:31: argument 1 is a e-b.m-base..t, where a e.m-base..t is expected",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

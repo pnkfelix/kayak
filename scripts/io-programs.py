@@ -157,6 +157,8 @@ def main():
             [binary, "--dialect", "fx26"] + fixptcache.ANSWERING + ["run", os.path.join(ROOT, "kfx", "prelude.fx")] + files + ["--"] + args,
             stdin,
         )
+        # Fixpt's warnings no part of its answer (C558).
+        theirs = (theirs[0], fixptcache.unwarned(theirs[1])) + tuple(theirs[2:])
         if rust != theirs:
             differ.append(name)
             for what, a, b in zip(("stdout", "stderr", "status", "files"), rust, theirs):

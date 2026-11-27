@@ -18,12 +18,13 @@
 ""
 ],
 "err": [
+"fixpt: <programs>/lemmas/swapped.fx:2:44: warning: a sum's label written `leaf`, not `#:leaf`, and 3 more in this file: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:leaf`",
 "fixpt: <programs>/lemmas/swapped.fx:5:3: `bad` is declared a (poly ((a type) (b type)) (subr spin ((subr spin (a) b) (tree a)) (tree b))): a (subr spin ((subr spin (a) b) (tree a)) (tree b)) is expected here, and this is a (subr (maxeff spin (read (globals bad down-tree up-tree))) ((subr spin (a) b) (tree a)) (tree b))",
 "  beyond what is expected, it has (read (globals bad down-tree up-tree))",
 ""
 ],
 "by": [
-"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
 ]
 }
 ]

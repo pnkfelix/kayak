@@ -20,21 +20,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 0,
-"out": [
-"none : (poly ((a type)) (subr pure () (sumof (#:none (productof)) (#:some (productof (1 a)))))) ! pure",
-"some : (poly ((a type)) (subr pure (a) (sumof (#:none (productof)) (#:some (productof (1 a)))))) ! pure",
-"seven : (sumof (#:none (productof)) (#:some (productof (1 int)))) ! (read (globals some))",
-""
-],
-"err": [
-""
-],
-"by": [
-"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
-]
 }
 ]
 }

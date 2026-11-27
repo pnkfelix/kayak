@@ -21,8 +21,22 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 1,
+"out": [
+"collector : (addr report @p) ! (maxeff (alloc @p) nondet)",
+""
+],
+"err": [
+"fixpt: <programs>/monitors/on-fail-type.fx:3:29: warning: a sum's label written `ok`, not `#:ok`, and 1 more in this file: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:ok`",
+"fixpt: <programs>/monitors/on-fail-type.fx:6:3: `w` is declared a (addr int @w): a monitor's `on-failure` makes the watcher's message of a failure's, a (subr pure (string) report), and this is a (subr pure (string) int)",
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
 ]
 }
 ]

@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"ifm-b.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"; <programs>/module-files/ifm-b.fx, checked as a module file",
+"(subr pure ((moduleof (desc t (productof (#:x int))) (val mk (subr pure (int) t)) (val r (ref int @ed)))) (moduleof (desc u (productof (#:inner (productof (#:x int))) (#:tag string))) (val wrap (subr pure (int) u)))) ! (read (globals %shared:input:<programs>/module-files/ifm-b.fx))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

@@ -32,33 +32,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 0,
-"out": [
-"define bit : (subr pure (bool int) int) ! pure",
-"define kind-of : (subr pure (io-error) int) ! pure",
-"define buf : (bytevectorof @b) ! (alloc @b)",
-"define w : int ! (io stdout)",
-"define l : int ! (io stdin)",
-"define b : int ! (io stdin)",
-"define n0 : int ! (maxeff (io stdin) (read (globals buf)) (write @b))",
-"define n1 : int ! (maxeff (io stdin) (read (globals buf)) (write @b))",
-"define r : int ! (io stdin-poll)",
-"define a : int ! (io args)",
-"define f : int ! (maxeff (io fs-read) (read (globals kind-of)))",
-"define d : int ! (maxeff (io fs-read) (read (globals kind-of)))",
-"define t : int ! (io terminal)",
-"int ! (read (globals a b d f l n0 n1 r t w))",
-"; both checkers agree",
-""
-],
-"err": [
-""
-],
-"by": [
-"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
-]
 }
 ]
 }

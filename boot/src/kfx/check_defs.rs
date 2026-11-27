@@ -5731,6 +5731,66 @@ pub fn nested_effdefs(m: Str, forms: Sexps, es: Effdefs) -> Effdefs {
     })), nested_modules(forms)))
 }
 
+// A module's exports with its own values in the order written (C558): KFX
+// checks the items in the order their references allow (`module-order`), a
+// procedure after the later ones it names (`arm64.fx`'s `arm-barrier`,
+// Fixpt e98d0c8, after `arm-pairs` and `arm-k`), and its type's values
+// were in that order, where Fixpt's are as written (`fixpt check --reps`,
+// `modules/load-input-built-in.fx`). The binds newest first: the slots of
+// the items `written` names (`m x` each) filled with them in its order
+// reversed; any other where it was.
+pub fn bind_named(mut n: Str, mut bs: Binds) -> Binds {
+    loop {
+        if null_p(bs) {
+            return nil::<kayak_rt::data::DataAt<'static, Bind>>();
+        } else if {
+            let tagcase_ = car(bs);
+            if Bind::__is_Bind(tagcase_) {
+                let (k, sc, w,) = Bind::__Bind(tagcase_);
+                string_eq_p(k, n)
+            } else { kayak_rt::data::no_variant() }
+        } {
+            return kayak_rt::heap_cons(car(bs), kayak_rt::nil());
+        } else {
+            bs = cdr(bs);
+            continue;
+        }
+    }
+}
+
+pub fn written_filled(bs: Binds, names: Strings, ordered: Binds) -> Binds {
+    if null_p(bs) {
+        nil::<kayak_rt::data::DataAt<'static, Bind>>()
+    } else if {
+        let tagcase_ = car(bs);
+        if Bind::__is_Bind(tagcase_) {
+            let (k, sc, w,) = Bind::__Bind(tagcase_);
+            string_member_p(k, names)
+        } else { kayak_rt::data::no_variant() }
+    } {
+        if null_p(ordered) {
+            kayak_rt::heap_cons(car(bs), written_filled(cdr(bs), names, ordered))
+        } else {
+            kayak_rt::heap_cons(car(ordered), written_filled(cdr(bs), names, cdr(ordered)))
+        }
+    } else {
+        kayak_rt::heap_cons(car(bs), written_filled(cdr(bs), names, ordered))
+    }
+}
+
+pub fn exports_as_written(m: Str, forms: Sexps, bs: Binds) -> Binds {
+    let own = map(kayak_rt::as_proc(kayak_rt::closure1s((m,), |(m,), n: Str| {
+        string_append(m, string_append(str_lit!(" "), n))
+    })), concat(map(kayak_rt::as_proc(item_value_names), unhidden(forms))));
+    let present = filter(kayak_rt::as_proc(kayak_rt::closure1s((bs,), |(bs,), n: Str| {
+        not(null_p(bind_named(n, bs)))
+    })), own);
+    let ordered = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((bs,), |(bs,), n: Str| {
+        bind_named(n, bs)
+    })), reverse(present)));
+    written_filled(bs, present, ordered)
+}
+
 pub fn module_finish(p: kayak_rt::data::DataAt<'static, Mprep>, checked: kayak_rt::data::DataAt<'static, Elab>) -> kayak_rt::data::DataAt<'static, Elab> {
     let tagcase_ = p;
     if Mprep::__is_Mprep(tagcase_) {
@@ -5741,13 +5801,13 @@ pub fn module_finish(p: kayak_rt::data::DataAt<'static, Mprep>, checked: kayak_r
             let tagcase_ = done;
             if Cv::__is_Cv(tagcase_) {
                 let (bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk,) = Cv::__Cv(tagcase_);
-                elab(cv_reindexed(cv(kayak_rt::heap_cons(made, bind_onto(module_exports(m, onto(hidden, map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::data::DataAt<'static, Bind>| {
+                elab(cv_reindexed(cv(kayak_rt::heap_cons(made, bind_onto(exports_as_written(m, forms, module_exports(m, onto(hidden, map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::data::DataAt<'static, Bind>| {
                     let tagcase_ = b;
                     if Bind::__is_Bind(tagcase_) {
                         let (n, sc, w,) = Bind::__Bind(tagcase_);
                         n
                     } else { kayak_rt::data::no_variant() }
-                })), conversions)), items_kept_in(v, bs)), cv_binds(outer))), if loaded {
+                })), conversions)), items_kept_in(v, bs))), cv_binds(outer))), if loaded {
                     onto(ds, cv_dts(outer))
                 } else {
                     ds
@@ -6579,7 +6639,8 @@ pub fn sexps_after(mut xs: Sexps, mut n: i64) -> Sexps {
 }
 
 /// A `module-parameters` binder of a kind, `(r region)`, `(t type)`, `(e
-/// effect)`; not a module's, `(m T)` or `(m T qualified)` (C286).
+/// effect)`; not a module's, `(m T)`, `(m T #:qualified)` or `(m T
+/// #:unqualified)` (C286, C557).
 #[inline]
 pub fn kind_parameter_p(b: kayak_rt::data::DataAt<'static, Sexp>) -> bool {
     let tagcase_ = second(items(b));
@@ -6708,9 +6769,36 @@ pub fn run_items(its: Sexps) -> Sexps {
     } else { kayak_rt::data::no_variant() }
 }
 
+// A module parameter's mark (Fixpt's e98d0c8, 23af3a07, `binder-mark?`,
+// `old-qualified`): `(m T #:qualified)`, its names not included, reached by
+// `with`, `m::name` or `import`; `(m T #:unqualified)`, or for now `(m T)`,
+// included, hidden. The mark's spelling before keywords, the symbol
+// `qualified`, refused in Fixpt's words; any other mark refused too.
+// fixpt-source: crates/fixpt-fx26/src/parser-forms.fx@e98d0c8
+#[inline]
+pub fn old_qualified_said() -> Str {
+    str_lit!("a module parameter's mark is a keyword now: `#:qualified`, its names reached by `m::name`, `with` or `import`; or `#:unqualified`, its names the file's own, as a parameter with no mark's are for now")
+}
+
+pub fn parameter_included_p(path: Str, b: kayak_rt::data::DataAt<'static, Sexp>) -> bool {
+    if i64_eq(size(items(b)), 2i64) {
+        true
+    } else if sym_is_p(third(items(b)), str_lit!("#:unqualified")) {
+        true
+    } else if sym_is_p(third(items(b)), str_lit!("#:qualified")) {
+        false
+    } else if sym_is_p(third(items(b)), str_lit!("qualified")) {
+        error(string_append(str_lit!("kfx: "), string_append(path, string_append(str_lit!(": "), old_qualified_said()))));
+        false
+    } else {
+        error(string_append(str_lit!("kfx: "), string_append(path, str_lit!(": a module parameter's mark is `#:qualified` or `#:unqualified`"))));
+        false
+    }
+}
+
 /// A loaded file's items: of a file of `module-parameters`, the rest, each
 /// kind's binder the argument given, each module's the module given, its
-/// names included, hidden, unless it is `qualified` (C286; FX-26's
+/// names included, hidden, unless it is `#:qualified` (C286, C557; FX-26's
 /// `(plambda (kinds) (lambda (modules) (module (hide (include m) …) item
 /// …)))`); `(module-parameters ())`, a file of none. Of any other, all,
 /// given nothing.
@@ -6727,11 +6815,11 @@ pub fn parameters_given(forms: Sexps, args: Sexps, path: Str) -> Sexps {
             let kargs = sexps_first(args, size(kinds));
             let margs = sexps_after(args, size(kinds));
             let its = substituted_all(substituted_all(cdr(forms), kinds, kargs), mods, margs);
-            let included = concat(map2(kayak_rt::as_proc(kayak_rt::closure2s((), |(), b: kayak_rt::data::DataAt<'static, Sexp>, m: kayak_rt::data::DataAt<'static, Sexp>| {
-                if (i64_eq(size(items(b)), 3i64) && sym_is_p(third(items(b)), str_lit!("qualified"))) {
-                    nil::<kayak_rt::data::DataAt<'static, Sexp>>()
-                } else {
+            let included = concat(map2(kayak_rt::as_proc(kayak_rt::closure2s((path,), |(path,), b: kayak_rt::data::DataAt<'static, Sexp>, m: kayak_rt::data::DataAt<'static, Sexp>| {
+                if parameter_included_p(path, b) {
                     the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit!("include"), str_lit!(""), 0i64), kayak_rt::heap_cons(m, kayak_rt::nil())), str_lit!(""), 0i64, 0i64), kayak_rt::nil()))
+                } else {
+                    nil::<kayak_rt::data::DataAt<'static, Sexp>>()
                 }
             })), mods, margs));
             if null_p(included) {

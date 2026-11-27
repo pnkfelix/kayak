@@ -19,21 +19,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 0,
-"out": [
-"; <programs>/module-files/names-outer.fx, checked as a module file",
-"(poly ((r region)) (subr (read (globals %shared:<programs>/module-files/names-inner.fx)) () (moduleof (desc s (mu %4 (sumof (#:sa (productof (1 int))) (#:sb (productof (1 %4) (2 %4)))))) (desc e (mu %4 (sumof (#:ev (productof (1 s))) (#:eapp (productof (1 %4) (2 %4)))))) (desc t (sumof (#:td (productof (1 e))) (#:tx (productof (1 int))))) (val a (moduleof (desc s (sumof (#:sa (productof (1 int))) (#:sb (productof (1 s) (2 s))))) (val sa (subr pure (int) s)) (val sb (subr pure (s s) s)))) (val ev (subr pure (s) e)) (val eapp (subr pure (e e) e)) (val td (subr pure (e) t)) (val tx (subr pure (int) t))))) ! (read (globals %shared:<programs>/module-files/names-outer.fx))",
-"; both checkers agree",
-""
-],
-"err": [
-""
-],
-"by": [
-"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
-]
 }
 ]
 }

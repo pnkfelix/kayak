@@ -9756,6 +9756,17 @@ pub mod made__load__3__main {
         }
     }
 
+    pub fn keyword_is_p(s: kayak_rt::data::DataAt<'static, Syn>, k: Symbol) -> bool {
+        let tagcase_ = s;
+        if made__load__2__expander::Syn::__is_Atom(tagcase_) {
+            let (d, a, b, x,) = made__load__2__expander::Syn::__Atom(tagcase_);
+            (mx_keyword_p(d) && symbol_eq_p(mx_keyword_to_symbol(d), k))
+        } else {
+            let y = tagcase_;
+            false
+        }
+    }
+
     pub fn kind_form_p<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, k: kayak_rt::data::DataAt<'static, Syn>) -> Result<bool, Unwind> {
         let parts = proper_items(k);
         if not(null_p(parts)) {
@@ -9770,7 +9781,7 @@ pub mod made__load__3__main {
         if _eq(len(parts), int_lit(2)) {
             Ok(kind_form_p(mxp, maker_st, nth(parts, int_lit(1)))?)
         } else if _eq(len(parts), int_lit(3)) {
-            Ok((kind_form_p(mxp, maker_st, nth(parts, int_lit(1)))? || not((syn_symbol_p(nth(parts, int_lit(2))) && string_eq_p(syn_name(nth(parts, int_lit(2))), str_lit!("qualified"))))))
+            Ok((kind_form_p(mxp, maker_st, nth(parts, int_lit(1)))? || not((keyword_is_p(nth(parts, int_lit(2)), kayak_rt::sym_lit!("qualified")) || keyword_is_p(nth(parts, int_lit(2)), kayak_rt::sym_lit!("unqualified")) || (syn_symbol_p(nth(parts, int_lit(2))) && string_eq_p(syn_name(nth(parts, int_lit(2))), str_lit!("qualified")))))))
         } else {
             Ok(true)
         }
@@ -9796,11 +9807,16 @@ pub mod made__load__3__main {
         }
     }
 
+    pub fn binder_included_p(b: kayak_rt::data::DataAt<'static, Syn>) -> bool {
+        let parts = proper_items(b);
+        (_eq(len(parts), int_lit(2)) || (_eq(len(parts), int_lit(3)) && keyword_is_p(nth(parts, int_lit(2)), kayak_rt::sym_lit!("unqualified"))))
+    }
+
     pub fn parameter_shapes<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut ps: SynsA, mut k: Int) -> Result<Rings, Unwind> {
         loop {
             if null_p(ps) {
                 return Ok(nil::<kayak_rt::data::DataAt<'static, made__load__2__expander::Ring>>());
-            } else if (binder_is_kind_p(mxp, maker_st, car(ps))? || not(_eq(len(proper_items(car(ps))), int_lit(2)))) {
+            } else if (binder_is_kind_p(mxp, maker_st, car(ps))? || not(binder_included_p(car(ps)))) {
                 (ps, k) = (cdr(ps), _plus(k, int_lit(1)));
                 continue;
             } else {
@@ -14036,9 +14052,9 @@ pub mod made__load__3__main {
         loop {
             if null_p(inner) {
                 return Ok(ls);
-            } else if _eq(car(inner).1, int_lit(1)) {
-                match fail_at(mxp, maker_st, mx_fail, str_lit!("a repeated part in a repeated part: not yet"), t)? {};
-                return Ok(ls);
+            } else if _gt_eq(car(inner).1, int_lit(1)) {
+                (inner, ls) = (cdr(inner), labelled_name(mxp, maker_st, mx_fail, car(inner).0, Product_11_12_13_14(int_lit(2), p, the::<MxFactsSteps>(nil::<bool>()), int_lit(0)), ls, t)?);
+                continue;
             } else {
                 (inner, ls) = (cdr(inner), labelled_name(mxp, maker_st, mx_fail, car(inner).0, Product_11_12_13_14(int_lit(1), p, car(inner).2, car(inner).4), ls, t)?);
                 continue;
@@ -14089,6 +14105,11 @@ pub mod made__load__3__main {
                 return false;
             }
         }
+    }
+
+    #[inline]
+    pub fn deep_said(n: Str) -> Str {
+        string_append(str_lit!("`"), string_append(n, str_lit!("` is a part repeated in a repeated part, which no fact names yet")))
     }
 
     pub fn mx_facts_path_keys(p: MxFactsSteps, a: Int, b: Int) -> SynsA {
@@ -14163,11 +14184,17 @@ pub mod made__load__3__main {
             if (syn_symbol_p(l) && null_p(ll)) {
                 match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(syn_name(l), string_append(str_lit!("` labels no part of this "), str_lit!("node")))), l)? {};
                 Ok(nil::<Product_11_12_13<List<bool>, List<bool>, kayak_rt::data::DataAt<'static, made__load__2__expander::Syn>>>())
+            } else if (not(null_p(ll)) && _eq(car(ll).1, int_lit(2))) {
+                match fail_at(mxp, maker_st, mx_fail, deep_said(syn_name(l)), l)? {};
+                Ok(nil::<Product_11_12_13<List<bool>, List<bool>, kayak_rt::data::DataAt<'static, made__load__2__expander::Syn>>>())
             } else if (null_p(ll) || _eq(car(ll).1, int_lit(0))) {
                 match fail_at(mxp, maker_st, mx_fail, outside, l)? {};
                 Ok(nil::<Product_11_12_13<List<bool>, List<bool>, kayak_rt::data::DataAt<'static, made__load__2__expander::Syn>>>())
             } else if (syn_symbol_p(m) && null_p(ml)) {
                 match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(syn_name(m), string_append(str_lit!("` labels no part of this "), str_lit!("node")))), m)? {};
+                Ok(nil::<Product_11_12_13<List<bool>, List<bool>, kayak_rt::data::DataAt<'static, made__load__2__expander::Syn>>>())
+            } else if (not(null_p(ml)) && _eq(car(ml).1, int_lit(2))) {
+                match fail_at(mxp, maker_st, mx_fail, deep_said(syn_name(m)), m)? {};
                 Ok(nil::<Product_11_12_13<List<bool>, List<bool>, kayak_rt::data::DataAt<'static, made__load__2__expander::Syn>>>())
             } else if (null_p(ml) || _eq(car(ml).1, int_lit(0))) {
                 match fail_at(mxp, maker_st, mx_fail, outside, m)? {};
@@ -14281,6 +14308,9 @@ pub mod made__load__3__main {
             let (found, name) = (mx_facts_label_of(syn_symbol(mxp, maker_st, n)?, ls), syn_name(n));
             if null_p(found) {
                 match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(name, str_lit!("` labels no part of this node"))), l)? {};
+                Ok(none)
+            } else if _eq(car(found).1, int_lit(2)) {
+                match fail_at(mxp, maker_st, mx_fail, deep_said(name), l)? {};
                 Ok(none)
             } else if (_eq(car(found).1, int_lit(0)) && rep) {
                 match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(name, string_append(str_lit!("` is not repeated: named alone, not `("), string_append(name, str_lit!(" ...)`"))))), l)? {};
@@ -14432,6 +14462,9 @@ pub mod made__load__3__main {
                     };
                     if null_p(target) {
                         match fail_at(mxp, maker_st, mx_fail, str_lit!("`(bind L … in name)`: `name` a label of this node"), m)? {};
+                        return Ok(Product_11_12_13_14_15(imports, rib, rings, star, elems));
+                    } else if _eq(car(target).1, int_lit(2)) {
+                        match fail_at(mxp, maker_st, mx_fail, deep_said(syn_name(m)), m)? {};
                         return Ok(Product_11_12_13_14_15(imports, rib, rings, star, elems));
                     } else if _eq(car(target).1, int_lit(1)) {
                         match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a fact binding in a repeated part is "), str_lit!("each repetition's: followed by `...`")), m)? {};
@@ -14766,6 +14799,10 @@ pub mod made__load__3__main {
                     continue;
                 } else if null_p(found) {
                     match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(syn_name(n), string_append(str_lit!("` labels no part of this "), str_lit!("signature's top")))), n)? {};
+                    ds = cdr(ds);
+                    continue;
+                } else if _eq(car(found).1, int_lit(2)) {
+                    match fail_at(mxp, maker_st, mx_fail, deep_said(syn_name(n)), n)? {};
                     ds = cdr(ds);
                     continue;
                 } else if _eq(car(found).1, int_lit(1)) {

@@ -22,23 +22,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 1,
-"out": [
-"deep-n : (subr (maxeff (read @globals) spin) (int) int) ! pure",
-"deep-c : (subr (maxeff (read @globals) spin) (int) int) ! pure",
-"1000 : int ! (maxeff (read @globals) spin)",
-" : int ! (maxeff (read @globals) spin)",
-""
-],
-"err": [
-"! evaluation failed: stack overflow",
-""
-],
-"by": [
-"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
-]
 }
 ]
 }

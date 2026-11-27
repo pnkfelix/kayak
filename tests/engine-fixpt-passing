@@ -40,7 +40,7 @@ io/io-effects.fx
 io/io-files-clock.fx
 io/io-stdin.fx
 io/io-terminal.fx
-made-code/typed-calls.fx
+made-code-arm64/typed-calls.fx
 made-code-x86_64/typed-calls.fx
 module-files/answer-types.fx
 module-files/bump.fx

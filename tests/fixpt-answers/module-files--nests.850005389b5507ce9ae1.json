@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"nests.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"opt : (moduleof (desc option (dlambda ((a type)) (sumof (#:none (productof)) (#:some (productof (1 a)))))) (val none (poly ((a type)) (subr pure () (sumof (#:none (productof)) (#:some (productof (1 a))))))) (val some (poly ((a type)) (subr pure (a) (sumof (#:none (productof)) (#:some (productof (1 a))))))) (val seven (sumof (#:none (productof)) (#:some (productof (1 int)))))) ! (read (globals %shared:<programs>/module-files/option.fx))",
+"eight : int ! (read (globals opt))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

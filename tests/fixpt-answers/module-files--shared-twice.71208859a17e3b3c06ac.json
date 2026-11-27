@@ -20,22 +20,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 1,
-"out": [
-"! <programs>/module-files/shared-twice.fx:3:45: `bump` is declared a (subr pure (shared-counter.fx..t) int): a (subr pure (shared-counter.fx..t) int) is expected here, and this is a (subr (read (globals c)) (shared-counter.fx..t) int)",
-"  beyond what is expected, it has (read (globals c))",
-"; both checkers agree",
-"; checked as a program, whose globals a later definition may change: `fixpt check --module <programs>/module-files/shared-twice.fx` checks it as a module file",
-""
-],
-"err": [
-""
-],
-"by": [
-"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
-]
 }
 ]
 }

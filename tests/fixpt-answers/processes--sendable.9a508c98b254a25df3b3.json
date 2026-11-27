@@ -23,24 +23,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 0,
-"out": [
-"answer : (poly ((m sendable)) (subr (init @r) ((productof (#:v m) (#:reply (icell m @r)))) unit)) ! pure",
-"make-echo : (poly ((m sendable)) (subr (maxeff (alloc @e) (init @r) spin nondet (read (globals answer))) () (addr (productof (#:v m) (#:reply (icell m @r))) @e))) ! pure",
-"echo : (addr (productof (#:v int) (#:reply (icell int @r))) @e) ! (maxeff (alloc @e) (init @r) spin nondet (read (globals answer make-echo)))",
-"c : (icell int @r) ! (alloc @r)",
-"#u : unit ! (maxeff (send @e) (read (globals c echo)))",
-"7 : int ! (maxeff (await @r) (read (globals c)))",
-""
-],
-"err": [
-""
-],
-"by": [
-"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
-]
 }
 ]
 }

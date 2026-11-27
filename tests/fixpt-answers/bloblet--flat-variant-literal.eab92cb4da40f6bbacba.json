@@ -20,21 +20,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 1,
-"out": [
-"b : o ! (alloc @b)",
-"r : (blobref o (sumof (#:a f64) (#:b i32))) ! (read (globals b))",
-""
-],
-"err": [
-"fixpt: <programs>/bloblet/flat-variant-literal.fx:6:21: a variant is named by a literal: `'label`, or a number where the sum has a key",
-""
-],
-"by": [
-"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
-]
 }
 ]
 }

@@ -1400,6 +1400,9 @@ pub mod made__load__1__cg {
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("native-procedure")) => {
                         str_lit!("%fx26-native-procedure")
                     }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("stage-directory!")) => {
+                        str_lit!("%fx26-stage-directory!")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("bytevector-copy!")) => {
                         str_lit!("%fx26-bytevector-copy!")
                     }
@@ -1459,6 +1462,9 @@ pub mod made__load__1__cg {
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("%session-eval-make")) => {
                         str_lit!("%fx26-make-session")
                     }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("session-directory!")) => {
+                        str_lit!("%fx26-session-directory!")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("bytevector-u8-set!")) => {
                         str_lit!("%fx26-bytevector-u8-set!")
                     }
@@ -1483,6 +1489,9 @@ pub mod made__load__1__cg {
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("%session-eval-ready")) => {
                         str_lit!("%fx26-session-eval-ready")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%session-eval-loads")) => {
+                        str_lit!("%fx26-session-eval-loads")
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("%session-committed!")) => {
                         str_lit!("%fx26-session-committed!")
@@ -1519,6 +1528,9 @@ pub mod made__load__1__cg {
             }
             case_ if kayak_rt::_eq(case_, int_lit(22)) => {
                 match n {
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%stage-eval-directory!")) => {
+                        str_lit!("%fx26-stage-directory!")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("datum-list->bytevector")) => {
                         str_lit!("%fx26-bytevector")
                     }
@@ -1550,6 +1562,9 @@ pub mod made__load__1__cg {
                 match n {
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("%session-eval-committed!")) => {
                         str_lit!("%fx26-session-committed!")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%session-eval-directory!")) => {
+                        str_lit!("%fx26-session-directory!")
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit!("get-environment-variable")) => {
                         str_lit!("%fx26-get-environment-variable")

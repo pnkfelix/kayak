@@ -129,8 +129,8 @@ made-code-x86_64/frames.fx
 made-code-x86_64/leaves.fx
 made-code-x86_64/stubs.fx
 made-code-x86_64/typed-calls.fx
-made-code/leaves.fx
-made-code/typed-calls.fx
+made-code-arm64/leaves.fx
+made-code-arm64/typed-calls.fx
 module-files/answer-types.fx
 module-files/answer.fx
 module-files/bump.fx

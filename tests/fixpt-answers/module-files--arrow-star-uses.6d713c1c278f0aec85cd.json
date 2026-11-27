@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"arrow-star-uses.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"; <programs>/module-files/arrow-star-uses.fx, checked as a module file",
+"(poly ((r region)) (subr (read (globals %shared:<programs>/module-files/arrow-star-types.fx)) () (moduleof (desc t int) (desc e (maxeff (read r) spin)) (desc h (subr (maxeff (read r) spin) (int) int)) (val a (moduleof (desc t int) (desc e (maxeff (read r) spin)))) (val f (subr (maxeff (read r) spin) (h int) int))))) ! (read (globals %shared:<programs>/module-files/arrow-star-uses.fx))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

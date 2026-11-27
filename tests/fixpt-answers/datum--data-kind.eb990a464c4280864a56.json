@@ -19,20 +19,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 0,
-"out": [
-"same : (poly ((t data)) (subr pure (t) t)) ! pure",
-"() : (listof (productof (#:a int) (#:b bool)) acyclic) ! (read (globals same))",
-""
-],
-"err": [
-""
-],
-"by": [
-"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
-]
 }
 ]
 }

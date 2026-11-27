@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"tally-twice.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"; <programs>/module-files/tally-twice.fx, checked as a module file",
+"(poly ((r region) (unused region)) (subr (maxeff (alloc r) (read (globals %shared:<programs>/module-files/tally.fx))) () (moduleof (val t (moduleof (val count (ref int r)) (val tick (subr (maxeff (read r) (write r)) () int)))) (val tick (subr (maxeff (read r) (write r)) () int)) (val tick-twice (subr (maxeff (read r) (write r)) () int))))) ! (read (globals %shared:<programs>/module-files/tally-twice.fx))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

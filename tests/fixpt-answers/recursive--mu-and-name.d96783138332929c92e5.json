@@ -21,22 +21,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 0,
-"out": [
-"f : (subr pure (ilist) int) ! pure",
-"g : (subr (read (globals f)) (ilist) int) ! pure",
-"h : (subr (read (globals f g)) (ilist) int) ! pure",
-"k : (mu %1 (subr pure (%1) int)) ! pure",
-""
-],
-"err": [
-""
-],
-"by": [
-"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
-]
 }
 ]
 }

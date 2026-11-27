@@ -19,21 +19,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 0,
-"out": [
-"; <programs>/module-files/mp-buffer.fx, checked as a module file",
-"(subr (maxeff (alloc @c) (read @c) (write @c)) ((moduleof (desc pt (productof (#:x int) (#:y int))) (val twice (subr pure (int) int)))) (moduleof (val tally (ref int @c)) (val seen (subr (read @c) () int)) (val origin (subr pure () (productof (#:x int) (#:y int)))))) ! (read (globals %shared:input:<programs>/module-files/mp-buffer.fx))",
-"; both checkers agree",
-""
-],
-"err": [
-""
-],
-"by": [
-"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
-]
 }
 ]
 }

@@ -1,0 +1,11 @@
+(module-parameters ((m-a (load-moduleof "a.fx") #:unqualified)
+                    (m-b (load-moduleof "b.fx" m-a) #:unqualified)))
+(define-type behaviour (subr spin (pt) string))
+(define shown (ref behaviour @ed) (new (lambda ((p pt)) "old")))
+(hide (define env (module (include m-a) (include m-b))))
+(define reload! (subr (maxeff stage spin (write @ed) (io stdout)) (datum) unit)
+  (lambda (code)
+    (stage env spin behaviour code
+      (p (set shown (p)))
+      (why (begin (write-out (string-append "refused: " (extract why message) "\n")) #u)))))
+(define try (subr (maxeff spin (read @ed)) () string) (lambda () ((get shown) (mk 3 4))))

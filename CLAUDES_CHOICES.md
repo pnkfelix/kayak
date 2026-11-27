@@ -17951,3 +17951,79 @@ patch, outside the tree), the tree put back at C556 and the clone at
   form, uses in two forms, a recursive macro (`get*`); Fixpt, the engine,
   the cells machine and kc each `(3 4 3 4 3 4 2)`.
 - **The full check**: `check: all passed`, 7 min 54 s; the pre-check passed first (4 min 21 s).
+
+## C558. The pin moved to Fixpt e98d0c8 (2026-11-27)
+
+The user: "Update our local Fixpt from GitHub main". 3569ce51 to
+e98d0c82, 19 commits, fetched from the clone's GitHub `origin`. Reviewed
+first: C527's pin move (its steps), `fixpt-drift.py`'s list.
+
+Carried:
+- **The expander** re-ported (`macros-port.py`): module parameters'
+  marks as keywords (23af3a07, `macros-nodes.fx`); a labelled part
+  repeated in a repeated part (802405af, `macros-facts.fx`).
+- **The built-in modules** (`built-in.py`): `arm64.fx`'s `arm-barrier`,
+  `arm-ldrb`, `arm-add-lsr` (c9dc9a69).
+
+- **KFX's module parameters' marks** (23af3a07; kfx/check-defs.kfx,
+  `parameter-included?`): `#:qualified` not included, `#:unqualified` or
+  none included; the symbol `qualified` refused in Fixpt's words
+  (`old-qualified-said`), any other mark refused (stricter). I first wrote
+  that KFX had no module parameters: my search's `\|` was no alternation
+  to this machine's grep (ugrep), and it found nothing. The run of Fixpt's
+  programs showed it (`module-parameters-qualified.fx`). Fixpt's warning of
+  a parameter with no mark is not carried (a warning, no answer).
+  Test: tests/kfx-refused/mark-old-qualified.kfx.
+- **A module's values in its type as written** (kfx/check-defs.kfx,
+  `exports-as-written`): KFX checks a module's items in the order their
+  references allow, a procedure after the later ones it names, and its
+  type's values were in that order; Fixpt's are as written. `arm64.fx`'s
+  new `arm-barrier` names `arm-pairs` and `arm-k`, written after it, so
+  kayak's type of the module (kayak-checks' reps,
+  `modules/load-input-built-in.fx`) put it after them, and its rep was no
+  longer Fixpt's. The module's own values now as written, in the slots
+  they had; included names, conversions and the mark where they were.
+- **Fixpt's warnings no part of its answers**: Fixpt warns now of a
+  sum's label written bare (ec31a434) and of a module parameter of no
+  mark, on stderr. kc-steps took the warning's line for the answer (ten
+  programs), io-programs found Fixpt's stderr not the Rust's (four), each
+  found by a full check. `fixptcache.unwarned` leaves out each line
+  `fixpt: PLACE: warning: ...`; `fixptcache.run` gives its stderr so, and
+  io-programs, kc-steps and kc-bench, which run Fixpt themselves, use it.
+- **lang/items.sexp** (`lang-items.py --update`): Fixpt's three new
+  primitives, `%fx26-stage-directory!`, `%fx26-session-directory!`,
+  `%fx26-session-eval-loads` (58dd8f0a, 8ebdf0c4), Fixpt's alone: no
+  tier of kayak's has them (`cells/cprims.kfx`, above).
+- **Fixpt's test programs** (`fx26-tests.py`, a step of a pin move I
+  first missed): `made-code/` is `made-code-arm64/` (566772ed), and the
+  passing lists (tests/engine-fixpt-passing, cells-, cellgen-, reps-)
+  renamed so.
+- **scripts/fixptcache.py's key**: an answer was keyed by the program's
+  text alone, not the files it loads, so a module file that changed at
+  the pin move (`mp-qualified.fx`) kept the old file's answer. Now the
+  files it loads by a path of its own (`load-module`, `load-moduleof`,
+  `load-input`), and theirs, are in the key; a program that loads none
+  keeps its key. And 65 answers of this pin kept as "timeout" dropped:
+  the first run asked Fixpt while it was built and the pre-check's other
+  stages ran, and a timeout is kept as an answer.
+- **Found, and fixed first** (C557, the user: "I think let's fix it
+  before we move the pin"): the engine's facts keyed by place, which a
+  macro's expansions shared, so `macros/ellipsis-nested-labelled.fx`
+  (beyond KFX) gave 9, not 8, and the cells test failed on it. This pin
+  move's work was kept aside as a patch while C557 was made at the old
+  pin, then applied again on it; the expander re-ported and every file
+  made again.
+
+Read and not carried, the marks moved to the pin:
+- `kfx/check.kfx`, of `parser-forms.fx` (23af3a07): what that mark ports,
+  `define-generative`'s messages, is as it was (the marks' port is in
+  check-defs.kfx, above).
+- `kfx/reps.kfx`, of `check.rs` (58dd8f0a): staged code's loads; the
+  standard generatives' declarations the mark ports are as they were.
+- `cells/cprims.kfx`, of `prim.rs` (b18bd9b9, 8ebdf0c4, 58dd8f0a): the
+  sessions' and staging's new primitives, none tier 1's.
+- `cells/hand.kfx`, of `cellular.rs` (c9dc9a69): arm64's write barrier at
+  the cellular machine's stores; kayak's hand-written cellular routines
+  (arm64's, `hand.kfx`) have no write barrier, as at the old pin, so
+  there is no card marking there to replace.
+- **The full check**: `check: all passed`, 2 min 06 s (the memoised jobs passed under these inputs in the runs before, which failed at kc-steps, io-programs and lang-items, each fixed above); the pre-check passed first (2 min 07 s).

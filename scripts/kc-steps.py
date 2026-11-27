@@ -411,7 +411,9 @@ def fixpt_gives(fx, p):
         r = run([fx] + args, cwd=os.path.dirname(p))
     else:
         r = fixptcache.run(fx, args, [p], keep=False)
-    lines = [l for l in (r.stdout + r.stderr).splitlines() if l.strip() and not l.startswith(";")]
+    # Fixpt's warnings no part of the answer (C558): on stderr, after it,
+    # they were taken for it.
+    lines = [l for l in (r.stdout + fixptcache.unwarned(r.stderr)).splitlines() if l.strip() and not l.startswith(";")]
     got = lines[-1].split(" : ")[0] if lines else "(none)"
     if got.startswith("! evaluation failed: "):
         got = "! " + got[len("! evaluation failed: "):]

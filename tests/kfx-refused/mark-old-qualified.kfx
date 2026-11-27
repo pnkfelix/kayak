@@ -1,0 +1,6 @@
+"A file of module parameters whose mark is the symbol `qualified`, its
+ spelling before keywords (C557; Fixpt's 23af3a07): refused, as Fixpt
+ refuses it, `#:qualified` its spelling now."
+(define m-base (load-module "loads/mark-base.fx"))
+(define m-q ((load-module "loads/mark-old-qualified.fx") m-base))
+(define main (subr pure () string) (lambda () (i64->string ((with m-q four)))))

@@ -18,12 +18,13 @@
 ""
 ],
 "err": [
+"fixpt: <programs>/lemmas/unannotated.fx:4:11: warning: a sum's label written `none`, not `#:none`, and 3 more in this file: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:none`",
 "fixpt: <programs>/lemmas/unannotated.fx:6:3: `nest-up` is declared a (poly ((a type) (b type)) (subr spin ((subr spin (a) b) (nest a)) (nest b))): a (subr spin ((subr spin (a) b) (nest a)) (nest b)) is expected here, and this is a (subr (maxeff spin (read (globals down-nest nest-up up-nest))) ((subr spin (a) b) (nest a)) (nest b))",
 "  beyond what is expected, it has (read (globals down-nest nest-up up-nest))",
 ""
 ],
 "by": [
-"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
 ]
 }
 ]

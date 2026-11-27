@@ -4070,7 +4070,7 @@ pub fn conversion_of(v: kayak_rt::data::DataAt<'static, Cv>, g: Str) -> Str {
 
 // A `define-generative`'s usage, and its refusals' messages below, as Fixpt's
 // `parser-forms.fx` says them (`generative-conversions`, `gen-named`).
-// fixpt-source: crates/fixpt-fx26/src/parser-forms.fx@3569ce5
+// fixpt-source: crates/fixpt-fx26/src/parser-forms.fx@e98d0c8
 #[inline]
 pub fn generative_usage() -> Str {
     str_lit!("`(define-generative name type #:seal name #:unseal name)`, or `(define-generative (name (param kind) …) type …)`")

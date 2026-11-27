@@ -36,37 +36,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 0,
-"out": [
-"saved : (ref (listof k-int @g) @g) ! (alloc @g)",
-"count : (ref int @g) ! (alloc @g)",
-"throw-n : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) (k-int int) int) ! pure",
-"throw-c : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) (k-int int) int) ! pure",
-"via-n : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) ((subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) () int)) int) ! pure",
-"via-c : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) ((subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) () int)) int) ! pure",
-"cap-n : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) ((subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) (k-int) int)) int) ! pure",
-"cap-c : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) ((subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) (k-int) int)) int) ! pure",
-"deep-n : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) (k-int int) int) ! pure",
-"deep-c : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) (k-int int) int) ! pure",
-"(6 6 6 6 6 6 8 8) : (listof int acyclic) ! (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin)",
-"again-n : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) (int) int) ! pure",
-"again-c : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) (int) int) ! pure",
-"keeper : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) (k-int) int) ! pure",
-"keep-n : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) () int) ! pure",
-"keep-c : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) () int) ! pure",
-"loop : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) ((subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) () int) (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) (int) int)) int) ! pure",
-"run : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) ((subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) () int) (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) (int) int)) int) ! pure",
-"(413 413 413 413) : (listof int acyclic) ! (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin)",
-""
-],
-"err": [
-""
-],
-"by": [
-"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
-]
 }
 ]
 }

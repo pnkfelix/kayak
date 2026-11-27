@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"load.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define c : (moduleof (desc t counter.fx..t) (val zero counter.fx..t) (val inc (subr pure (counter.fx..t) counter.fx..t)) (val value (subr pure (counter.fx..t) int))) ! (read (globals %shared:<programs>/modules/../module-files/counter.fx))",
+"int ! (read (globals c))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

@@ -56,6 +56,9 @@ import subprocess
 import sys
 import time
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import fixptcache  # noqa: E402
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WORK = os.path.join(ROOT, "target", "kc-bench")
 KC = os.path.join(ROOT, "target", "release", "kc")
@@ -195,7 +198,9 @@ class Serve:
 def fixpt_step(fx, path):
     t0 = time.perf_counter()
     r = run([fx, "eval", path], cwd=os.path.dirname(path))
-    lines = [l for l in (r.stdout + r.stderr).splitlines() if l.strip() and not l.startswith(";")]
+    # Fixpt's warnings no part of the answer (C558).
+    err = fixptcache.unwarned(r.stderr)
+    lines = [l for l in (r.stdout + err).splitlines() if l.strip() and not l.startswith(";")]
     if r.returncode != 0:
         return time.perf_counter() - t0, said(r.stdout + r.stderr, [".fx:"])
     got = (lines[-1] if lines else "?").split(" : ")[0]

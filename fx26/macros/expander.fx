@@ -13,38 +13,38 @@
  one host's asker's effect (C449, `ASKS`), which answers a
  procedural macro's transformer's request: expander.fx the
  engine's, expander-kc.fx kc's.
- fixpt-source: crates/fixpt-fx26/src/eager-reader-types.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/syn.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/parser-types.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/parser-loads.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/parser.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/macros-kernel.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/macros-syntax.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/macros-types.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/macros-env-types.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/macros-env-indexed.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/macros-nodes.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/macros-align.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/macros-scopes.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/macros-match.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/macros-exports.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/macros-facts.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/macros-files.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/macros-infer.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/macros-show.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/macros-shown.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/macros-solve.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/macros-fresh.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/macros-contracts.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/macros-written.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/macros-procedural.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/macros.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/macros-templates.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/macros-imports.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/macros-walk.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/macros-tree.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/macros-shaper.fx@3569ce5
- fixpt-source: crates/fixpt-fx26/src/macros-shapes.fx@3569ce5"
+ fixpt-source: crates/fixpt-fx26/src/eager-reader-types.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/syn.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/parser-types.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/parser-loads.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/parser.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/macros-kernel.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/macros-syntax.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/macros-types.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/macros-env-types.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/macros-env-indexed.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/macros-nodes.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/macros-align.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/macros-scopes.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/macros-match.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/macros-exports.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/macros-facts.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/macros-files.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/macros-infer.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/macros-show.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/macros-shown.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/macros-solve.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/macros-fresh.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/macros-contracts.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/macros-written.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/macros-procedural.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/macros.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/macros-templates.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/macros-imports.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/macros-walk.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/macros-tree.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/macros-shaper.fx@e98d0c8
+ fixpt-source: crates/fixpt-fx26/src/macros-shapes.fx@e98d0c8"
 (include (load-module "expander-types.fx"))
 
 "macros-shim.kfx: what Fixpt's expander, made KFX (fx26/macros/,
@@ -2179,6 +2179,13 @@
 (define addr+ (->* (addr bool) addr) (lambda (p step) (append p (the addr (list step)))))
 (define addr-falses (->* (addr int) addr)
   (lambda (a k) (if (= k 0) a (addr-falses (addr+ a #f) (- k 1)))))
+;; Whether module parameter `b` binds a description, `(name kind)` or `(r
+;; region p)`; else it is `(m T)`, `(m T #:qualified)` or `(m T
+;; #:unqualified)` (or `(m T qualified)`, refused after), a module
+;; (`parse::binder_is_kind`).
+(define keyword-is? (->* (syn symbol) bool)
+  (lambda (s k)
+    (tagcase s (atom (d a b x) (and (mx-keyword? d) (symbol=? (mx-keyword->symbol d) k))) (else y #f))))
 (define kind-form? (->* (syn) bool)
   (lambda (k)
     (let ((parts (proper-items k)))
@@ -2187,17 +2194,16 @@
           (and (syn-symbol? k)
                (mx-syntax-name-in? (syn-symbol k)
                          (list 'region 'place 'effect 'type 'data 'sendable 'flat 'size 'conv)))))))
-;; Whether module parameter `b` binds a description, `(name kind)` or `(r
-;; region p)`; else it is `(m T)` or `(m T qualified)`, a module
-;; (`parse::binder_is_kind`).
 (define binder-is-kind? (->* (syn) bool)
   (lambda (b)
     (let ((parts (proper-items b)))
       (cond ((= (len parts) 2) (kind-form? (nth parts 1)))
             ((= (len parts) 3)
              (or (kind-form? (nth parts 1))
-                 (not (and (syn-symbol? (nth parts 2)) (string=? (syn-name (nth parts 2))
-                                                         "qualified")))))
+                 (not (or (keyword-is? (nth parts 2) 'qualified)
+                          (keyword-is? (nth parts 2) 'unqualified)
+                          (and (syn-symbol? (nth parts 2))
+                               (string=? (syn-name (nth parts 2)) "qualified"))))))
             (else #t)))))
 (define parameters-list (->* (syns-a) sty)
   (lambda (ps)
@@ -2215,17 +2221,24 @@
         nil
         (cons (tuple (cons #t (addr+ (addr-falses nil k) #t)) 2)
               (parameter-entries (cdr ps) (+ k 1))))))
+;; Whether module parameter `b`, not a kind's binder, is included in its
+;; file's items: with no mark, for now, or marked `#:unqualified`
+;; (`parse::binder_included`).
+(define binder-included? (->* (syn) bool)
+  (lambda (b)
+    (let ((parts (proper-items b)))
+      (or (= (len parts) 2) (and (= (len parts) 3) (keyword-is? (nth parts 2) 'unqualified))))))
 (define parameter-shapes (->* (syns-a int) rings)
   (lambda (ps k)
     (cond ((null? ps) nil)
-          ((or (binder-is-kind? (car ps)) (not (= (len (proper-items (car ps))) 2)))
+          ((or (binder-is-kind? (car ps)) (not (binder-included? (car ps))))
            (parameter-shapes (cdr ps) (+ k 1)))
           (else (cons (ring-shape (cons #t (addr+ (addr+ (addr-falses nil k) #t) #t)))
                       (parameter-shapes (cdr ps) (+ k 1)))))))
 ;; The binding structure of a program's `module-parameters`' list `bs`:
 ;; each a value's binder, its type in the scope of those before it, or a
-;; description's; each module not `qualified` included in the items, as the
-;; checkers make the file (`macros.rs`'s `parameters_sig`).
+;; description's; each module included in the items (`binder-included?`),
+;; as the checkers make the file (`macros.rs`'s `parameters_sig`).
 (define parameters-sig (->* (syn) sty)
   (lambda (bs)
     (let ((ps (proper-items bs)))
@@ -4679,12 +4692,18 @@
     (if (not (null? (mx-facts-label-of n ls)))
         (begin (fail-at mx-fail (string-append "`" (string-append (symbol->string n) "` labels two parts")) at) ls)
         (cons (tuple n (extract l 1) (extract l 2) (extract l 3) (extract l 4)) ls))))
-;; Each label of a repeated element, the list's at `p`, onto `ls`.
+;; Each label of a repeated element, the list's at `p`, onto `ls`: one
+;; repeated in the element too, kind 2, a part repeated in a repeated part,
+;; which the signature takes and no fact names yet (`contract.rs`'s
+;; `Label::Deep`; Heist's `fixpt-nested-repetition.md`, 2026-11-27).
 (define repeated-labels (->* (fails mx-facts-labels mx-facts-steps mx-facts-labels syn) mx-facts-labels)
   (lambda (mx-fail inner p ls t)
     (cond ((null? inner) ls)
-          ((= (extract (car inner) 2) 1)
-           (begin (fail-at mx-fail "a repeated part in a repeated part: not yet" t) ls))
+          ((>= (extract (car inner) 2) 1)
+           (repeated-labels mx-fail (cdr inner) p
+                            (labelled-name mx-fail (extract (car inner) 1)
+                                           (tuple 2 p (the mx-facts-steps nil) 0) ls t)
+                            t))
           (else
            (repeated-labels mx-fail (cdr inner) p
                             (labelled-name mx-fail (extract (car inner) 1)
@@ -4717,6 +4736,11 @@
                (> (len items) 1) (syn-keyword? (nth items 1)))))))
 (define mx-facts-name-in? (->* (symbol mx-parser-types-names) bool)
   (lambda (n ns) (and (not (null? ns)) (or (symbol=? n (car ns)) (mx-facts-name-in? n (cdr ns))))))
+;; Why a fact may not name a part repeated in a repeated part (`contract.rs`'s
+;; `DEEP`).
+(define deep-said (->* (string) string)
+  (lambda (n)
+    (string-append "`" (string-append n "` is a part repeated in a repeated part, which no fact names yet"))))
 (define mx-facts-path-keys (->* (mx-facts-steps int int) syns-a)
   (lambda (p a b)
     (if (null? p)
@@ -4763,12 +4787,16 @@
                                                    "node")))
                                l)
                       nil))
+              ((and (not (null? ll)) (= (extract (car ll) 2) 2))
+               (begin (fail-at mx-fail (deep-said (syn-name l)) l) nil))
               ((or (null? ll) (= (extract (car ll) 2) 0)) (begin (fail-at mx-fail outside l) nil))
               ((and (syn-symbol? m) (null? ml))
                (begin (fail-at mx-fail (string-append "`" (string-append (syn-name m) (string-append "` labels no part of this "
                                                    "node")))
                                m)
                       nil))
+              ((and (not (null? ml)) (= (extract (car ml) 2) 2))
+               (begin (fail-at mx-fail (deep-said (syn-name m)) m) nil))
               ((or (null? ml) (= (extract (car ml) 2) 0)) (begin (fail-at mx-fail outside m) nil))
               ((not (steps=? (extract (car ll) 3) (extract (car ml) 3)))
                (begin (fail-at mx-fail (string-append "a fact under `...` names one list's "
@@ -4849,6 +4877,8 @@
               ((null? found)
                (begin (fail-at mx-fail (string-append "`" (string-append name "` labels no part of this node")) l)
                       none))
+              ((= (extract (car found) 2) 2)
+               (begin (fail-at mx-fail (deep-said name) l) none))
               ((and (= (extract (car found) 2) 0) rep)
                (begin (fail-at mx-fail (string-append "`" (string-append name (string-append "` is not repeated: named alone, not `("
                                                    (string-append name " ...)`"))))
@@ -4965,6 +4995,9 @@
                     (target (if (syn-symbol? m) (mx-facts-label-of (syn-symbol m) ls) nil)))
                (cond ((null? target)
                       (begin (fail-at mx-fail "`(bind L … in name)`: `name` a label of this node" m)
+                             (tuple imports rib rings star elems)))
+                     ((= (extract (car target) 2) 2)
+                      (begin (fail-at mx-fail (deep-said (syn-name m)) m)
                              (tuple imports rib rings star elems)))
                      ((= (extract (car target) 2) 1)
                       (begin (fail-at mx-fail (string-append "a fact binding in a repeated part is "
@@ -5226,6 +5259,9 @@
              (begin (fail-at mx-fail (string-append "`" (string-append (syn-name n) (string-append "` labels no part of this "
                                                  "signature's top")))
                              n)
+                    (made-entries mx-fail (cdr ds) ls out adds)))
+            ((= (extract (car found) 2) 2)
+             (begin (fail-at mx-fail (deep-said (syn-name n)) n)
                     (made-entries mx-fail (cdr ds) ls out adds)))
             ((= (extract (car found) 2) 1)
              (begin (fail-at mx-fail (string-append "`" (string-append (syn-name n) (string-append "` is a repeated part's: `("

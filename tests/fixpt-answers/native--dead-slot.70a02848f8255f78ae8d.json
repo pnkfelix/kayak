@@ -23,24 +23,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 0,
-"out": [
-"h : (subr (maxeff (read @heap) spin (read (globals h))) ((arrayof int @heap) int) int) ! pure",
-"g : (subr (maxeff (alloc @heap) spin (read (globals g))) (int) int) ! pure",
-"drop : (subr (maxeff (read @heap) (read @globals) (alloc @heap) spin) () int) ! pure",
-"keep : (subr (maxeff (read @heap) (read @globals) (alloc @heap) spin) () int) ! pure",
-"100000 : int ! (maxeff (read @heap) (read @globals) (alloc @heap) spin)",
-"200000 : int ! (maxeff (read @heap) (read @globals) (alloc @heap) spin)",
-""
-],
-"err": [
-""
-],
-"by": [
-"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
-]
 }
 ]
 }

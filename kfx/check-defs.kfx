@@ -2958,6 +2958,37 @@
                                 es)))
                  (nested-modules forms)))))
 
+"A module's exports with its own values in the order written (C558): KFX
+ checks the items in the order their references allow (`module-order`), a
+ procedure after the later ones it names (`arm64.fx`'s `arm-barrier`,
+ Fixpt e98d0c8, after `arm-pairs` and `arm-k`), and its type's values
+ were in that order, where Fixpt's are as written (`fixpt check --reps`,
+ `modules/load-input-built-in.fx`). The binds newest first: the slots of
+ the items `written` names (`m x` each) filled with them in its order
+ reversed; any other where it was."
+(define-rec
+  (bind-named (subr kfx (string binds) binds)
+    (lambda (n bs)
+      (cond ((null? bs) nil)
+            ((tagcase (car bs) (bind (k sc w) (string=? k n))) (list (car bs)))
+            (else (bind-named n (cdr bs)))))))
+(define-rec
+  (written-filled (subr kfx (binds strings binds) binds)
+    (lambda (bs names ordered)
+      (cond ((null? bs) nil)
+            ((tagcase (car bs) (bind (k sc w) (string-member? k names)))
+             (if (null? ordered)
+                 (cons (car bs) (written-filled (cdr bs) names ordered))
+                 (cons (car ordered) (written-filled (cdr bs) names (cdr ordered)))))
+            (else (cons (car bs) (written-filled (cdr bs) names ordered)))))))
+(define exports-as-written (subr kfx (string sexps binds) binds)
+  (lambda (m forms bs)
+    (let* ((own (map (lambda ((n string)) (string-append m (string-append " " n)))
+                     (concat (map item-value-names (unhidden forms)))))
+           (present (filter (lambda ((n string)) (not (null? (bind-named n bs)))) own))
+           (ordered (concat (map (lambda ((n string)) (bind-named n bs)) (reverse present)))))
+      (written-filled bs present ordered))))
+
 (define module-finish (subr kfx (mprep elab) elab)
   (lambda (p checked)
     (tagcase p
@@ -2966,7 +2997,7 @@
           (elab (done found)
             (tagcase done
               (cv (bs ds als es here group file line fs tv at ix mk)
-                (elab (cv-reindexed (cv (cons made (bind-onto (module-exports m (onto hidden (map (lambda ((b bind)) (tagcase b (bind (n sc w) n))) conversions)) (items-kept-in v bs))
+                (elab (cv-reindexed (cv (cons made (bind-onto (exports-as-written m forms (module-exports m (onto hidden (map (lambda ((b bind)) (tagcase b (bind (n sc w) n))) conversions)) (items-kept-in v bs)))
                                                 (cv-binds outer)))
                           (if loaded (onto ds (cv-dts outer)) ds)
                           (onto (without-aliases hidden-types m (module-aliases v m names forms #f))
@@ -3284,7 +3315,8 @@
 (define kind-parameter? (subr kfx (sexp) bool)
   (lambda (b)
     "A `module-parameters` binder of a kind, `(r region)`, `(t type)`, `(e
-     effect)`; not a module's, `(m T)` or `(m T qualified)` (C286)."
+     effect)`; not a module's, `(m T)`, `(m T #:qualified)` or `(m T
+     #:unqualified)` (C286, C557)."
     (tagcase (second (items b)) (sym (n f p) #t) (else other #f))))
 
 "An expression among a module's items (C286; Fixpt's 6447f9b0, Heist's): a
@@ -3324,11 +3356,30 @@
 (define run-items (subr kfx (sexps) sexps)
   (lambda (its) (tagcase (runs-from its 0) (items-ran (out n) out))))
 
+"A module parameter's mark (Fixpt's e98d0c8, 23af3a07, `binder-mark?`,
+ `old-qualified`): `(m T #:qualified)`, its names not included, reached by
+ `with`, `m::name` or `import`; `(m T #:unqualified)`, or for now `(m T)`,
+ included, hidden. The mark's spelling before keywords, the symbol
+ `qualified`, refused in Fixpt's words; any other mark refused too.
+ fixpt-source: crates/fixpt-fx26/src/parser-forms.fx@e98d0c8"
+(define old-qualified-said string
+  "a module parameter's mark is a keyword now: `#:qualified`, its names reached by `m::name`, `with` or `import`; or `#:unqualified`, its names the file's own, as a parameter with no mark's are for now")
+
+(define parameter-included? (subr kfx (string sexp) bool)
+  (lambda (path b)
+    (cond ((i64= (size (items b)) 2) #t)
+          ((sym-is? (third (items b)) "#:unqualified") #t)
+          ((sym-is? (third (items b)) "#:qualified") #f)
+          ((sym-is? (third (items b)) "qualified")
+           (begin (error (string-append "kfx: " (string-append path (string-append ": " old-qualified-said)))) #f))
+          (else
+           (begin (error (string-append "kfx: " (string-append path ": a module parameter's mark is `#:qualified` or `#:unqualified`"))) #f)))))
+
 (define parameters-given (subr kfx (sexps sexps string) sexps)
   (lambda (forms args path)
     "A loaded file's items: of a file of `module-parameters`, the rest, each
      kind's binder the argument given, each module's the module given, its
-     names included, hidden, unless it is `qualified` (C286; FX-26's
+     names included, hidden, unless it is `#:qualified` (C286, C557; FX-26's
      `(plambda (kinds) (lambda (modules) (module (hide (include m) …) item
      …)))`); `(module-parameters ())`, a file of none. Of any other, all,
      given nothing."
@@ -3342,9 +3393,9 @@
                      (margs (sexps-after args (size kinds)))
                      (its (substituted-all (substituted-all (cdr forms) kinds kargs) mods margs))
                      (included (concat (map2 (lambda ((b sexp) (m sexp))
-                                               (if (and (i64= (size (items b)) 3) (sym-is? (third (items b)) "qualified"))
-                                                   nil
-                                                   (the sexps (list (lst (list (sym "include" "" 0) m) "" 0 0)))))
+                                               (if (parameter-included? path b)
+                                                   (the sexps (list (lst (list (sym "include" "" 0) m) "" 0 0)))
+                                                   nil))
                                              mods margs))))
                 (if (null? included)
                     its

@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"layer2.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"; <programs>/module-files/layer2.fx, checked as a module file",
+"(poly ((s region)) (subr (maxeff (alloc s) (read (globals %shared:<programs>/module-files/layer1.fx))) () (moduleof (desc own (maxeff (read s) (write s))) (val rd (moduleof (desc own (maxeff (read s) (write s))) (desc cell (ref int s)) (val c cell) (val bump (subr (maxeff (read s) (write s)) () int)))) (val bump (subr (maxeff (read s) (write s)) () int)) (val twice (subr (maxeff (read s) (write s)) () int))))) ! (read (globals %shared:<programs>/module-files/layer2.fx))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

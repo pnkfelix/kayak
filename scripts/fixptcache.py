@@ -257,7 +257,53 @@ def _asked(binary, args, old, timeout):
     return Ran(r.returncode, r.stdout, r.stderr)
 
 
+_LOADS = re.compile(r'\((?:load-module|load-moduleof|load-input)\s+"([^"]+)"')
+
+
+def _loaded(files):
+    """The files `files` load by a path of their own (`load-module`,
+    `load-moduleof`, `load-input`; not Fixpt's built-in `fx26:` ones), and
+    those they load, each once, in the order met."""
+    seen, out, todo = set(os.path.abspath(f) for f in files), [], list(files)
+    while todo:
+        f = todo.pop(0)
+        try:
+            with open(f, encoding="utf-8", errors="replace") as g:
+                text = g.read()
+        except OSError:
+            continue
+        for rel in _LOADS.findall(text):
+            if ":" in rel:
+                continue
+            q = os.path.abspath(os.path.join(os.path.dirname(f), rel))
+            if q not in seen and os.path.isfile(q):
+                seen.add(q)
+                out.append(q)
+                todo.append(q)
+    return out
+
+
+# A warning of Fixpt's, `fixpt: PLACE: warning: ...` (since e98d0c8, C558: a
+# sum's label written bare, a module parameter of no mark): no part of an
+# answer, which kayak, warning of none, is to give.
+_WARNING = re.compile(r"^fixpt: .*?: warning: ")
+
+
+def unwarned(text):
+    """`text`, Fixpt's output (a string or bytes), its warnings' lines left
+    out."""
+    if isinstance(text, bytes):
+        return unwarned(text.decode("utf-8", errors="surrogateescape")).encode("utf-8", errors="surrogateescape")
+    return "".join(l for l in text.splitlines(keepends=True) if not _WARNING.match(l))
+
+
 def run(binary, args, files, timeout=None, name=None, keep=True):
+    """As `_run`, Fixpt's warnings left out of what it said (`unwarned`)."""
+    r = _run(binary, args, files, timeout, name, keep)
+    return Ran(r.returncode, r.stdout, unwarned(r.stderr))
+
+
+def _run(binary, args, files, timeout=None, name=None, keep=True):
     """`binary` given `args`, which name `files` (read for the key): its
     status and output, as kept, or asked of Fixpt. `binary` is None when
     there is no clone at the pin: then only what is kept, and Unanswered
@@ -276,6 +322,15 @@ def run(binary, args, files, timeout=None, name=None, keep=True):
     for f in files:
         with open(f, "rb") as g:
             part = b"\1" + g.read()
+        h.update(part)
+        old.update(part)
+    # The files they load, as written (C557: a module file of Fixpt's tests
+    # changed at a pin move, and its program's answer, keyed by the program
+    # alone, was the old file's). None for a program that loads none, so
+    # that its key is as it was.
+    for f in _loaded(files):
+        with open(f, "rb") as g:
+            part = b"\2" + os.path.basename(f).encode() + b"\0" + g.read()
         h.update(part)
         old.update(part)
     key = h.hexdigest()[:20]

@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"together-a.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"; <programs>/module-files/together-a.fx, checked as a module file",
+"(subr (read (globals %shared:<programs>/module-files/together-c.fx)) () (moduleof (desc n int) (val three int))) ! (read (globals %shared:<programs>/module-files/together-a.fx))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}

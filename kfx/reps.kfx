@@ -345,7 +345,7 @@
  type; a program's from its checker's own: its parameters, its marks
  (`%variance NAME`) and the representation its `#:seal` takes (`%up NAME`, C428)."
 (define-datatype gdecl (gdecl strings strings strings ty))
-"fixpt-source: crates/fixpt-fx26/src/check.rs@06a3666"
+"fixpt-source: crates/fixpt-fx26/src/check.rs@e98d0c8"
 (define rp-generative-decls strings
   (list "(vsubr (e effect +) (t type -) (r type +)) (subr e ((listof t acyclic)) r)"
         "(flatlayout (t type)) int"

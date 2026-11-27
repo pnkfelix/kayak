@@ -16,11 +16,12 @@
 ""
 ],
 "err": [
+"fixpt: <programs>/allof/fresh-closure-masked.fx:5:25: warning: a sum's label written `a`, not `#:a`, and 5 more in this file: a future version will take a sum's label only as a keyword, as types print it, in `sumof`'s variants and `sum`'s constructions: write `#:a`",
 "fixpt: <programs>/allof/fresh-closure-masked.fx:13:19: this call fits a (subr (alloc r) (ab) (subr pure () (ref ab r))) and a (subr (alloc r) (ac) (subr pure () (ref ac r))), whose results are procedures that may keep what the call allocates: one value would be both",
 ""
 ],
 "by": [
-"x86_64-linux@3569ce519f263f3b1c19042b8fa950f9ad3c8f1a"
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
 ]
 }
 ]

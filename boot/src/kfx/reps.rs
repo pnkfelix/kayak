@@ -1062,7 +1062,7 @@ pub fn gdecl(f0: Strings, f1: Strings, f2: Strings, f3: kayak_rt::data::DataAt<'
     kayak_rt::data::data_heap::<Gdecl, 0>((f0, f1, f2, f3,))
 }
 
-// fixpt-source: crates/fixpt-fx26/src/check.rs@06a3666
+// fixpt-source: crates/fixpt-fx26/src/check.rs@e98d0c8
 pub fn rp_generative_decls() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {

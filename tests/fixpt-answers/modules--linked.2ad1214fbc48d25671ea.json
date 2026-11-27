@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"linked.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define dep : (moduleof (val cat3 (subr pure (string string string) string)) (val limit int)) ! (read (globals %shared:<programs>/modules/../module-files/linked-dep.fx))",
+"define user-file : (moduleof (desc dep-sig (moduleof (val cat3 (subr pure (string string string) string)) (val limit int))) (val sigs (moduleof (desc dep-sig (moduleof (val cat3 (subr pure (string string string) string)) (val limit int))))) (val make (subr spin (dep-sig) (moduleof (val cat3 (subr pure (string string string) string)) (val twice (subr spin (int) int)) (val shout (subr pure (string) string)) (val v int))))) ! (read (globals %shared:<programs>/modules/../module-files/linked-user.fx))",
+"define user : (moduleof (val cat3 (subr pure (string string string) string)) (val twice (subr spin (int) int)) (val shout (subr pure (string) string)) (val v int)) ! (maxeff (read (globals dep user-file)) spin)",
+"int ! (read (globals user))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@e98d0c829a5136b371aeb0e8cb6dca3471747b1f"
+]
+}
+]
+}
