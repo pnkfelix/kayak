@@ -17836,3 +17836,30 @@ prudent".
   else nothing. A script, not a git hook: a hook is not versioned, and
   would stop the user's own pushes too. Pushing still only when asked.
 - **The full check**: `check-snapshot.sh --all`: `check: all passed`, 7 min 06 s, selfhost-cells run (not skipped) and its pass kept; the tree recorded as pushable; the pre-check passed first.
+
+## C554. The engine's jobs and kayak-checks run only when their inputs change (2026-11-26)
+
+The user, of C553's 5½ minutes without `--all`: "We definitely need to
+fix that", and whether the memo is test caching against what changed: it
+is, by contents (C552), and it was on selfhost-cells alone.
+- **Measured**: of the workspace's tests' 40300 s of the machine,
+  kayak-checks' 5767 tests took 40315 (every other package, 5 s); the
+  next jobs async-check 173 s, gc-stress 80, fixpt-programs 75,
+  engine-programs 58, fixpoint 27; kc-steps 64 (kc's, always run).
+- **scripts/memo.py**: `--crate C` (a package's sources and those of the
+  tree's packages it depends on, by `cargo metadata`, and Cargo.lock);
+  `--except P` (a path under a `--path` not read: tests/kc); `--keeps D`
+  (what a pass added or changed under D kept beside its output and put
+  back when the job is not run: target/kayak-checks, which the summaries
+  read after; target/fixpt-answers-used, without which the prune would
+  drop the answers a job not run asked for).
+- **scripts/check.sh**: the workspace's tests in two jobs, all but
+  kayak-checks (timed `workspace-but-checks`) every time, and
+  kayak-checks by the memo (its crate, the engine's three binaries, the
+  tree's tests but kc's, kfx, fx26, lib, cells, the pin); by the memo too
+  (`engine_job`): fixpoint, async-check, engine-programs, fixpt-programs
+  with refused-fixpt-programs, each declaring the tree's files it reads,
+  the crates it builds and the binaries it runs. Not by it: kc's jobs
+  (kc-steps, kc-objects, kc-expanded), gc-stress (kc's heap programs
+  among it), and those under 30 s.
+- **The full check**: `check: all passed`, 7 min 06 s, each of the six run and its pass kept; then the same tree again, 109 s in all (the check 68 s: gc-stress 66, kc-steps 54, fixpt-accepts 25), the six not run, no Fixpt answer dropped by the prune; the pre-check passed first.

@@ -63,7 +63,18 @@ trap 'for p in $pids; do killed "$p"; done; rm -rf "$logs"' EXIT
 # The bootstrap's fixed point (stage 0, Fixpt's runs) and the workspace's
 # tests under nextest (C276: the incremental compiles among them, chains at
 # once), begun first, as they take longest.
-job fixpoint tstep fixpoint${quick:+-quick} scripts/fixpoint.sh $quick
+# A job of the engine's (C554), run only when what it reads changed
+# (scripts/memo.py): every file of the tree but kc's own and the docs.
+# `engine_job NAME [MEMO OPTION]... -- COMMAND…`.
+engine_job() {
+    engine_name=$1
+    shift
+    job "$engine_name" python3 -I scripts/memo.py "$engine_name" "$@"
+}
+engine_job fixpoint --path kfx --path boot --path FIXPT_REV --path scripts/fixpoint.sh \
+    --path scripts/stage0.py --path scripts/fixptcache.py --path scripts/fixpt.sh --path tests/fixpt-answers \
+    --crate kfx --bin kfx --keeps target/fixpt-answers-used \
+    -- scripts/timed fixpoint${quick:+-quick}-in-check scripts/fixpoint.sh $quick
 # The second self-hosting (C366): the compiler on tier 1 makes itself; not
 # with --quick, for its 100 s.
 if [ -z "$quick" ]; then
@@ -73,13 +84,26 @@ if [ -z "$quick" ]; then
         --path scripts/selfhost-cells.sh --bin kayak-fx26 --bin kayak-cells \
         -- scripts/timed selfhost-cells-in-check scripts/selfhost-cells.sh
     # The emitter's async mode (C371): the compiler built async makes itself.
-    job asyncs tstep async-check scripts/async-check.sh
+    engine_job async-check --path kfx --path boot --path scripts/async-check.sh --crate kfx --bin kfx \
+        -- scripts/timed async-check-in-check scripts/async-check.sh
     # The collector's stress mode (C511): the corpus and the compiler, a
     # collection where no threshold would make one.
     job stress step scripts/gc-stress.sh
 fi
 rm -rf target/kayak-checks
-job tests tstep workspace-tests${quick:+-quick} env ${quick:+KAYAK_CHECK_QUICK=1} cargo nextest run --release --workspace --hide-progress-bar --status-level fail
+# The workspace's tests but kayak-checks', every time (a few seconds);
+# kayak-checks' (C554: 5767 tests, 40000 s of the machine's 40300) only when
+# what they read changed: their crate, the engine's binaries, the tree's
+# programs and Fixpt's answers; their findings, for the summaries after,
+# and the answers they asked, for the prune, put back when not run.
+job tests tstep workspace-but-checks${quick:+-quick} env ${quick:+KAYAK_CHECK_QUICK=1} cargo nextest run --release --workspace \
+    -E 'not package(kayak-checks)' --hide-progress-bar --status-level fail
+engine_job kayak-checks --path tests --except tests/kc --path kfx --path fx26 --path lib --path cells \
+    --path FIXPT_REV --path scripts/fixpt.sh --path .config/nextest.toml \
+    --crate kayak-checks --bin kayak-fx26 --bin kayak-cells --bin kfx \
+    --keeps target/kayak-checks --keeps target/fixpt-answers-used \
+    -- scripts/timed kayak-checks${quick:+-quick}-in-check env ${quick:+KAYAK_CHECK_QUICK=1} cargo nextest run --release \
+    -p kayak-checks --hide-progress-bar --status-level fail
 # kc's steps (C399): each back end against Fixpt's answers; then kc's
 # assembler (C450), each object kc-steps' builds made, as `as` makes it.
 kc_steps() {
@@ -90,7 +114,10 @@ job kc-steps kc_steps
 job io-programs step python3 -I scripts/io-programs.py
 job clippy step cargo clippy --release --workspace --all-targets --quiet -- -D warnings
 job corpus step python3 -I scripts/corpus.py
-job engine-programs tstep engine-programs python3 -I scripts/engine-programs.py
+engine_job engine-programs --path tests --except tests/kc --path kfx --path fx26 --path FIXPT_REV \
+    --path scripts/engine-programs.py --path scripts/fixptcache.py --crate kfx --crate kayak-fx26 \
+    --bin kfx --bin kayak-fx26 --keeps target/fixpt-answers-used \
+    -- scripts/timed engine-programs-in-check python3 -I scripts/engine-programs.py
 # kc's expansion, a form at a time, against the engine's, a program at a
 # time (C445): each of Fixpt's programs that defines a macro.
 job kc-expanded step python3 -I scripts/kc-expanded.py
@@ -135,11 +162,10 @@ if [ -d "${KAYAK_COOPT_CLONE:-../kayak-refs/coopt}/.git" ]; then
     job coopt-drift step python3 -I scripts/coopt-drift.py
 fi
 # Those that kfx accepts, run both ways; those it refuses, refused.
-fixpt_programs() {
-    tstep fixpt-programs python3 -I scripts/run-fixpt-programs.py
-    step python3 -I scripts/refused-fixpt-programs.py
-}
-job fixpt-programs fixpt_programs
+engine_job fixpt-programs --path tests --except tests/kc --path kfx --path fx26 --path lib --path FIXPT_REV \
+    --path scripts/run-fixpt-programs.py --path scripts/refused-fixpt-programs.py --path scripts/fixptcache.py \
+    --crate kfx --crate kayak-fx26 --crate kayak-rt --bin kfx --bin kayak-fx26 --keeps target/fixpt-answers-used \
+    -- sh -c 'scripts/timed fixpt-programs-in-check python3 -I scripts/run-fixpt-programs.py && python3 -I scripts/refused-fixpt-programs.py'
 # Each job waited for, in the order begun, its log said.
 set -- $pids
 for name in $names; do
