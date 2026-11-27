@@ -12,11 +12,13 @@ usage: python3 -I scripts/kc-steps.py
   rust    the KFX programs (`.kfx`): `kc --rust`, each a module of one
           crate (target/kc-rust), built once and run.
 
-The programs are swept by WORKERS at once (C551), each worker a database
-of its own (target/kc-steps/db-K.db), each program built by the first
-worker free, the slowest begun first; beside them, the edits (`cutoff`,
-`expansions`), the convention and the Rust crate, each its own database or
-none. Fixpt's answer to a program that reads nothing of the world is
+The programs are swept by WORKERS at once (C551), every worker on one
+database (C560, kc's database safe for runs at once since C559:
+target/kc-steps/shared.db), kept from run to run, so that a run whose kc
+is the last's begins warm (a database of another kc's identity reads as
+empty); each program built by the first worker free, the slowest begun
+first; beside them, the edits (`cutoff`, `expansions`), the convention and
+the Rust crate, each its own database, cold, or none. Fixpt's answer to a program that reads nothing of the world is
 asked once at the pin (scripts/fixptcache.py, target/fixpt-cache/).
 
 And early cutoff, as kc's database does it (C399): a program compiled,
@@ -392,6 +394,10 @@ def convention():
 # of its own: a program's cold build compiles what it shares with the others
 # (the runtime's routines, the prelude's items) once in each.
 WORKERS = 16
+# The sweep's one database (C559's step 3): every worker's at once, kept
+# from one run to the next, so that a run whose kc is the last's begins
+# warm (a database of another kc's identity is read as empty).
+SHARED = os.path.join(WORK, "shared.db")
 
 # Programs that read the world (a file by a path from where they are, the
 # clock, the standard input): Fixpt asked each time, in their directory.
@@ -466,12 +472,15 @@ def warmed(p, db):
     wrong if any query body ran (C463)."""
     name = os.path.relpath(p, TESTS)
     exe = os.path.join(WORK, name.replace("/", "--"))
-    r = run([KC, "--db", db, "--rt", RT, "--stats", "build", p, exe])
+    r = run([KC, "--db", db, "--rt", RT, "--stats", "--why", "build", p, exe])
     got = bodies_ran(r.stderr)
     if r.returncode == 0 and got == []:
         return None
     if r.returncode == 0:
-        return "%s: built again, nothing changed, ran %s" % (name, " ".join(got or ["(no stats)"]))
+        # Why each ran (C559, kc's `--why`), the first few.
+        whys = [l[len("kc: why: "):] for l in r.stderr.splitlines() if l.startswith("kc: why: ")][:3]
+        return "%s: built again, nothing changed, ran %s%s" % (name, " ".join(got or ["(no stats)"]),
+                                                               "".join("\n    why: " + w for w in whys))
     return "%s: built again: %s" % (name, r.stderr.strip())
 
 
@@ -486,7 +495,7 @@ def slowest_first(ps):
 
 def sweep(ps):
     """Every program swept (`swept`) and built again warm (`warmed`) by
-    WORKERS, each its own database, cold at first: the wrongs, the query
+    WORKERS, all on one database (SHARED, kept): the wrongs, the query
     bodies ran, how many ran in process and collected, how many warm."""
     todo = queue.Queue()
     for p in slowest_first(ps):
@@ -495,8 +504,7 @@ def sweep(ps):
     totals = {"wrong": [], "ran": 0, "in_process": 0, "collected": 0, "warm": 0}
 
     def worker(k):
-        db = os.path.join(WORK, "db-%d.db" % k)
-        fresh(db)
+        db = SHARED
         mine = []
         while True:
             try:

@@ -165,14 +165,18 @@
                                   (failed e acc)))))))
 
       "After a save, what of the database's files it may remove
-       (`db-collectable`) and not written in the last minute removed, by
-       one `rm` (FX-26 has no `delete-file`; kc runs commands already):
-       a run at once with this one may be reading an older head's files,
-       or have written its own and not yet its head."
+       (`db-collectable`) removed, by one `rm` (FX-26 has no `delete-file`;
+       kc runs commands already): the heads its own was made of at once;
+       a file no head there names if not written in the last minute (a
+       run at once with this one may be reading an older head's files, or
+       have written its own and not yet its head)."
       (define collected (subr driving (db string i64) unit)
         (lambda (d dbp now)
           (let* ((dir (string-append dbp ".d"))
-                 (old (written-before dir (db-collectable d (listed dir)) (i64- now 60) nil)))
+                 (ns (db-collectable d (listed dir) (lambda ((name string)) (read-text-or-none (db-path dbp name)))))
+                 ;; The heads its own holds at once; the rest if not written lately.
+                 (old (onto (filter (lambda ((n string)) (db-prefix? n "h.")) ns)
+                            (written-before dir (filter (lambda ((n string)) (not (db-prefix? n "h."))) ns) (i64- now 60) nil))))
             (if (null? old)
                 #u
                 (begin (run-command (cons "rm" (cons "-f" (map (lambda ((n string)) (string-append dir (string-append "/" n))) old))) "") #u)))))
@@ -509,6 +513,8 @@
                   ((and (string=? (car as) "--db") (not (null? (cdr as)))) (opts-of (cdr (cdr as)) (car (cdr as)) stats rt rest))
                   ((and (string=? (car as) "--rt") (not (null? (cdr as)))) (opts-of (cdr (cdr as)) db stats (car (cdr as)) rest))
                   ((string=? (car as) "--stats") (opts-of (cdr as) db #t rt rest))
+                  ;; Why each body ran (C559), with `--stats`: read in `kc-main`.
+                  ((string=? (car as) "--why") (opts-of (cdr as) db stats rt rest))
                   (else (opts-of (cdr as) db stats rt (cons (car as) rest))))))))
 
     (hide
@@ -600,6 +606,8 @@
             (let* ((d (if (string=? dbp "") (db-make) (db-opened (lambda ((name string)) (read-text-or-none (db-path dbp name)))
                                                               (lambda () (listed (string-append dbp ".d")))
                                                               kc-whose)))
+                   ;; `--why` (C559): why each body ran, said with the stats.
+                   (why (if (string-member? "--why" (the (listof string acyclic) (args))) (db-why! d) #u))
                    ;; The runtime, where not given, the one beside this kc (C447).
                    (rt (if (not (string=? rt0 ""))
                            rt0
@@ -682,6 +690,10 @@
                                (if stats (tagcase (write-err (string-append "kc: " (string-append (i64->string k) (string-append " query bodies ran:" (string-append names "\n")))))
                                            (done u #u) (failed e #u))
                                    #u)
+                               (if (null? (db-whys d))
+                                   #u
+                                   (tagcase (write-err (string-list-append (map (lambda ((w string)) (string-append "kc: why: " (string-append w "\n"))) (reverse (db-whys d)))))
+                                     (done u #u) (failed e #u)))
                                (if (or (string=? dbp "") (not (db-dirty? d))) #u (save-db d dbp))
                                (if no (begin (tagcase (write-err (string-append msg "\n")) (done u #u) (failed e #u)) 1) 0))))))))))
               status)))))))

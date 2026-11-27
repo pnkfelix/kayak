@@ -193,7 +193,8 @@ pub fn asked(d: Db, what: Str) -> Str {
     string_append(what, string_append(str_lit!("="), string_append(v, string_append(str_lit!("/"), i64_to_string(i64_minus(db_runs(d), before))))))
 }
 
-// Runs at once on one database (kayak-db 5, docs/research/parallel-db.md):
+// Runs at once on one database (kayak-db 5, docs/research/parallel-db.md;
+// C559's union, group `a` both runs': each's keys kept, `note a` B's):
 // `base`'s files opened by two runs, each editing one file and saving under
 // its own name; a third opens all their files, the heads of one generation
 // put together, each group's newer file taken (`total`'s, both wrote, B's):
@@ -220,10 +221,11 @@ pub fn at_once(base: Db) -> Str {
         db_get(a, kayak_rt::as_proc(run), k_of(str_lit!("total")));
         db_saved(a, str_lit!("test"), kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: kayak_rt::data::DataAt<'static, Sexp>| {
             true
-        })), str_lit!("000000000003-a"))
+        })), str_lit!("000000000004-a"))
     };
     let fb = {
         db_set_x(b, k_of(str_lit!("file b")), str_lit!("hi"), 0i64);
+        db_set_x(b, k_of(str_lit!("note a")), str_lit!("kept"), 0i64);
         db_get(b, kayak_rt::as_proc(run), k_of(str_lit!("total")));
         db_saved(b, str_lit!("test"), kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: kayak_rt::data::DataAt<'static, Sexp>| {
             true
@@ -232,7 +234,7 @@ pub fn at_once(base: Db) -> Str {
     let m = opened_from(onto(fb, onto(fa, fs0)), before);
     db_set_x(m, k_of(str_lit!("file a")), str_lit!("abcdefg"), 0i64);
     db_set_x(m, k_of(str_lit!("file b")), str_lit!("hi"), 0i64);
-    string_append(str_lit!("at-once-"), asked(m, str_lit!("merged")))
+    string_append(str_lit!("at-once-"), string_append(asked(m, str_lit!("merged")), string_append(str_lit!(" note="), db_get(m, kayak_rt::as_proc(run), k_of(str_lit!("note a"))))))
 }
 
 pub fn main() -> Str {

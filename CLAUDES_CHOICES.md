@@ -18074,3 +18074,40 @@ format against two runs found two things §3 had left open.
   `DB` alone and so ran warm on a second check (found by it: "procedural,
   cold: ran 2 expansions ..., not 4").
 - **The full check**: `check: all passed`, 113 s (the memoised jobs passed under these inputs before); the pre-check passed first (2 min 08 s). kc-bench cold 638.8 ms for 1000 procedures, 3014 bodies (C558: 624.6 ms), 152.7 for 100 (146.1): a little dearer, the other groups' keys written by text.
+
+## C560. kc-steps' workers on one database, kept; kc's database merged by union (2026-11-27)
+
+The user: "Go ahead" (step 3 of docs/research/parallel-db.md).
+- **scripts/kc-steps.py**: the sweep's 16 workers on one database,
+  target/kc-steps/shared.db, kept from run to run (a database of another
+  kc's identity reads as empty, so it is warm only when kc is the last's).
+  The edits, the convention and the Rust crate keep a database each, cold.
+- **What it found in C559's design**, each by the warm check (a program
+  built again, nothing changed, must run no body):
+  - Opening read only the heads of the greatest generation: with 16
+    workers saving, a head others saved past was lost with its work (252
+    of 395 warm checks failed). Now every head there that no head there
+    names as a parent is put in, and a save removes its parents at once
+    (its own head holds them), so that the heads there are few; the
+    generation is only in the name.
+  - A save removed the files no head of its own named: other workers'
+    heads' files. Now it reads the heads there and keeps what any names.
+  - A listing raced by a save: a head listed, removed before it was read
+    (its successor written first). Listed again when one is gone.
+  - A group two runs wrote at once: the newer file alone lost the other's
+    nodes (kc-steps: `interface`, `objects` of a program, a group several
+    loaded modules' keys share). Now their union, as §3 first said: a head
+    may name several files for a group (` ; ` between, the newest first);
+    reading it, the others' nodes the newest lacks put in, its own keys by
+    their numbers here (`extra-merged!`), the shard then written as one.
+  - The union's inline values were kept as a file's (`v-read`), so written
+    `file`, of no file: their text made here (`v-text`) now.
+- **kc --why** (with `--stats`): why each body ran: no node, a read changed
+  (its fingerprint as read and now), a value not kept or its file gone
+  (`db-why!`, `db-whys`); kc-steps' warm check says the first three. It is
+  what found the last two.
+- **Test**: tests/kfx/db's `at-once` gives B a key in a group A writes too,
+  A's file the newer: `note=kept` (Fixpt's answer, kayak's the same).
+- **Measured**: kc-steps cold, three runs, 0 wrong, 395 warm; run again on
+  the kept database, 906 bodies (cold: 20922), 28 s (52).
+- **The full check**: `check: all passed`, 7 min 28 s; kc-steps 67 s, cold (kc changed, so its kept database is another kc's), 0 wrong, 395 warm; kc-bench as C559. The pre-check passed first (2 min 47 s).

@@ -12,7 +12,7 @@ pub mod app;
 pub use app::*;
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
-pub struct Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_7foreign_3gen_7parents_4kept_4last_4runs_3ran<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15>(pub A0, pub A1, pub A2, pub A3, pub A4, pub A5, pub A6, pub A7, pub A8, pub A9, pub A10, pub A11, pub A12, pub A13, pub A14, pub A15);
+pub struct Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_7foreign_3gen_7parents_10superseded_4kept_4last_4runs_3ran_3why_4whys<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18>(pub A0, pub A1, pub A2, pub A3, pub A4, pub A5, pub A6, pub A7, pub A8, pub A9, pub A10, pub A11, pub A12, pub A13, pub A14, pub A15, pub A16, pub A17, pub A18);
 
-kayak_rt::trace_product!(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_7foreign_3gen_7parents_4kept_4last_4runs_3ran, A0 0, A1 1, A2 2, A3 3, A4 4, A5 5, A6 6, A7 7, A8 8, A9 9, A10 10, A11 11, A12 12, A13 13, A14 14, A15 15);
+kayak_rt::trace_product!(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_7foreign_3gen_7parents_10superseded_4kept_4last_4runs_3ran_3why_4whys, A0 0, A1 1, A2 2, A3 3, A4 4, A5 5, A6 6, A7 7, A8 8, A9 9, A10 10, A11 11, A12 12, A13 13, A14 14, A15 15, A16 16, A17 17, A18 18);
 

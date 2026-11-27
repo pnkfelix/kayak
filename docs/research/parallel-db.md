@@ -151,7 +151,13 @@ longer sends its reader to run again (`db-verify`: 276 bodies run, not
 2. Files by run, nodes named in them by key; heads by generation, opened
    by `list-dir` and put together; collecting by kc's own `rm` (C559, §3a;
    no Fixpt `delete-file` needed).
-3. kc-steps' workers on one database, kept from check to check.
+3. kc-steps' workers on one database, kept from check to check (C560). It
+   found what step 2 left: the heads of the greatest generation alone
+   lost the work of every head others had saved past (now: every head no
+   head there names as a parent, a save removing its parents at once); a
+   listing raced by a save (listed again); a group two runs wrote at once,
+   the newer file's alone (now their union, §3a's choice undone); and the
+   union's inline values kept as a file's (written `file`, of no file).
 
 ## 7. The alternatives
 
