@@ -87,8 +87,17 @@ if [ -z "$quick" ]; then
     engine_job async-check --path kfx --path boot --path scripts/async-check.sh --crate kfx --bin kfx \
         -- scripts/timed async-check-in-check scripts/async-check.sh
     # The collector's stress mode (C511): the corpus and the compiler, a
-    # collection where no threshold would make one.
-    job stress step scripts/gc-stress.sh
+    # collection where no threshold would make one. In parts (C555): kc's
+    # every time; kayak-rt's tests, the corpus and the compiler when what
+    # each reads changed.
+    job stress-kc step scripts/gc-stress.sh kc
+    engine_job gc-stress-rt --path scripts/gc-stress.sh --crate kayak-rt --crate kayak-heap \
+        -- scripts/gc-stress.sh rt
+    engine_job gc-stress-corpus --path scripts/gc-stress.sh --path tests --except tests/kc --path kfx --path lib \
+        --path fx26 --path FIXPT_REV --path .config/nextest.toml --crate kfx-corpus --keeps target/fixpt-answers-used \
+        -- scripts/gc-stress.sh corpus
+    engine_job gc-stress-compiler --path scripts/gc-stress.sh --path kfx --path boot --crate kfx --bin kfx \
+        -- scripts/gc-stress.sh compiler
 fi
 rm -rf target/kayak-checks
 # The workspace's tests but kayak-checks', every time (a few seconds);

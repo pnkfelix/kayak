@@ -17863,3 +17863,20 @@ is, by contents (C552), and it was on selfhost-cells alone.
   (kc-steps, kc-objects, kc-expanded), gc-stress (kc's heap programs
   among it), and those under 30 s.
 - **The full check**: `check: all passed`, 7 min 06 s, each of the six run and its pass kept; then the same tree again, 109 s in all (the check 68 s: gc-stress 66, kc-steps 54, fixpt-accepts 25), the six not run, no Fixpt answer dropped by the prune; the pre-check passed first.
+
+## C555. gc-stress in parts; kc's alone every time (2026-11-26)
+
+The user, after C554 left gc-stress the check's floor (66 s): "Yeah let's
+look at the GC-stress thing next".
+- **`scripts/gc-stress.sh [rt | corpus | kc | compiler]...`**: its four
+  parts, all if none is named, each timed alone as `gc-stress-PART`.
+  Alone: kayak-rt's tests 3 s, the corpus 11, kc's code in the heap 32,
+  the compiler making itself 18.
+- **kc's part**: its programs (tests/kc/heap) each beside the others, each
+  its own database: 23 s (32), `tasks.fx` the longest.
+- **scripts/check.sh**: the four as jobs; kc's every time, the other
+  three by scripts/memo.py (kayak-rt's: its crate and kayak-heap's; the
+  corpus: kfx-corpus, the tree's tests but kc's, which its Rust is made
+  of, kfx, lib, fx26, the pin; the compiler: kfx, boot, its crate and
+  binary).
+- **The full check**: `check: all passed`, 108 s in all (the check 68 s: kc-steps 53, fixpt-accepts 26, gc-stress's kc part 25), the three new parts run and kept, the six of C554 not run; the pre-check passed first.
