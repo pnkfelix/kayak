@@ -18,9 +18,11 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 QUINT = os.path.join(ROOT, "tools", "quint")
 
-# (file, invariant, instance that must hold, instance that must fail)
+# (file, invariant, instance that must hold, instances that must fail):
+# db's `byRevisions`, verified by revisions with another run's nodes put
+# in, the reason kayak-db 4 verifies by fingerprints (docs/research/parallel-db.md).
 MODELS = [
-    ("models/db.qnt", "sound", "fixed", "unfixed"),
+    ("models/db.qnt", "sound", "fixed", ["unfixed", "byRevisions"]),
 ]
 
 
@@ -41,13 +43,14 @@ def main():
         print("models: no Quint in tools/quint (npm ci there failed), so the models are not checked")
         return
     wrong = []
-    for path, inv, good, bad in MODELS:
+    for path, inv, good, bads in MODELS:
         ok, said = simulate(path, good, inv)
         if not ok:
             wrong.append("%s: %s breaks %s: %s" % (path, good, inv, said))
-        ok, said = simulate(path, bad, inv)
-        if ok:
-            wrong.append("%s: %s keeps %s, which it should not: the model no longer sees the bug" % (path, bad, inv))
+        for bad in bads:
+            ok, said = simulate(path, bad, inv)
+            if ok:
+                wrong.append("%s: %s keeps %s, which it should not: the model no longer sees the bug" % (path, bad, inv))
     for w in wrong:
         print("models: " + w)
     print("models: %d model(s), %d wrong" % (len(MODELS), len(wrong)))

@@ -402,7 +402,7 @@ pub mod kc_driver {
         } else { unreachable!() }
     }
 
-    // The database's files (C472, `lib/db.kfx`'s `kayak-db 3`): its head
+    // The database's files (C472, `lib/db.kfx`'s `kayak-db 4`): its head
     // at DB, its shards and values in DB.d/, each written only if it
     // changed; a whole program's output not kept, made again from its
     // items when it is asked for.

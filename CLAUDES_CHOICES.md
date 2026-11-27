@@ -17880,3 +17880,38 @@ look at the GC-stress thing next".
   of, kfx, lib, fx26, the pin; the compiler: kfx, boot, its crate and
   binary).
 - **The full check**: `check: all passed`, 108 s in all (the check 68 s: kc-steps 53, fixpt-accepts 26, gc-stress's kc part 25), the three new parts run and kept, the six of C554 not run; the pre-check passed first.
+
+## C556. kc's database verified by fingerprints (kayak-db 4) (2026-11-26)
+
+The user: "Yeah let's look into parallel-safe database now"; then, of the
+design (docs/research/parallel-db.md): "is a log structured database not
+an option?", and "Go ahead".
+- **docs/research/parallel-db.md**: what breaks with two runs at once
+  (lost heads, numbers given twice, revisions counted apart); what the pin
+  gives (`list-dir`, no append, no delete, no lock); the design,
+  log-structured: nodes verified by fingerprints, a segment a save never
+  overwritten, opening by `list-dir`, compacting; collecting waiting on a
+  Fixpt `delete-file`. My first design (a head per save naming its
+  parents) kept as an alternative: a log needs no head, `list-dir` finds
+  its segments. And I had missed `list-dir`, and assumed a delete.
+- **Step 1, `models/db.qnt` first**: a node's reads with the fingerprint
+  each had (`(key, value)`); verified by them (`BYFP`); a `merge` action,
+  another run's nodes put in, their revisions its own, `last` moved at
+  every durability (`MERGES`). `fixed` (by fingerprints, merging) holds;
+  `byRevisions` (by revisions, merging) is found wanting, as `unfixed`
+  still is; `oneRun` (by revisions, alone) holds. scripts/models.py
+  checks `byRevisions` must fail.
+- **lib/db.kfx, `kayak-db 4`**: `db-dep`, a read's number and its
+  fingerprint as read; a frame's reads and a node's those; `note-read!`
+  given the fingerprint; `db-reads-durability` compares fingerprints, not
+  revisions of change; a record's reads `(#M# FP ...)`; `kayak-shard 4`.
+  A database of kayak-db 3 is read as empty (another format), so every
+  kc database runs cold once.
+- **Verifies better**: tests/kfx/db-verify runs 276 bodies where it ran
+  318 (a read whose value went back to what it was no longer sends its
+  reader to run again), none disagreeing. Its answer differs from
+  db-verify.out (blessed on arm64 macOS, the home platform) so is kept as
+  db-verify.x86_64-linux.out until it is blessed there.
+- **Not yet**: segments, opening by `list-dir`, compacting (step 2);
+  kc-steps on one database (step 3).
+- **The full check**: `check: all passed`, 7 min 08 s (lib and kc changed, so the memoised jobs ran); the pre-check passed first (2 min 38 s).
