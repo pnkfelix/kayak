@@ -18133,3 +18133,45 @@ and e98d0c8.
 - **Test**: by hand (`'#utf8"x"`, `` `(a ,1 #utf8"x") ``, `'#u8(1 2)`, each
   refused); kc's tests (kc-steps) state answers, not refusals.
 - **The full check**: `check: all passed`, 5 min 05 s; the pre-check passed first (4 min 22 s).
+
+## C563. kc's database kept from growing: old heads removed, a group's files a minute's (2026-11-28)
+
+Found moving the pin to Fixpt a36fb65: the full check, run again (its
+first failed on `bench/loop.fx`, 26 s of a 30 s limit, under load, as at
+C561), ran past 40 minutes, then 30, in kc-steps: its kept database
+(C560) had grown to 7303 shard files, 317 MB, and a warm build of one
+small program took 27 s. Before this pin too (C561's kc, the same day:
+kc-steps cold 75 s, then warm 197 s, 384 s). As the user decided at C557
+("fix it before we move the pin"), fixed first, the pin move kept aside.
+Three causes:
+- **Heads that came back**: a run stopped after writing its head and
+  before removing its parents (kc-steps' timeouts, the check's) left them;
+  once the head naming them was removed, none named them, and each open
+  put them together with the rest. Now a save removes the heads it was
+  made of and every head there that one of them names, and theirs
+  (`heads-ancestors`): a head goes only with what it holds.
+- **Another kc's heads**: kept for good (a run of another kc reads them
+  as none, and none removes them), and every file they name. Now removed
+  if not written in the last minute (`db-foreign-heads`, `head-whose`).
+- **A group's files put together for good**: each of a program's four
+  steps writes its group, every head keeps the version it saw, and an
+  open put every version together (C559's union), the newest first: lists
+  of up to 13 files, read and merged at each open, growing from run to
+  run. Now only the newest and those written within a minute before it
+  (`where-recent`, by the clock in a file's name, `gHASH.SECONDS-PID`): an
+  older one was, nearly always, read by the run that wrote the newer. A
+  run open more than a minute while another writes its group may lose
+  what it made there: those queries run again (a cache, verified by
+  fingerprints).
+- **Collection less often**: which files no head names asks for every
+  head read whole; now at every eighth generation, the heads at each save
+  (`db-collectable`'s `files?`). 108 s to 97 s warm.
+- **Measured** (kc-steps three times on the kept database, the first cold):
+  65 s, 97 s, 97 s; 1600 to 1700 shard files, 86 MB, level. Before: 75,
+  197, 384, growing. A warm sweep still slower than a cold one: each open
+  reads every head there whole, about 45 ms each of sixteen (TODO §59).
+  C560's "28 s warm" did not come again on this machine.
+- **Test**: tests/kfx/db: `collect` (four saves, each left there, and
+  another's head: all four removed, one left), `recent` (of files at 100,
+  50 and 30 s, the first two).
+- **The full check**: `check: all passed`, 7 min 59 s; kc-steps cold (kc changed), 0 wrong, its kept database of the old kc (7303 shard files) removed. The pre-check passed first (3 min 40 s).

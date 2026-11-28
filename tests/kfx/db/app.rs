@@ -237,6 +237,48 @@ pub fn at_once(base: Db) -> Str {
     string_append(str_lit!("at-once-"), string_append(asked(m, str_lit!("merged")), string_append(str_lit!(" note="), db_get(m, kayak_rt::as_proc(run), k_of(str_lit!("note a"))))))
 }
 
+// What a save may remove (C563): four saves one after another, x0 to x3,
+// each opening the files before it, as if each run were stopped before it
+// removed its parents, so that every head is still there; and a head of
+// another `whose`. x3's save removes the head it was made of, x2, and x2's
+// parent and its parent, x1 and x0, which none would name once x2 was gone,
+// and the other's head, given as not written lately: one head left, its.
+pub fn collect(base: Db) -> Str {
+    let keep = kayak_rt::closure1s((), |(), k: kayak_rt::data::DataAt<'static, Sexp>| {
+        true
+    });
+    let f0 = db_saved(base, str_lit!("test"), keep, str_lit!("000000000005-x0"));
+    let before = db_reader(base);
+    let x1 = opened_from(f0, before);
+    let f1 = {
+        db_set_x(x1, k_of(str_lit!("file a")), str_lit!("q"), 0i64);
+        db_saved(x1, str_lit!("test"), keep, str_lit!("000000000006-x1"))
+    };
+    let x2 = opened_from(onto(f1, f0), before);
+    let f2 = {
+        db_set_x(x2, k_of(str_lit!("file a")), str_lit!("qq"), 0i64);
+        db_saved(x2, str_lit!("test"), keep, str_lit!("000000000007-x2"))
+    };
+    let fs = onto(f2, onto(f1, f0));
+    let x3 = opened_from(fs, before);
+    let f3 = {
+        db_set_x(x3, k_of(str_lit!("file a")), str_lit!("qqq"), 0i64);
+        db_saved(x3, str_lit!("test"), keep, str_lit!("000000000008-x3"))
+    };
+    let all = kayak_rt::heap_cons(db_file(str_lit!("h.0000000001.000000000001-f"), str_lit!("(kayak-db 5 \"another\" 1 0 (0 0 0 0) () ())\n")), onto(f3, fs));
+    let rd = kayak_rt::closure1((before, all,), |(before, all,), name: Str| {
+        file_in(all, name, before)
+    });
+    let names = files_named(all);
+    let gone = db_collectable(x3, names, rd, str_lit!("test"), db_foreign_heads(names, rd, str_lit!("test")), true);
+    let head_p = kayak_rt::closure1s((), |(), x: Str| {
+        (i64_gt(string_length_i64(x), 2i64) && string_eq_p(substring(x, int_lit(0), int_lit(2)), str_lit!("h.")))
+    });
+    string_append(str_lit!("collect-gone="), string_append(i64_to_string(size(filter(head_p, gone))), string_append(str_lit!(" left="), i64_to_string(size(filter(kayak_rt::as_proc(kayak_rt::closure1s((gone, head_p,), |(gone, head_p,), x: Str| {
+        (head_p.call(x) && not(string_member_p(x, gone)))
+    })), names))))))
+}
+
 pub fn main() -> Str {
     let d = db_make();
     db_set_x(d, k_of(str_lit!("files")), str_lit!("a b"), 2i64);
@@ -266,6 +308,8 @@ pub fn main() -> Str {
     };
     let other = string_append(str_lit!("another's-keys="), i64_to_string(size(db_keys(reread(d, str_lit!("another"))))));
     let merged = at_once(d2);
-    string_list_append(kayak_rt::heap_cons(first, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(again, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(same, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(longer, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(side, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(read_back, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(edited, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(other, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(merged, kayak_rt::nil()))))))))))))))))))
+    let collected = collect(d2);
+    let recent = string_append(str_lit!("recent="), where_joined(where_recent(where_groups(str_lit!("g1.000000000100-a v1 ; g1.000000000050-b ; g1.000000000030-c")))));
+    string_list_append(kayak_rt::heap_cons(first, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(again, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(same, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(longer, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(side, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(read_back, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(edited, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(other, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(merged, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(collected, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(recent, kayak_rt::nil()))))))))))))))))))))))
 }
 

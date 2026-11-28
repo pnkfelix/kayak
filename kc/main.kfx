@@ -173,7 +173,15 @@
       (define collected (subr driving (db string i64) unit)
         (lambda (d dbp now)
           (let* ((dir (string-append dbp ".d"))
-                 (ns (db-collectable d (listed dir) (lambda ((name string)) (read-text-or-none (db-path dbp name)))))
+                 (names (listed dir))
+                 (rd (lambda ((name string)) (read-text-or-none (db-path dbp name))))
+                 ;; Another kc's heads, if not written lately (C563).
+                 ;; The files no head names, and another kc's heads, at every
+                 ;; eighth generation (C563): each asks for every head there
+                 ;; read whole; the heads this one was made of at each.
+                 (files? (i64= (i64-and (db-generation d) 7) 0))
+                 (foreign (if files? (written-before dir (db-foreign-heads names rd kc-whose) (i64- now 60) nil) nil))
+                 (ns (db-collectable d names rd kc-whose foreign files?))
                  ;; The heads its own holds at once; the rest if not written lately.
                  (old (onto (filter (lambda ((n string)) (db-prefix? n "h.")) ns)
                             (written-before dir (filter (lambda ((n string)) (not (db-prefix? n "h."))) ns) (i64- now 60) nil))))

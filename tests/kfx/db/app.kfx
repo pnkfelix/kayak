@@ -114,6 +114,32 @@
         (db-set! m (k-of "file b") "hi" 0)
         (string-append "at-once-" (string-append (asked m "merged") (string-append " note=" (db-get m run (k-of "note a")))))))))
 
+"What a save may remove (C563): four saves one after another, x0 to x3,
+ each opening the files before it, as if each run were stopped before it
+ removed its parents, so that every head is still there; and a head of
+ another `whose`. x3's save removes the head it was made of, x2, and x2's
+ parent and its parent, x1 and x0, which none would name once x2 was gone,
+ and the other's head, given as not written lately: one head left, its."
+(define collect (subr qe (db) string)
+  (lambda (base)
+    (let* ((keep (lambda ((k sexp)) #t))
+           (f0 (db-saved base "test" keep "000000000005-x0"))
+           (before (db-reader base))
+           (x1 (opened-from f0 before))
+           (f1 (begin (db-set! x1 (k-of "file a") "q" 0) (db-saved x1 "test" keep "000000000006-x1")))
+           (x2 (opened-from (onto f1 f0) before))
+           (f2 (begin (db-set! x2 (k-of "file a") "qq" 0) (db-saved x2 "test" keep "000000000007-x2")))
+           (fs (onto f2 (onto f1 f0)))
+           (x3 (opened-from fs before))
+           (f3 (begin (db-set! x3 (k-of "file a") "qqq" 0) (db-saved x3 "test" keep "000000000008-x3")))
+           (all (cons (db-file "h.0000000001.000000000001-f" "(kayak-db 5 \"another\" 1 0 (0 0 0 0) () ())\n") (onto f3 fs)))
+           (rd (lambda ((name string)) (file-in all name before)))
+           (names (files-named all))
+           (gone (db-collectable x3 names rd "test" (db-foreign-heads names rd "test") #t))
+           (head? (lambda ((x string)) (and (i64> (string-length-i64 x) 2) (string=? (substring x 0 2) "h.")))))
+      (string-append "collect-gone=" (string-append (i64->string (size (filter head? gone)))
+        (string-append " left=" (i64->string (size (filter (lambda ((x string)) (and (head? x) (not (string-member? x gone)))) names)))))))))
+
 (define main (subr qe () string)
   (lambda ()
     (let ((d (db-make)))
@@ -134,5 +160,9 @@
                (read-back (asked d2 "read-back"))
                (edited (begin (db-set! d2 (k-of "file a") "abcd" 0) (asked d2 "edited")))
                (other (string-append "another's-keys=" (i64->string (size (db-keys (reread d "another"))))))
-               (merged (at-once d2)))
-          (string-list-append (list first " " again " " same " " longer " " side " " read-back " " edited " " other " " merged)))))))
+               (merged (at-once d2))
+               (collected (collect d2))
+               ;; A group's files put together (C563): the newest and those
+               ;; written within a minute before it.
+               (recent (string-append "recent=" (where-joined (where-recent (where-groups "g1.000000000100-a v1 ; g1.000000000050-b ; g1.000000000030-c"))))))
+          (string-list-append (list first " " again " " same " " longer " " side " " read-back " " edited " " other " " merged " " collected " " recent)))))))

@@ -2593,3 +2593,14 @@ list, the reader's `(#utf8 "…")`, silently), and so is one written as an
 expression. Fixpt's tagged literals (`#Ltag"text"`, 9025322f) are made of
 one. To do: a constant term of each in L0, made by kcrt (both hosts) from
 its text or bytes, `string->utf8` as the engine's `%fx26-string->utf8`.
+
+## 59. kc's database: an open's cost by heads (C563)
+
+Every open reads and puts together each head there that no head names,
+whole (`db-opened`, `lines-scanned!`): about 45 ms each of kc-steps' heads
+(their 891 groups' lines, 180 to 350 KB), and kc-steps' sixteen workers
+leave about sixteen. So a warm sweep (906 bodies) is slower than a cold
+one (20922): 97 s, against 65 (C563, measured; C560's 28 s warm does not
+come again, its kc 197 s on this machine the same day). To do: read a
+head's line of a group only when the group is asked for, or keep the
+heads few (a save putting together what a worker's run of steps made).

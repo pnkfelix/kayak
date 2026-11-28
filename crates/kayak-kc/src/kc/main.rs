@@ -489,9 +489,17 @@ pub mod kc_driver {
     // have written its own and not yet its head).
     pub fn collected(d: Db, dbp: Str, now: i64) -> () {
         let dir = string_append(dbp, str_lit!(".d"));
-        let ns = db_collectable(d, listed(dir), kayak_rt::closure1((dbp,), |(dbp,), name: Str| {
+        let names = listed(dir);
+        let rd = kayak_rt::closure1((dbp,), |(dbp,), name: Str| {
             read_text_or_none(db_path(dbp, name))
-        }));
+        });
+        let files_p = i64_eq(i64_and(db_generation(d), 7i64), 0i64);
+        let foreign = if files_p {
+            written_before(dir, db_foreign_heads(names, rd, kc_whose()), i64_minus(now, 60i64), nil::<Str>())
+        } else {
+            nil::<Str>()
+        };
+        let ns = db_collectable(d, names, rd, kc_whose(), foreign, files_p);
         let old = onto(filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), n: Str| {
             db_prefix_p(n, str_lit!("h."))
         })), ns), written_before(dir, filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), n: Str| {

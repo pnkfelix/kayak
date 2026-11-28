@@ -2422,6 +2422,66 @@ pub fn where_union(mut gs: List<Str>, mut acc: List<Str>) -> List<Str> {
     }
 }
 
+// When a group's file was written, its name's clock (`gHASH.SECONDS-PID`,
+// kayak-db 5); -1 if it has none.
+pub fn seconds_after_dot(mut cs: List<char>) -> i64 {
+    loop {
+        if null_p(cs) {
+            return -1i64;
+        } else if char_eq_p(car(cs), '.') {
+            return seconds_of(cdr(cs), 0i64, 0i64);
+        } else {
+            cs = cdr(cs);
+            continue;
+        }
+    }
+}
+
+pub fn seconds_of(mut cs: List<char>, mut k: i64, mut acc: i64) -> i64 {
+    loop {
+        if i64_eq(k, 12i64) {
+            return acc;
+        } else if null_p(cs) {
+            return -1i64;
+        } else if (i64_gt_eq(char_to_i64(car(cs)), 48i64) && i64_lt_eq(char_to_i64(car(cs)), 57i64)) {
+            (cs, k, acc) = (cdr(cs), i64_plus(k, 1i64), i64_plus(i64_star(acc, 10i64), i64_minus(char_to_i64(car(cs)), 48i64)));
+            continue;
+        } else {
+            return -1i64;
+        }
+    }
+}
+
+#[inline]
+pub fn where_seconds(g: Str) -> i64 {
+    seconds_after_dot(string_chars(where_file(g)))
+}
+
+// Of a group's files, the newest first, those it is put together of
+// (C563): the newest, and those written within `where-window` seconds
+// before it, the runs at once with its. One older was, nearly always, read
+// by the run that wrote a newer, whose file holds what it did: put
+// together with it for good (each of a program's steps writes its group,
+// and every head kept the version it saw), a group's files grew from one
+// run to the next, kc-steps' warm runs 28 s, then 197, then 391. One run
+// open longer than that while another wrote its group may lose what it
+// made there: those queries run again.
+#[inline]
+pub fn where_window() -> i64 {
+    60i64
+}
+
+pub fn where_recent(gs: List<Str>) -> List<Str> {
+    if (null_p(gs) || null_p(cdr(gs))) {
+        gs
+    } else {
+        let t0 = where_seconds(car(gs));
+        kayak_rt::heap_cons(car(gs), filter(kayak_rt::as_proc(kayak_rt::closure1s((t0,), |(t0,), g: Str| {
+            i64_gt_eq(where_seconds(g), i64_minus(t0, where_window()))
+        })), cdr(gs)))
+    }
+}
+
 // A value's own file (kayak-db 5): by its key's hash and its fingerprint,
 // so that two runs that write one write the same text, and none is named by
 // a number of one run's.
@@ -4058,13 +4118,13 @@ pub fn lines_scanned_x(d: Db, s: Str, i: i64, n: i64) -> () {
             let tagcase_ = db_shard(d, k);
             if Shard::__is_Shard(tagcase_) {
                 let (h0, w0, t0, next, loaded, dirty,) = Shard::__Shard(tagcase_);
-                sm_set_x(d, k, shard(h, where_joined(where_union(where_groups(w), where_groups(w0))), str_lit!(""), 0i64, false, false))
+                sm_set_x(d, k, shard(h, where_joined(where_recent(where_union(where_groups(w), where_groups(w0)))), str_lit!(""), 0i64, false, false))
             } else { kayak_rt::data::no_variant() }
         } else {
             let m = get(d.5);
             set(d.5, i64_plus(m, 1i64));
             set(d.4, km_put(get(d.4), h, m));
-            sm_set_x(d, m, shard(h, w, str_lit!(""), 0i64, false, false))
+            sm_set_x(d, m, shard(h, where_joined(where_recent(where_union(where_groups(w), nil::<Str>()))), str_lit!(""), 0i64, false, false))
         };
         lines_scanned_x(d, s, i64_plus(close, 1i64), n)
     }
@@ -4479,29 +4539,119 @@ pub fn heads_named(mut rd: Reader, mut hs: List<Str>, mut acc: List<Str>) -> Lis
     }
 }
 
+// A head's `whose`, as its text says (kayak-db 5); `` if it is none.
+pub fn head_whose(t: Str) -> Str {
+    let n = string_length_i64(t);
+    if (i64_gt(n, 13i64) && i64_eq(sc_char(t, the::<i64>(12i64), n), 34i64)) {
+        let tagcase_ = sc_str(t, the::<i64>(12i64), n, am_none());
+        if Part::__is_Part(tagcase_) {
+            let (w, wt, atoms, e,) = Part::__Part(tagcase_);
+            let tagcase_ = w;
+            if Sexp::__is_Str(tagcase_) {
+                let (x, f, p,) = Sexp::__Str(tagcase_);
+                x
+            } else {
+                let other = tagcase_;
+                str_lit!("")
+            }
+        } else { kayak_rt::data::no_variant() }
+    } else {
+        str_lit!("")
+    }
+}
+
+// Of `names`, the heads of another `whose` than `whose` (another kc's,
+// which a run of this one reads as none): kept by no run of this one, so
+// that what they name is not kept for good (C563).
+pub fn db_foreign_heads(mut names: List<Str>, mut rd: Reader, mut whose: Str) -> List<Str> {
+    loop {
+        if null_p(names) {
+            return nil::<Str>();
+        } else if (i64_gt_eq(head_gen(car(names)), 0i64) && {
+            let t = rd.call(car(names));
+            (not(string_eq_p(t, str_lit!(""))) && not(string_eq_p(head_whose(t), whose)))
+        }) {
+            return kayak_rt::heap_cons(car(names), db_foreign_heads(cdr(names), rd, whose));
+        } else {
+            names = cdr(names);
+            continue;
+        }
+    }
+}
+
+/// Heads `todo` and, of `present`, each that one of them names as a
+/// parent, and theirs, onto `acc`.
+pub fn heads_ancestors(mut rd: Reader, mut todo: List<Str>, mut present: List<Str>, mut whose: Str, mut acc: List<Str>) -> List<Str> {
+    loop {
+        if null_p(todo) {
+            return acc;
+        } else if string_member_p(car(todo), acc) {
+            todo = cdr(todo);
+            continue;
+        } else {
+            let t = rd.call(car(todo));
+            let e = if string_eq_p(t, str_lit!("")) {
+                the::<i64>(-1i64)
+            } else {
+                head_start(t, whose)
+            };
+            let ps = if i64_lt(e, 0i64) {
+                nil::<Str>()
+            } else {
+                filter(kayak_rt::as_proc(kayak_rt::closure1s((present,), |(present,), x: Str| {
+                    string_member_p(x, present)
+                })), head_parents(t, e))
+            };
+            (todo, acc) = (onto(ps, cdr(todo)), kayak_rt::heap_cons(car(todo), acc));
+            continue;
+        }
+    }
+}
+
 // Of `names`, the database's files listed after a save, those it may
-// remove (kayak-db 5): the heads its head was made of, which it holds, at
-// once; and a shard's or a value's file that no head there names (`rd`
-// reads them), which whoever removes them removes only if not written
-// lately (a run at once with this one may be reading an older head's, or
-// have written its own and not yet its head). A file gone reads as none:
-// its queries run again.
-pub fn db_collectable(d: Db, names: List<Str>, rd: Reader) -> List<Str> {
-    let gone = get(d.12);
+// remove (kayak-db 5): at once, the heads its head was made of, which it
+// holds, and every head there that one of them names as a parent, and
+// theirs (C563: a run that wrote its head and was stopped before it
+// removed its parents left them; once the head naming them was removed,
+// none named them, and they were read again, each open uniting what they
+// held), and `dropped`, heads of another kc not written lately
+// (`db-foreign-heads`); and a shard's or a value's file that no head left
+// names (`rd` reads them), which whoever removes them removes only if not
+// written lately (a run at once with this one may be reading an older
+// head's, or have written its own and not yet its head). A file gone
+// reads as none: its queries run again.
+/// With `files?` false, the heads alone (C563): which files no head names
+/// is known only by reading every head there whole, as an open does, and
+/// a save does not ask it each time.
+pub fn db_collectable(d: Db, names: List<Str>, rd: Reader, whose: Str, dropped: List<Str>, files_p: bool) -> List<Str> {
+    let heads = filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Str| {
+        i64_gt_eq(head_gen(x), 0i64)
+    })), names);
+    let gone = onto(dropped, heads_ancestors(rd, get(d.12), heads, whose, nil::<Str>()));
     let mine = get(d.11);
     let others = filter(kayak_rt::as_proc(kayak_rt::closure1s((gone, mine,), |(gone, mine,), x: Str| {
-        (i64_gt_eq(head_gen(x), 0i64) && not(string_member_p(x, gone)) && not(string_member_p(x, mine)))
-    })), names);
-    let named = onto(get(d.13), heads_named(rd, others, nil::<Str>()));
-    filter(kayak_rt::as_proc(kayak_rt::closure1s((gone, named,), |(gone, named,), x: Str| {
+        (not(string_member_p(x, gone)) && not(string_member_p(x, mine)))
+    })), heads);
+    let named = if files_p {
+        onto(get(d.13), heads_named(rd, others, nil::<Str>()))
+    } else {
+        nil::<Str>()
+    };
+    filter(kayak_rt::as_proc(kayak_rt::closure1s((files_p, gone, named,), |(files_p, gone, named,), x: Str| {
         if i64_gt_eq(head_gen(x), 0i64) {
             string_member_p(x, gone)
-        } else if (db_prefix_p(x, str_lit!("g")) || db_prefix_p(x, str_lit!("v"))) {
+        } else if (files_p && (db_prefix_p(x, str_lit!("g")) || db_prefix_p(x, str_lit!("v")))) {
             not(string_member_p(x, named))
         } else {
             false
         }
     })), names)
+}
+
+// The generation of the head the database was last saved as (kayak-db 5).
+#[inline]
+pub fn db_generation(d: Db) -> i64 {
+    get(d.10)
 }
 
 // The keys the database has nodes of, in order of number.
