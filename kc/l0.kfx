@@ -136,9 +136,12 @@
                     ((string=? n "#u") "(unit)")
                     (else (string-append "(symbol " (string-append (kc-datum (str n "" 0)) ")")))))
             (lst (ys f l p)
-              (if (head-is? d "#vector")
-                  (begin (error "kc: not yet: a quoted vector") "")
-                  (l0-quoted-items ys)))
+              (cond ((head-is? d "#vector") (begin (error "kc: not yet: a quoted vector") ""))
+                    ;; As read, `(#utf8 "…")` and `(#u8 BYTE …)` (kfx/read.kfx):
+                    ;; no list, and kc makes neither constant yet.
+                    ((head-is? d "#utf8") (begin (error "kc: not yet: a quoted `#utf8\"…\"`") ""))
+                    ((head-is? d "#u8") (begin (error "kc: not yet: a quoted bytevector") ""))
+                    (else (l0-quoted-items ys))))
             (else other (begin (error "kc: not yet: a quoted datum of this kind") "")))))
       (l0-quoted-items (subr kfx (sexps) string)
         (lambda (ys)
@@ -686,6 +689,8 @@
                       ((and (i64= (size ys) 2) (sym-is? (car ys) "quasiquote"))
                        (l0-quasi-tagged path scope env next "quasiquote" (second ys) (i64+ depth 1)))
                       ((head-is? d "#vector") (l0-made (not-yet path "a quasiquoted vector") next))
+                      ((head-is? d "#utf8") (l0-made (not-yet path "a quasiquoted `#utf8\"…\"`") next))
+                      ((head-is? d "#u8") (l0-made (not-yet path "a quasiquoted bytevector") next))
                       (else (l0-quasi-items path scope env next ys depth nil))))
               (else other (l0-made (l0-quoted d) next)))))
 

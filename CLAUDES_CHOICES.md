@@ -18111,3 +18111,25 @@ The user: "Go ahead" (step 3 of docs/research/parallel-db.md).
 - **Measured**: kc-steps cold, three runs, 0 wrong, 395 warm; run again on
   the kept database, 906 bodies (cold: 20922), 28 s (52).
 - **The full check**: `check: all passed`, 7 min 28 s; kc-steps 67 s, cold (kc changed, so its kept database is another kc's), 0 wrong, 395 warm; kc-bench as C559. The pre-check passed first (2 min 47 s).
+
+## C561. kc refuses a quoted `#utf8"…"` or bytevector, not yet (2026-11-27)
+
+Found moving the pin to Fixpt a36fb65 (its tagged literals, `#Limg"x"`
+read `(literal:img #utf8"x")`): kc wrote `'#Limg"x"` as `(literal:img
+(#utf8 "x"))`, the reader's form of the text. Before this pin too: kc's
+quoted datum (`l0-quoted`, kc/l0.kfx) knows numbers, characters,
+strings, symbols and lists, and kayak's reader makes `#utf8"x"` the list
+`(#utf8 "x")` and `#u8(1 2)` `(#u8 1 2)` (kfx/read.kfx), so `'#utf8"x"`
+was that list, `(utf8? (car (cdr '(a #utf8"x"))))` `#f` where Fixpt and
+the engine say `#t`; `'#u8(1 2)` `(#u8 1 2)`. Silently wrong answers. As
+the user decided at C557 ("fix it before we move the pin"), fixed first,
+the pin move's work kept aside as a patch, the tree and clone at C560
+and e98d0c8.
+- **The fix**: refused, as a quoted vector already is: "not yet: a quoted
+  `#utf8"…"`", "a quoted bytevector", and their quasiquoted forms
+  (`l0-quasi`). An unquoted one was refused already ("not yet: a form,
+  #utf8"). Making the constants is TODO §58: kc has no term for one, nor a
+  kcrt routine making a `utf8` from text.
+- **Test**: by hand (`'#utf8"x"`, `` `(a ,1 #utf8"x") ``, `'#u8(1 2)`, each
+  refused); kc's tests (kc-steps) state answers, not refusals.
+- **The full check**: `check: all passed`, 5 min 05 s; the pre-check passed first (4 min 22 s).

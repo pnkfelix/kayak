@@ -2584,3 +2584,12 @@ their expansions from 1 each: their parts at the template's place may have
 one key, and a fact of one be read for the other (the bug C557 fixed).
 To do: renumber across `with-loads`' files too, or key the facts by file
 and form as well.
+
+## 58. kc: `#utf8"…"` and bytevector constants (C561)
+
+kc makes no `utf8` or bytevector constant: a quoted or quasiquoted
+`#utf8"…"`, `#u8(…)` or `#u8"…"` is refused, not yet (C561; it was made a
+list, the reader's `(#utf8 "…")`, silently), and so is one written as an
+expression. Fixpt's tagged literals (`#Ltag"text"`, 9025322f) are made of
+one. To do: a constant term of each in L0, made by kcrt (both hosts) from
+its text or bytes, `string->utf8` as the engine's `%fx26-string->utf8`.

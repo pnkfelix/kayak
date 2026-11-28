@@ -187,6 +187,12 @@ pub mod kc_l0 {
             if head_is_p(d, str_lit!("#vector")) {
                 error(str_lit!("kc: not yet: a quoted vector"));
                 str_lit!("")
+            } else if head_is_p(d, str_lit!("#utf8")) {
+                error(str_lit!("kc: not yet: a quoted `#utf8\"…\"`"));
+                str_lit!("")
+            } else if head_is_p(d, str_lit!("#u8")) {
+                error(str_lit!("kc: not yet: a quoted bytevector"));
+                str_lit!("")
             } else {
                 l0_quoted_items(ys)
             }
@@ -1363,6 +1369,10 @@ pub mod kc_l0 {
                 l0_quasi_tagged(path, scope, env, next, str_lit!("quasiquote"), second(ys), i64_plus(depth, 1i64))
             } else if head_is_p(d, str_lit!("#vector")) {
                 l0_made(not_yet(path, str_lit!("a quasiquoted vector")), next)
+            } else if head_is_p(d, str_lit!("#utf8")) {
+                l0_made(not_yet(path, str_lit!("a quasiquoted `#utf8\"…\"`")), next)
+            } else if head_is_p(d, str_lit!("#u8")) {
+                l0_made(not_yet(path, str_lit!("a quasiquoted bytevector")), next)
             } else {
                 l0_quasi_items(path, scope, env, next, ys, depth, nil::<Str>())
             }
