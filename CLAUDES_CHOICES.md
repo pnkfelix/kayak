@@ -18334,3 +18334,28 @@ kc's assembler".
   16.2 to 10.9 ms. A change of kayak-heap's, left for the user.
 
 - **The full check**: `check: all passed`, 2 min 17 s; kc-steps cold (kc changed), 53 s, 0 wrong. The pre-check passed first (4 min 26 s).
+
+## C568. kayak-heap's chunks mapped as huge pages on Linux (2026-11-28)
+
+C567 found most of a short `kc run`'s page faults in `alloc_zeroed`'s
+`memset` of each new 2 MB chunk, 512 a chunk, and tried huge pages; the
+user, asked whether to make the change: "Why wouldn't we make the
+change?" A change of kayak-heap's (deepening kayak-rt, flagged).
+
+- **Now** (crates/kayak-heap/src/space.rs, `chunk_memory`): on Linux a
+  chunk is mapped (`mmap`, twice its size, the aligned chunk kept and the
+  rest unmapped), the kernel's zeroed pages, and advised as huge pages
+  (`MADV_HUGEPAGE`; this machine's transparent huge pages are `madvise`):
+  one fault a chunk. Where the kernel gives none, small pages as they are
+  touched, still no `memset`. Elsewhere (macOS) `alloc_zeroed` as before.
+  A chunk is kept for the run, as before: nothing gives one back. Large
+  objects, which are freed, are as they were.
+- **Memory**: a chunk was all touched by its `memset` before, so a
+  process's resident memory is not more.
+- **Measured** (`perf stat -r 20`): `kc --image` of marks.fx's assembly
+  2,954 page faults and 11.8 ms of CPU (C567) to 907 and 8.5 ms; a warm
+  `kc run` of fixnum-max 6.8 to 5.3 ms, of marks 16.2 to 10.3 ms.
+  kc-steps cold then warm: 44 s and 15 s, 0 wrong, with C567 (C566: 53 s
+  and 21 s).
+
+- **The full check**: `check: all passed`, 7 min 46 s; kc-steps cold (kc changed), 47 s, 0 wrong. The pre-check passed first (3 min 17 s).

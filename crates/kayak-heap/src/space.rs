@@ -583,12 +583,7 @@ fn take_page(b: &Bump) {
 
 /// A chunk, zeroed, kept for the run.
 fn new_chunk() -> &'static Chunk {
-    let layout = std::alloc::Layout::from_size_align(CHUNK_BYTES, CHUNK_BYTES).expect("a chunk");
-    // SAFETY: a layout of nonzero size.
-    let base = unsafe { std::alloc::alloc_zeroed(layout) }.cast::<u64>();
-    if base.is_null() {
-        std::alloc::handle_alloc_error(layout)
-    }
+    let base = chunk_memory();
     // A collection's copies written by their addresses (`word_mut`).
     let _ = base.expose_provenance();
     let starts: &'static [AtomicU64] =
@@ -603,6 +598,61 @@ fn new_chunk() -> &'static Chunk {
         young: AtomicU64::new(0),
         owners: std::array::from_fn(|_| AtomicU64::new(0)),
     }))
+}
+
+/// A chunk's memory, zeroed, aligned to its size, never given back. On
+/// Linux (C568) mapped, the kernel's zeroed pages, and advised as huge
+/// pages: one fault for the chunk, where `alloc_zeroed`'s `memset` of it
+/// faulted each of its 512 small pages (most of a short `kc run`'s
+/// faults); without transparent huge pages, small pages as they are
+/// touched. Elsewhere `alloc_zeroed`.
+#[cfg(target_os = "linux")]
+fn chunk_memory() -> *mut u64 {
+    let layout = std::alloc::Layout::from_size_align(CHUNK_BYTES, CHUNK_BYTES).expect("a chunk");
+    // Twice its size mapped, the aligned chunk within it kept, the rest
+    // given back.
+    let span = 2 * CHUNK_BYTES;
+    // SAFETY: an anonymous private mapping, of no memory of ours.
+    let m = unsafe {
+        libc::mmap(
+            std::ptr::null_mut(),
+            span,
+            libc::PROT_READ | libc::PROT_WRITE,
+            libc::MAP_PRIVATE | libc::MAP_ANONYMOUS,
+            -1,
+            0,
+        )
+    };
+    if m == libc::MAP_FAILED {
+        std::alloc::handle_alloc_error(layout)
+    }
+    let start = m.addr();
+    let base = start.next_multiple_of(CHUNK_BYTES);
+    let (head, tail) = (base - start, start + span - (base + CHUNK_BYTES));
+    // SAFETY: the parts of the mapping just made outside the chunk, which
+    // nothing has seen; the advice of the chunk only a hint.
+    unsafe {
+        let base_p = m.cast::<u8>().add(head);
+        if head > 0 {
+            libc::munmap(m, head);
+        }
+        if tail > 0 {
+            libc::munmap(base_p.add(CHUNK_BYTES).cast(), tail);
+        }
+        libc::madvise(base_p.cast(), CHUNK_BYTES, libc::MADV_HUGEPAGE);
+        base_p.cast::<u64>()
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn chunk_memory() -> *mut u64 {
+    let layout = std::alloc::Layout::from_size_align(CHUNK_BYTES, CHUNK_BYTES).expect("a chunk");
+    // SAFETY: a layout of nonzero size.
+    let base = unsafe { std::alloc::alloc_zeroed(layout) }.cast::<u64>();
+    if base.is_null() {
+        std::alloc::handle_alloc_error(layout)
+    }
+    base
 }
 
 /// The pages `w` words would fill.
