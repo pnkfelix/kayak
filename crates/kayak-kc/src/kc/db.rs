@@ -2885,6 +2885,34 @@ pub fn db_put_x(d: Db, i: i64, n: kayak_rt::data::DataAt<'static, Node>) -> () {
     set(d.1, im_put(get(d.1), i, n))
 }
 
+// Node `i` as `n` in this run alone, its shard not to be written for it
+// (C566): one verified (`db-made-current`), or made again as its file has
+// it, fingerprint, reads and durability (`db-execute`). Only the revision
+// it was verified in is new, which the next run finds again, by `last` or
+// by its reads; written, every run on a database whose heads were put
+// together (`last` moved at every durability) wrote each group it read,
+// and `kc run`, its `asm` not kept, made again, its program's at each.
+// Written with its shard if that is written for another.
+#[inline]
+pub fn db_put_quiet_x(d: Db, i: i64, n: kayak_rt::data::DataAt<'static, Node>) -> () {
+    set(d.1, im_put(get(d.1), i, n))
+}
+
+pub fn deps_same_p(mut a: List<kayak_rt::data::DataAt<'static, DbDep>>, mut b: List<kayak_rt::data::DataAt<'static, DbDep>>) -> bool {
+    loop {
+        if null_p(a) {
+            return null_p(b);
+        } else if null_p(b) {
+            return false;
+        } else if (i64_gt_eq(dep_id(car(a)), 0i64) && i64_eq(dep_id(car(a)), dep_id(car(b))) && i64_eq(dep_fp(car(a)), dep_fp(car(b)))) {
+            (a, b) = (cdr(a), cdr(b));
+            continue;
+        } else {
+            return false;
+        }
+    }
+}
+
 // Whether a node has changed since the database was made or read: if not,
 // its files are as they were, and need not be written (C417).
 
@@ -3093,11 +3121,15 @@ pub fn db_made_current(d: Db, run: Runner, i: i64, k: kayak_rt::data::DataAt<'st
     } else if i64_eq(node_verified(car(old)), r) {
         ()
     } else if i64_lt_eq(db_nth(get(d.15), node_durability(car(old))), node_verified(car(old))) {
-        db_put_x(d, i, node_verified_at(car(old), r))
+        db_put_quiet_x(d, i, node_verified_at(car(old), r))
     } else {
         let du = db_reads_durability(d, run, node_deps(car(old)), i64_minus(durabilities(), 1i64));
         if i64_gt_eq(du, 0i64) {
-            db_put_x(d, i, node_reverified(car(old), r, du))
+            if i64_eq(du, node_durability(car(old))) {
+                db_put_quiet_x(d, i, node_reverified(car(old), r, du))
+            } else {
+                db_put_x(d, i, node_reverified(car(old), r, du))
+            }
         } else {
             db_said_why_x(d, k, db_changed_read(d, node_deps(car(old))));
             db_execute(d, run, i, k, old);
@@ -3177,11 +3209,16 @@ pub fn db_execute(d: Db, run: Runner, i: i64, k: kayak_rt::data::DataAt<'static,
         let tagcase_ = fr;
         if Frame::__is_Frame(tagcase_) {
             let (fk, ds, du,) = Frame::__Frame(tagcase_);
-            db_put_x(d, i, node(k, false, r, if (not(null_p(old)) && i64_eq(node_fp(car(old)), fp)) {
+            let n = node(k, false, r, if (not(null_p(old)) && i64_eq(node_fp(car(old)), fp)) {
                 node_changed(car(old))
             } else {
                 r
-            }, fp, reverse(ds), du, v_text(x)))
+            }, fp, reverse(ds), du, v_text(x));
+            if (not(null_p(old)) && not(node_input_p(car(old))) && i64_eq(node_fp(car(old)), fp) && i64_eq(node_durability(car(old)), du) && deps_same_p(node_deps(car(old)), reverse(ds))) {
+                db_put_quiet_x(d, i, n)
+            } else {
+                db_put_x(d, i, n)
+            }
         } else { kayak_rt::data::no_variant() }
     };
     x
@@ -4562,11 +4599,14 @@ pub fn heads_ancestors(mut rd: Reader, mut todo: List<Str>, mut present: List<St
 // lately (`db-foreign-heads`); the files it found old (kayak-db 6): a
 // group's its own files replace, and their values' files those do not
 // name (`db-dropped`); and, with `files?`, every shard's and value's file
-// of another mark than its own, another kc's. Whoever removes them removes
-// a shard's or a value's only if not written lately (a run at once with
-// this one may be reading it). A file gone reads as none: its queries run
-// again.
-pub fn db_collectable(d: Db, names: List<Str>, rd: Reader, whose: Str, foreign: List<Str>, files_p: bool) -> List<Str> {
+// of another mark than its own, another kc's. Two lists: those to remove
+// at once, the heads and its own values' files (one a run at once with
+// this one wrote anew, of the same key and fingerprint, it may find gone,
+// and make again); and those to remove only if not written lately, the
+// shards' files and another kc's (a run at once with this one may be
+// reading them; a group's file left, its group's next reader skips, and
+// finds old again). A file gone reads as none: its queries run again.
+pub fn db_collectable(d: Db, names: List<Str>, rd: Reader, whose: Str, foreign: List<Str>, files_p: bool) -> Product_11_12<List<Str>, List<Str>> {
     let heads = filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Str| {
         i64_gt_eq(head_gen(x), 0i64)
     })), names);
@@ -4575,17 +4615,25 @@ pub fn db_collectable(d: Db, names: List<Str>, rd: Reader, whose: Str, foreign: 
     let g = string_append(str_lit!("g"), db_mark(whose));
     let v = string_append(str_lit!("v"), db_mark(whose));
     set(d.13, nil::<Str>());
-    filter(kayak_rt::as_proc(kayak_rt::closure1s((files_p, gone, old, g, v,), |(files_p, gone, old, g, v,), x: Str| {
+    Product_11_12(filter(kayak_rt::as_proc(kayak_rt::closure1s((gone, old, v,), |(gone, old, v,), x: Str| {
         if i64_gt_eq(head_gen(x), 0i64) {
             string_member_p(x, gone)
+        } else {
+            (db_prefix_p(x, v) && string_member_p(x, old))
+        }
+    })), names), filter(kayak_rt::as_proc(kayak_rt::closure1s((files_p, old, g, v,), |(files_p, old, g, v,), x: Str| {
+        if i64_gt_eq(head_gen(x), 0i64) {
+            false
+        } else if db_prefix_p(x, v) {
+            false
         } else if string_member_p(x, old) {
             true
         } else if (files_p && (db_prefix_p(x, str_lit!("g")) || db_prefix_p(x, str_lit!("v")))) {
-            not((db_prefix_p(x, g) || db_prefix_p(x, v)))
+            not(db_prefix_p(x, g))
         } else {
             false
         }
-    })), names)
+    })), names))
 }
 
 // The generation of the head the database was last saved as (kayak-db 5).

@@ -18262,3 +18262,39 @@ the repo. Then profile and choose a path to try".
   file old); `recent` gone with `where-recent`.
 
 - **The full check**: `check: all passed`, 7 min 17 s; kc-steps cold (kc changed). The pre-check passed first (2 min 41 s).
+
+## C566. kc's database writes no group for a node verified or made again as it was (2026-11-28)
+
+The user, asked what more the database could gain (C565 left a group
+written a few times a sweep, nothing changed): "Yes" to "stop rewriting a
+group when nothing changed" first.
+- **Two causes**, both by `db-put!`, which marks the node's shard to be
+  written:
+  - a node verified (`db-made-current`: by `last`, or by its reads), its
+    revision of verification alone new. After an open put several heads
+    together, `last` is moved at every durability, so every node a run
+    read was verified by its reads and its group written again: with
+    sixteen workers, nearly every run;
+  - a node made again with the fingerprint, reads and durability its file
+    has (`db-execute`): `kc run`'s `asm`, not kept, at each run.
+- **Now** `db-put-quiet!` for both: the node as it is in this run alone,
+  written with its shard if that is written for another reason. The next
+  run finds it current again, by `last` or by its reads, in memory. A
+  verification that lowers its node's durability is still written: the
+  shortcut by `last` counts on it (a lower durability not written would
+  let a later run take a node as current that a change of that input made
+  stale).
+- **Measured** (kc-steps, cold then warm twice): 53 s, 21 s, 21 s, 0
+  wrong; a warm sweep writes no shard's file, and the database is 1,284
+  shard files, 90 MB (3,650 and 158 MB at C565). No time gained: the
+  writes were not what a warm sweep waits on.
+- **Test**: tests/kfx/db's `at-once` runs one body, not two (`total`
+  alone): A no longer writes group `b` for having verified `len b`, so
+  the third run no longer takes A's older `len b` before B's.
+- **What a warm sweep waits on** (asked as (1), keeping `asm`): `kc run`'s
+  `asm-image`, kc's assembler (kc/main.kfx), which is no query: about
+  half of a small program's 8 to 9 ms, and it grows with the program's own
+  assembly (10 KB, 8 ms; 46 KB, 22 ms); the runtime's part is a few
+  lines. Keeping `asm`'s text would save its making, not its assembly.
+
+- **The full check**: `check: all passed`, 7 min 15 s; kc-steps cold (kc changed). The pre-check passed first (2 min 41 s).

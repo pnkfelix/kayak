@@ -2885,6 +2885,34 @@ pub fn db_put_x(d: Db, i: i64, n: kayak_rt::data::DataAt<'static, Node>) -> () {
     set(d.1, im_put(get(d.1), i, n))
 }
 
+// Node `i` as `n` in this run alone, its shard not to be written for it
+// (C566): one verified (`db-made-current`), or made again as its file has
+// it, fingerprint, reads and durability (`db-execute`). Only the revision
+// it was verified in is new, which the next run finds again, by `last` or
+// by its reads; written, every run on a database whose heads were put
+// together (`last` moved at every durability) wrote each group it read,
+// and `kc run`, its `asm` not kept, made again, its program's at each.
+// Written with its shard if that is written for another.
+#[inline]
+pub fn db_put_quiet_x(d: Db, i: i64, n: kayak_rt::data::DataAt<'static, Node>) -> () {
+    set(d.1, im_put(get(d.1), i, n))
+}
+
+pub fn deps_same_p(mut a: List<kayak_rt::data::DataAt<'static, DbDep>>, mut b: List<kayak_rt::data::DataAt<'static, DbDep>>) -> bool {
+    loop {
+        if null_p(a) {
+            return null_p(b);
+        } else if null_p(b) {
+            return false;
+        } else if (i64_gt_eq(dep_id(car(a)), 0i64) && i64_eq(dep_id(car(a)), dep_id(car(b))) && i64_eq(dep_fp(car(a)), dep_fp(car(b)))) {
+            (a, b) = (cdr(a), cdr(b));
+            continue;
+        } else {
+            return false;
+        }
+    }
+}
+
 // Whether a node has changed since the database was made or read: if not,
 // its files are as they were, and need not be written (C417).
 
@@ -3093,11 +3121,15 @@ pub fn db_made_current(d: Db, run: Runner, i: i64, k: kayak_rt::data::DataAt<'st
     } else if i64_eq(node_verified(car(old)), r) {
         ()
     } else if i64_lt_eq(db_nth(get(d.15), node_durability(car(old))), node_verified(car(old))) {
-        db_put_x(d, i, node_verified_at(car(old), r))
+        db_put_quiet_x(d, i, node_verified_at(car(old), r))
     } else {
         let du = db_reads_durability(d, run, node_deps(car(old)), i64_minus(durabilities(), 1i64));
         if i64_gt_eq(du, 0i64) {
-            db_put_x(d, i, node_reverified(car(old), r, du))
+            if i64_eq(du, node_durability(car(old))) {
+                db_put_quiet_x(d, i, node_reverified(car(old), r, du))
+            } else {
+                db_put_x(d, i, node_reverified(car(old), r, du))
+            }
         } else {
             db_said_why_x(d, k, db_changed_read(d, node_deps(car(old))));
             db_execute(d, run, i, k, old);
@@ -3177,11 +3209,16 @@ pub fn db_execute(d: Db, run: Runner, i: i64, k: kayak_rt::data::DataAt<'static,
         let tagcase_ = fr;
         if Frame::__is_Frame(tagcase_) {
             let (fk, ds, du,) = Frame::__Frame(tagcase_);
-            db_put_x(d, i, node(k, false, r, if (not(null_p(old)) && i64_eq(node_fp(car(old)), fp)) {
+            let n = node(k, false, r, if (not(null_p(old)) && i64_eq(node_fp(car(old)), fp)) {
                 node_changed(car(old))
             } else {
                 r
-            }, fp, reverse(ds), du, v_text(x)))
+            }, fp, reverse(ds), du, v_text(x));
+            if (not(null_p(old)) && not(node_input_p(car(old))) && i64_eq(node_fp(car(old)), fp) && i64_eq(node_durability(car(old)), du) && deps_same_p(node_deps(car(old)), reverse(ds))) {
+                db_put_quiet_x(d, i, n)
+            } else {
+                db_put_x(d, i, n)
+            }
         } else { kayak_rt::data::no_variant() }
     };
     x

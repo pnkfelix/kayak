@@ -499,11 +499,7 @@ pub mod kc_driver {
             nil::<Str>()
         };
         let ns = db_collectable(d, names, rd, kc_whose(), foreign, files_p);
-        let old = onto(filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), n: Str| {
-            db_prefix_p(n, str_lit!("h."))
-        })), ns), written_before(dir, filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), n: Str| {
-            not(db_prefix_p(n, str_lit!("h.")))
-        })), ns), i64_minus(now, 60i64), nil::<Str>()));
+        let old = onto(ns.0, written_before(dir, ns.1, i64_minus(now, 60i64), nil::<Str>()));
         if null_p(old) {
             ()
         } else {

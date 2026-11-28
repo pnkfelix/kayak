@@ -1106,6 +1106,26 @@
         (shard (h where text next loaded dirty) (sm-set! d (shard-of-number i) (shard h where text next loaded #t))))
       (set (extract d nodes) (im-put (get (extract d nodes)) i n)))))
 
+"Node `i` as `n` in this run alone, its shard not to be written for it
+ (C566): one verified (`db-made-current`), or made again as its file has
+ it, fingerprint, reads and durability (`db-execute`). Only the revision
+ it was verified in is new, which the next run finds again, by `last` or
+ by its reads; written, every run on a database whose heads were put
+ together (`last` moved at every durability) wrote each group it read,
+ and `kc run`, its `asm` not kept, made again, its program's at each.
+ Written with its shard if that is written for another."
+(define db-put-quiet! (subr qe (db i64 node) unit)
+  (lambda (d i n) (set (extract d nodes) (im-put (get (extract d nodes)) i n))))
+
+(define-rec
+  (deps-same? (subr kfx ((listof db-dep acyclic) (listof db-dep acyclic)) bool)
+    (lambda (a b)
+      (cond ((null? a) (null? b))
+            ((null? b) #f)
+            ((and (i64>= (dep-id (car a)) 0) (i64= (dep-id (car a)) (dep-id (car b))) (i64= (dep-fp (car a)) (dep-fp (car b))))
+             (deps-same? (cdr a) (cdr b)))
+            (else #f)))))
+
 "Whether a node has changed since the database was made or read: if not,
  its files are as they were, and need not be written (C417)."
 "What reads the database's files (C472)."
@@ -1246,7 +1266,7 @@
               ((node-input? (car old)) #u)
               ((i64= (node-verified (car old)) r) #u)
               ((i64<= (db-nth (get (extract d last)) (node-durability (car old))) (node-verified (car old)))
-               (db-put! d i (node-verified-at (car old) r)))
+               (db-put-quiet! d i (node-verified-at (car old) r)))
               (else
                ;; Its reads, each made current in order: if each has the
                ;; fingerprint it had when read (kayak-db 4: whatever run made
@@ -1256,7 +1276,11 @@
                ;; `models/db.qnt`, C400).
                (let ((du (db-reads-durability d run (node-deps (car old)) (i64- durabilities 1))))
                  (if (i64>= du 0)
-                     (db-put! d i (node-reverified (car old) r du))
+                     ;; Quiet unless its durability moved, which the
+                     ;; shortcut by `last` counts on (C566).
+                     (if (i64= du (node-durability (car old)))
+                         (db-put-quiet! d i (node-reverified (car old) r du))
+                         (db-put! d i (node-reverified (car old) r du)))
                      (begin (db-said-why! d k (db-changed-read d (node-deps (car old)))) (db-execute d run i k old) #u))))))))
 
   (db-reads-durability (subr qe (db runner (listof db-dep acyclic) i64) i64)
@@ -1307,8 +1331,13 @@
             (set (extract d ran) (cons k (get (extract d ran))))
             (tagcase fr
               (frame (fk ds du)
-                (db-put! d i (node k #f r (if (and (not (null? old)) (i64= (node-fp (car old)) fp)) (node-changed (car old)) r)
-                                   fp (reverse ds) du (v-text x)))))
+                (let ((n (node k #f r (if (and (not (null? old)) (i64= (node-fp (car old)) fp)) (node-changed (car old)) r)
+                               fp (reverse ds) du (v-text x))))
+                  ;; Made again as it was: the files hold it already (C566).
+                  (if (and (not (null? old)) (not (node-input? (car old))) (i64= (node-fp (car old)) fp)
+                           (i64= (node-durability (car old)) du) (deps-same? (node-deps (car old)) (reverse ds)))
+                      (db-put-quiet! d i n)
+                      (db-put! d i n)))))
             x))))))
 
 "`k` made current, its value's fingerprint, and that the query being run

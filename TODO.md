@@ -2602,7 +2602,10 @@ and kc-steps' sixteen workers leave about sixteen. So a warm sweep is
 slower than a cold one: 97 s, against 65.~~ C565 (`kayak-db 6`,
 docs/research/db-stores.md §7): a head names no shard; a group's files
 found by the listing, each naming those it replaces. kc-steps 52 s cold,
-19 s warm (69 and 95 before). Left: a group written a few times a sweep
-with nothing changed (each program's, kc-steps' `kc run`s); `kc run`
-assembling again the `asm` values not kept (32% of a warm sweep); the
-heap's zeroing (`refill`).
+19 s warm (69 and 95 before); C566, no group written for a node verified
+or made again as it was. Left: `kc run`'s assembly (`asm-image`, no
+query, about a third of a warm sweep: kc's assembler on lists of
+characters, at each run; `kc build`'s objects are kept); the heap's first
+chunks zeroed twice (`alloc_zeroed` at 2 MB alignment, a `memset` over
+pages the kernel gave zeroed); kernel time under kc's run thread not yet
+attributed (`kptr_restrict`).
