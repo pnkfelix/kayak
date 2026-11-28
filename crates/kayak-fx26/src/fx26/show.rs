@@ -6,7 +6,7 @@ use super::*;
 // show.kfx: a value written as Fixpt's `write` writes it (C122), so that
 // tier 1's answers are compared with Fixpt's as text. Shared structure is
 // not labelled yet (Fixpt's `#n=`): a cyclic value would not end.
-// fixpt-source: crates/fixpt-runtime/src/print.rs@c5b5991
+// fixpt-source: crates/fixpt-runtime/src/print.rs@a36fb65
 #[inline]
 pub fn hex_digit(d: i64) -> Str {
     char_to_string(string_ref_i64(str_lit!("0123456789abcdef"), d))
@@ -205,6 +205,27 @@ pub fn utf8_text_from(mut p: i64, mut i: i64, mut n: i64, mut out: Str) -> Str {
     }
 }
 
+pub fn tag_chars_from_p(mut s: Str, mut i: i64) -> bool {
+    loop {
+        if i64_gt_eq(i, string_length_i64(s)) {
+            return true;
+        } else {
+            let k = char_to_i64(string_ref_i64(s, i));
+            if ((i64_gt_eq(k, 48i64) && i64_lt_eq(k, 57i64)) || (i64_gt_eq(k, 65i64) && i64_lt_eq(k, 90i64)) || (i64_gt_eq(k, 97i64) && i64_lt_eq(k, 122i64)) || i64_eq(k, 45i64)) {
+                i = i64_plus(i, 1i64);
+                continue;
+            } else {
+                return false;
+            }
+        }
+    }
+}
+
+#[inline]
+pub fn literal_name_p(s: Str) -> bool {
+    (i64_gt(string_length_i64(s), 8i64) && string_eq_p(substring(s, int_lit(0), int_lit(8)), str_lit!("literal:")) && tag_chars_from_p(s, 8i64))
+}
+
 pub fn written(v: i64) -> Str {
     if is_fixnum_p(v) {
         i64_to_string(fix_val(v))
@@ -230,6 +251,9 @@ pub fn written(v: i64) -> Str {
         number_text(v)
     } else if i64_eq(word_tag(v), t_immediate()) {
         str_lit!("#<immediate>")
+    } else if (is_pair_p(v) && is_kind_p(pair_car(v), k_symbol()) && is_pair_p(pair_cdr(v)) && i64_eq(pair_cdr(pair_cdr(v)), v_null()) && (is_kind_p(pair_car(pair_cdr(v)), k_utf8()) || is_kind_p(pair_car(pair_cdr(v)), k_utf8_ascii())) && literal_name_p(symbol_text(pair_car(v)))) {
+        let (u, h) = (pair_car(pair_cdr(v)), symbol_text(pair_car(v)));
+        string_append(str_lit!("#L"), string_append(substring(h, int_lit(8), string_length(h)), string_append(str_lit!("\""), string_append(escaped(utf8_text_from(address(u), 0i64, suffix_bytes(u), str_lit!("")), 0i64, str_lit!("")), str_lit!("\"")))))
     } else if is_pair_p(v) {
         string_append(str_lit!("("), string_append(written(pair_car(v)), string_append(tail_written(pair_cdr(v)), str_lit!(")"))))
     } else if is_kind_p(v, k_string()) {

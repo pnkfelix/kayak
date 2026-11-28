@@ -1048,6 +1048,27 @@ pub fn bytes_checked(xs: Sexps, file: Str, line: i64) -> Sexps {
     }
 }
 
+// `#Ltag"text"`, a tagged literal (Fixpt 9025322f, Heist's
+// `fixpt-tagged-literals.md`): read `(literal:tag (#utf8 "text"))`, a use of
+// the name `literal:tag`, as `'x` is of `quote`, its text as `#utf8"…"`'s;
+// `#l` as `#L`. A tag is ASCII letters, digits and `-`, at least one.
+/// Whether each of `cs` is a tag's character.
+pub fn tag_chars_p(mut cs: Chars) -> bool {
+    loop {
+        if null_p(cs) {
+            return true;
+        } else {
+            let k = char_to_i64(car(cs));
+            if ((i64_gt_eq(k, 48i64) && i64_lt_eq(k, 57i64)) || (i64_gt_eq(k, 65i64) && i64_lt_eq(k, 90i64)) || (i64_gt_eq(k, 97i64) && i64_lt_eq(k, 122i64)) || i64_eq(k, 45i64)) {
+                cs = cdr(cs);
+                continue;
+            } else {
+                return false;
+            }
+        }
+    }
+}
+
 /// A datum at the start of `h`'s text, the rest of `text`, which `file`
 /// holds.
 pub fn read_datum(h: kayak_rt::data::DataAt<'static, Here>, text: Str, file: Str) -> kayak_rt::data::DataAt<'static, Got> {
@@ -1103,6 +1124,26 @@ pub fn read_datum(h: kayak_rt::data::DataAt<'static, Here>, text: Str, file: Str
             if Gots::__is_Gots(tagcase_) {
                 let (xs, after,) = Gots::__Gots(tagcase_);
                 got(lst(kayak_rt::heap_cons(sym(str_lit!("#vector"), file, pos), xs), file, line, pos), after)
+            } else { kayak_rt::data::no_variant() }
+        } else if (char_eq_p(c, '#') && not(null_p(cdr(cs))) && (char_eq_p(car(cdr(cs)), 'L') || char_eq_p(car(cdr(cs)), 'l')) && not(string_eq_p(file, str_lit!("")))) {
+            // `#Ltag"text"` (`tag-chars?`): its nodes at five offsets, the
+            // `#`, the `L`, the tag's first, the `"` (the text's) and the
+            // one after it (`#utf8`'s).
+            let tagcase_ = token_at(cdr(cdr(cs)), text, i64_plus(pos, 2i64), 0i64);
+            if Tok::__is_Tok(tagcase_) {
+                let (tag, after, n,) = Tok::__Tok(tagcase_);
+                let (word, q) = (substring(text, i64_to_int(pos), i64_to_int(i64_plus(pos, i64_plus(n, 2i64)))), i64_plus(pos, i64_plus(n, 2i64)));
+                if (i64_eq(n, 0i64) || not(tag_chars_p(string_chars(tag)))) {
+                    match read_error(file, line, string_append(str_lit!("a tagged literal's tag is letters, digits and `-`, at least one: `"), string_append(word, str_lit!("`")))) {}
+                } else if (null_p(after) || not(char_eq_p(car(after), '"'))) {
+                    match read_error(file, line, string_append(str_lit!("expected `\"` after `"), string_append(word, str_lit!("`")))) {}
+                } else {
+                    let tagcase_ = string_body(cdr(after), text, nil::<Str>(), i64_plus(q, 1i64), file, line, q, line, i64_plus(q, 1i64));
+                    if Got::__is_Got(tagcase_) {
+                        let (x, rest,) = Got::__Got(tagcase_);
+                        got(lst(kayak_rt::heap_cons(sym(string_append(str_lit!("literal:"), tag), file, i64_plus(pos, 1i64)), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit!("#utf8"), file, i64_plus(q, 1i64)), kayak_rt::heap_cons(x, kayak_rt::nil())), file, line, i64_plus(pos, 2i64)), kayak_rt::nil())), file, line, pos), rest)
+                    } else { kayak_rt::data::no_variant() }
+                }
             } else { kayak_rt::data::no_variant() }
         } else if (utf8_opening_p(cs) && not(string_eq_p(file, str_lit!("")))) {
             // `#utf8"…"`, UTF-8 text (Fixpt 06a3666): `(#utf8 "…")`, a

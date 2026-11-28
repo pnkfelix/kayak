@@ -1,0 +1,29 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"tagged-literals.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"literal:twice : (subr pure (utf8) string) ! pure",
+"\"abab\" : string ! (read (globals literal:twice))",
+"#Limg\"iVBORw0KGgo=\" : datum ! pure",
+"literal:img : datum ! pure",
+"#t : bool ! pure",
+"(a #L-A1\"y\" (literal:x \"plain\") (literal:x #utf8\"z\" 1) (literal: #utf8\"w\") (literal:a_b #utf8\"v\")) : datum ! pure",
+"#Lq\"a\\\"b\" : datum ! pure",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@a36fb65564720276bc6d1f87a46a8bb9beab7232"
+]
+}
+]
+}

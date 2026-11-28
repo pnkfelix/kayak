@@ -13,38 +13,38 @@
  one host's asker's effect (C449, `ASKS`), which answers a
  procedural macro's transformer's request: expander.fx the
  engine's, expander-kc.fx kc's.
- fixpt-source: crates/fixpt-fx26/src/eager-reader-types.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/syn.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/parser-types.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/parser-loads.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/parser.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/macros-kernel.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/macros-syntax.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/macros-types.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/macros-env-types.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/macros-env-indexed.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/macros-nodes.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/macros-align.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/macros-scopes.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/macros-match.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/macros-exports.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/macros-facts.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/macros-files.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/macros-infer.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/macros-show.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/macros-shown.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/macros-solve.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/macros-fresh.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/macros-contracts.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/macros-written.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/macros-procedural.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/macros.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/macros-templates.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/macros-imports.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/macros-walk.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/macros-tree.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/macros-shaper.fx@e98d0c8
- fixpt-source: crates/fixpt-fx26/src/macros-shapes.fx@e98d0c8"
+ fixpt-source: crates/fixpt-fx26/src/eager-reader-types.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/syn.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/parser-types.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/parser-loads.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/parser.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/macros-kernel.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/macros-syntax.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/macros-types.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/macros-env-types.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/macros-env-indexed.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/macros-nodes.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/macros-align.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/macros-scopes.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/macros-match.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/macros-exports.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/macros-facts.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/macros-files.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/macros-infer.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/macros-show.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/macros-shown.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/macros-solve.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/macros-fresh.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/macros-contracts.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/macros-written.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/macros-procedural.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/macros.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/macros-templates.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/macros-imports.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/macros-walk.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/macros-tree.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/macros-shaper.fx@a36fb65
+ fixpt-source: crates/fixpt-fx26/src/macros-shapes.fx@a36fb65"
 (include (load-module "expander-types.fx"))
 
 "macros-shim.kfx: what Fixpt's expander, made KFX (fx26/macros/,
@@ -766,6 +766,31 @@
         (if (null? e)
             (list (go d))
             (list (go d) (the syns-a (list (atom e 0 0 0))))))))))
+;; Whether `s`'s characters from `i` are a tag's: ASCII letters, digits and
+;; `-` (the reader's `tag-chars?`).
+(define mx-syntax-tag-chars? (->* (string int) bool)
+  (lambda (s i)
+    (or (= i (string-length s))
+        (let ((k (char->integer (string-ref s i))))
+          (and (or (and (>= k 48) (<= k 57)) (and (>= k 65) (<= k 90))
+                   (and (>= k 97) (<= k 122)) (= k 45))
+               (mx-syntax-tag-chars? s (+ i 1)))))))
+(define tagged-text (->* (string utf8) string)
+  (lambda (h u)
+    (let ((n (string-length h)))
+      (if (and (> n 8) (string=? (substring h 0 8) "literal:") (mx-syntax-tag-chars? h 8))
+          (string-append "#L" (string-append (substring h 8 n) (string-append "\"" (string-append (utf8->string u) "\""))))
+          ""))))
+;; `#Ltag"text"` if `h` is the name `literal:tag` and `t` a `utf8`; else "".
+(define show-tagged (->* (syn syn) string)
+  (lambda (h t)
+    (tagcase h
+      (atom (hd a b x)
+        (tagcase t
+          (atom (td c e y)
+            (if (symbol? hd) (if (utf8? td) (tagged-text (symbol->string hd) td) "") ""))
+          (else z "")))
+      (else z ""))))
 ;; Bytevector `v`'s bytes up to `i`, space-separated, before `acc`.
 (define show-bytes (->* (bytevector int string) string)
   (lambda (v i acc)
@@ -794,7 +819,7 @@
 (show-syn (->* (syn) string)
   (lambda (s)
     (tagcase s
-      (mx-eager-reader-types-lst (items d a b x) (if (null? items) "()" (string-append "(" (string-append (mx-syntax-show-each items) ")"))))
+      (mx-eager-reader-types-lst (items d a b x) (show-list items))
       (dotted (items tail d a b x)
         (string-append "(" (string-append (mx-syntax-show-each items) (string-append " . " (string-append (show-syn tail) ")")))))
       (vec (items d a b x) (string-append "#(" (string-append (mx-syntax-show-each items) ")")))
@@ -803,7 +828,17 @@
   (lambda (xs)
     (cond ((null? xs) "")
           ((null? (cdr xs)) (show-syn (car xs)))
-          (else (string-append (show-syn (car xs)) (string-append " " (mx-syntax-show-each (cdr xs)))))))))
+          (else (string-append (show-syn (car xs)) (string-append " " (mx-syntax-show-each (cdr xs))))))))
+;; A list of `items`, as `show-syn` writes one: a tagged literal's,
+;; `(literal:tag #utf8"text")`, as it reads, `#Ltag"text"`.
+(show-list (->* (syns-a) string)
+  (lambda (items)
+    (let ((tagged (if (and (pair? items) (pair? (cdr items)) (null? (cdr (cdr items))))
+                      (show-tagged (car items) (car (cdr items)))
+                      "")))
+      (cond ((not (string=? tagged "")) tagged)
+            ((null? items) "()")
+            (else (string-append "(" (string-append (mx-syntax-show-each items) ")"))))))))
 ;;; ------------------------------------------------------------ names
 
 ;; The kernel's words, each a table of its words made once: a name found
@@ -2752,7 +2787,7 @@
   (lambda (mx-fail mode ps at t s root)
     (let ((said (lambda ((why string)) (fail-at mx-fail why s)))
           ;; Written only if refused: `s` may be large.
-          (shown (the (subr (read mxp) () string) (lambda () (string-append "`" (string-append (show-syn s) "`"))))))
+          (shown (the (subr (maxeff (read mxp) spin) () string) (lambda () (string-append "`" (string-append (show-syn s) "`"))))))
       (tagcase t
         (s-mu (b r p) (fill mx-fail mode ps at (mx-types-unfold-mu t) s at))
         (s-union (ms)

@@ -1,0 +1,34 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"tagged-literals.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"literal:twice : (subr pure (utf8) int) ! pure",
+"6 : int ! (read (globals literal:twice))",
+"0 : int ! pure",
+"5 : int ! pure",
+"#Limg\"iVBORw0KGgo=\" : datum ! pure",
+"literal:img : datum ! pure",
+"#t : bool ! pure",
+"(a #L-A1\"y\" (literal:x \"plain\") (literal:x #utf8\"z\" 1)) : datum ! pure",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@a36fb65564720276bc6d1f87a46a8bb9beab7232"
+]
+}
+]
+}

@@ -1,7 +1,7 @@
 "show.kfx: a value written as Fixpt's `write` writes it (C122), so that
  tier 1's answers are compared with Fixpt's as text. Shared structure is
  not labelled yet (Fixpt's `#n=`): a cyclic value would not end.
- fixpt-source: crates/fixpt-runtime/src/print.rs@c5b5991"
+ fixpt-source: crates/fixpt-runtime/src/print.rs@a36fb65"
 
 (define hex-digit (subr kfx (i64) string)
   (lambda (d) (char->string (string-ref-i64 "0123456789abcdef" d))))
@@ -102,6 +102,22 @@
                            (else (i64-or (i64-shl (i64-and b0 7) 18) (i64-or (i64-shl (more 1) 12) (i64-or (i64-shl (more 2) 6) (more 3))))))))
             (utf8-text-from p (i64+ i w) n (string-append out (char->string (i64->char cp)))))))))
 
+;; A tagged literal's name, `literal:TAG` (Fixpt 9025322f, `writer.rs`'s
+;; `literal_tag`): TAG letters, digits and `-`, at least one.
+(define-rec
+  (tag-chars-from? (subr kfx (string i64) bool)
+    (lambda (s i)
+      (or (i64>= i (string-length-i64 s))
+          (let ((k (char->i64 (string-ref-i64 s i))))
+            (and (or (and (i64>= k 48) (i64<= k 57)) (and (i64>= k 65) (i64<= k 90))
+                     (and (i64>= k 97) (i64<= k 122)) (i64= k 45))
+                 (tag-chars-from? s (i64+ i 1))))))))
+(define literal-name? (subr kfx (string) bool)
+  (lambda (s)
+    (and (i64> (string-length-i64 s) 8)
+         (string=? (substring s 0 8) "literal:")
+         (tag-chars-from? s 8))))
+
 (define-rec
   (written (subr cread (i64) string)
     (lambda (v)
@@ -117,6 +133,15 @@
             ((is-char? v) (char-written (i64-shr v 8)))
             ((is-f32? v) (number-text v))
             ((i64= (word-tag v) t-immediate) "#<immediate>")
+            ;; `(literal:tag #utf8"text")`, as the tagged literal it reads
+            ;; from, `#Ltag"text"` (Fixpt 9025322f).
+            ((and (is-pair? v) (is-kind? (pair-car v) k-symbol) (is-pair? (pair-cdr v))
+                  (i64= (pair-cdr (pair-cdr v)) v-null)
+                  (or (is-kind? (pair-car (pair-cdr v)) k-utf8) (is-kind? (pair-car (pair-cdr v)) k-utf8-ascii))
+                  (literal-name? (symbol-text (pair-car v))))
+             (let ((u (pair-car (pair-cdr v))) (h (symbol-text (pair-car v))))
+               (string-append "#L" (string-append (substring h 8 (string-length h))
+                 (string-append "\"" (string-append (escaped (utf8-text-from (address u) 0 (suffix-bytes u) "") 0 "") "\""))))))
             ((is-pair? v) (string-append "(" (string-append (written (pair-car v)) (string-append (tail-written (pair-cdr v)) ")"))))
             ((is-kind? v k-string) (string-append "\"" (string-append (escaped (string-text v) 0 "") "\"")))
             ((is-kind? v k-symbol) (symbol-text v))

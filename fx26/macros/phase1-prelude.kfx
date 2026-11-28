@@ -2,7 +2,7 @@
  the standard environment, Fixpt's prelude as its text, written by
  scripts/macros-port.py (C446): edit that, not this. The engine's
  `--phase1` defines it before a transformer (main.kfx).
- fixpt-source: crates/fixpt-fx26/src/macros/procedural-prelude.fx@e98d0c8"
+ fixpt-source: crates/fixpt-fx26/src/macros/procedural-prelude.fx@a36fb65"
 (define phase1-prelude string ";;; What a procedural macro's transformer sees besides the standard
 ;;; environment (`macros/procedural.rs`; `TODO.md` §228): aliases, ER's
 ;;; `rename` and `compare`, and syntactic closures. Each is bound around a

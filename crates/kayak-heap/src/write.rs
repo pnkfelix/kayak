@@ -6,7 +6,7 @@
 use std::fmt::Write as _;
 
 // Ported from Fixpt (scripts/fixpt-drift.py): `put_char`, `put_string`.
-// fixpt-source: crates/fixpt-runtime/src/print.rs@c5b5991
+// fixpt-source: crates/fixpt-runtime/src/print.rs@a36fb65
 
 /// A character as Fixpt writes it (`print.rs`'s `put_char`).
 #[inline]

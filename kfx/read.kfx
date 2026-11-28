@@ -354,6 +354,20 @@
              (cons (car xs) (bytes-checked (cdr xs) file line)))
             (else (read-error file line "a bytevector's items are bytes, 0 to 255"))))))
 
+"`#Ltag\"text\"`, a tagged literal (Fixpt 9025322f, Heist's
+ `fixpt-tagged-literals.md`): read `(literal:tag (#utf8 \"text\"))`, a use of
+ the name `literal:tag`, as `'x` is of `quote`, its text as `#utf8\"…\"`'s;
+ `#l` as `#L`. A tag is ASCII letters, digits and `-`, at least one."
+(define tag-chars? (subr kfx (chars) bool)
+  (lambda (cs)
+    "Whether each of `cs` is a tag's character."
+    (if (null? cs)
+        #t
+        (let ((k (char->i64 (car cs))))
+          (and (or (and (i64>= k 48) (i64<= k 57)) (and (i64>= k 65) (i64<= k 90))
+                   (and (i64>= k 97) (i64<= k 122)) (i64= k 45))
+               (tag-chars? (cdr cs)))))))
+
 (define-rec
   (read-datum (subr kfx (here string string) got)
     (lambda (h text file)
@@ -384,6 +398,26 @@
                     is, which only a quote takes."
                    (tagcase (read-items (here (cdr (cdr cs)) line (i64+ pos 2)) text file)
                      (gots (xs after) (got (lst (cons (sym "#vector" file pos) xs) file line pos) after))))
+                  ((and (char=? c #\#) (not (null? (cdr cs))) (or (char=? (car (cdr cs)) #\L) (char=? (car (cdr cs)) #\l))
+                        (not (string=? file "")))
+                   "`#Ltag\"text\"` (`tag-chars?`): its nodes at five offsets, the
+                    `#`, the `L`, the tag's first, the `\"` (the text's) and the
+                    one after it (`#utf8`'s)."
+                   (tagcase (token-at (cdr (cdr cs)) text (i64+ pos 2) 0)
+                     (tok (tag after n)
+                       (let ((word (substring text (i64->int pos) (i64->int (i64+ pos (i64+ n 2)))))
+                             (q (i64+ pos (i64+ n 2))))
+                         (cond ((or (i64= n 0) (not (tag-chars? (string-chars tag))))
+                                (read-error file line (string-append "a tagged literal's tag is letters, digits and `-`, at least one: `" (string-append word "`"))))
+                               ((or (null? after) (not (char=? (car after) #\")))
+                                (read-error file line (string-append "expected `\"` after `" (string-append word "`"))))
+                               (else
+                                (tagcase (string-body (cdr after) text nil (i64+ q 1) file line q line (i64+ q 1))
+                                  (got (x rest)
+                                    (got (lst (list (sym (string-append "literal:" tag) file (i64+ pos 1))
+                                                    (lst (list (sym "#utf8" file (i64+ q 1)) x) file line (i64+ pos 2)))
+                                              file line pos)
+                                         rest)))))))))
                   ((and (utf8-opening? cs) (not (string=? file "")))
                    "`#utf8\"…\"`, UTF-8 text (Fixpt 06a3666): `(#utf8 \"…\")`, a
                     head no KFX name is, as `#(…)`'s; a string's escapes. Its

@@ -1,0 +1,75 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"tagged-literals.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (45 cells, cellular):",
+"     0: closure word literal:twice over 0",
+"     3: global! literal:twice",
+"     5: lit #0=#bloblet(utf8-ascii () #u8(97 98 99))",
+"     7: global literal:twice",
+"     9: tcall 1",
+"    11: drop",
+"    12: closure word literal:twice@545 over 0",
+"    15: lit #0#",
+"    17: slot 0",
+"    19: tcall 1",
+"    21: slot! 0",
+"    23: drop",
+"    24: lit 5",
+"    26: drop",
+"    27: lit (|literal:img| . (#bloblet(utf8-ascii () #u8(105 86 66 79 82 119 48 75 71 103 111 61)) . ()))",
+"    29: drop",
+"    30: lit #1=(|literal:img| . (#bloblet(utf8-ascii () #u8(120)) . ()))",
+"    32: pair-car",
+"    33: drop",
+"    34: lit #1#",
+"    36: pair-cdr",
+"    37: pair-car",
+"    38: prim %fx26-utf8? 1",
+"    41: drop",
+"    42: lit (|a| . ((|literal:-A1| . (#bloblet(utf8-ascii () #u8(121)) . ())) . ((|literal:x| . (\"plain\" . ())) . ((|literal:x| . (#bloblet(utf8-ascii () #u8(122)) . (1 . ()))) . ()))))",
+"    44: exit",
+"",
+"word literal:twice@545 (3 cells, cellular):",
+"     0: lit 0",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 1",
+"       2: const 0",
+"       4: return",
+"",
+"word literal:twice (11 cells, cellular):",
+"     0: lit 2",
+"     2: slot 0",
+"     4: prim %fx26-utf8-length 1",
+"     7: prim %fx26-mul 2",
+"    10: return",
+"  its register code (14 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: prim1 %fx26-utf8-length",
+"       6: setreg 2",
+"       8: const 2",
+"      10: prim2 %fx26-mul 2",
+"      13: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@a36fb65564720276bc6d1f87a46a8bb9beab7232"
+]
+}
+]
+}

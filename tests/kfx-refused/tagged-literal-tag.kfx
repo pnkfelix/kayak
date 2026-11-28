@@ -1,0 +1,3 @@
+"A tagged literal whose tag is no letters, digits and `-` (Fixpt's 9025322f;
+ C564): refused as read, as Fixpt's reader refuses it."
+(define x datum (quote #Lim_g"x"))

@@ -18175,3 +18175,43 @@ Three causes:
   another's head: all four removed, one left), `recent` (of files at 100,
   50 and 30 s, the first two).
 - **The full check**: `check: all passed`, 7 min 59 s; kc-steps cold (kc changed), 0 wrong, its kept database of the old kc (7303 shard files) removed. The pre-check passed first (3 min 40 s).
+
+## C564. The pin moved to Fixpt a36fb65: tagged literals (2026-11-28)
+
+The user: "Yeah move the pin". e98d0c82 to a36fb655, two commits, fetched
+from the clone's GitHub `origin`; C561 and C563 (old kc bugs the move
+found) committed first, this kept aside as a patch, then applied again.
+- **Tagged literals** (9025322f): `#Ltag"text"`, `#l` as `#L`, read as
+  `(literal:tag #utf8"text")`, a use of the name `literal:tag`.
+  - kayak's reader (kfx/read.kfx, `tag-chars?`): `(literal:tag (#utf8
+    "text"))`, its `#utf8"…"` as kayak reads one; Fixpt's two errors, word
+    for word ("a tagged literal's tag is letters, digits and `-`, at least
+    one: `#Lim_g`", "expected `"` after `#Limg`"). Its five nodes at five
+    offsets: the `#`, the `L`, the tag's first, the `"`, the one after.
+  - The writer of the engine and the cells machine (cells/show.kfx,
+    `literal-name?`, Fixpt's `print.rs`): such a pair written `#Ltag"…"`.
+    `kayak-heap::write` has no list writer: its mark moved alone. The
+    macros bridge's located text is kayak's own (the engine's against
+    kc's), not changed.
+  - The expander (`macros-port.py`): Fixpt's `show-syn` writes them so; its
+    `tag-chars?` counts along a string, so KFX finds `show-syn` may spin,
+    and the port's type of `fill-shape`'s `shown` has `spin` now.
+  - kc: refuses a quoted one, not yet (C561, TODO §58).
+- **The cell verifier's quoted constants** (a36fb655): Fixpt's Rust cell
+  verifier (`typed_cells.rs`), which kayak has no port of; its test
+  (`run/quoted-parts.fx`) taken by the engine.
+- **Not taken by the engine**: three of the new programs use
+  `utf8-length`, which kayak's checker has not (TODO.md, §51's utf8 line):
+  refused by its checker, counted so.
+- **Tests**: Fixpt's five (`fx26-tests.py`); tests/fx26-kayak/datum/tagged-literals.fx
+  (quoted, written back, a procedure bound to a tag, `#l`, lists of the
+  shape not tagged literals, an escape in the text); tests/kfx-refused/
+  tagged-literal-tag.kfx, tagged-literal-text.kfx (the reader's errors).
+- **Failures on the way, not this change's**: `bench/loop.fx` ran past
+  run-fixpt-programs' 30 s under the full check's load (26 s alone, C561's
+  engine 27 s); kayak-runner's `jobs_run_in_parallel` failed once
+  (peak 1, not 2): its second job counts itself started before running,
+  so the first may see two started and leave before the second runs.
+  Each passed run again. (C562's number unused: the pin move was C562
+  until C563 came first.)
+- **The full check**: `check: all passed`, 8 min 11 s; beyond KFX, the engine 430 agree (428 before), 100 its checker refuses (97: `utf8-length`). The pre-check passed first (3 min 38 s).

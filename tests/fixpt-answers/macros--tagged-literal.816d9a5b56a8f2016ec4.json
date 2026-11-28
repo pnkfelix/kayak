@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"tagged-literal.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define literal:twice : (subr pure (utf8) int) ! pure",
+"int ! (read (globals literal:twice))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@a36fb65564720276bc6d1f87a46a8bb9beab7232"
+]
+}
+]
+}

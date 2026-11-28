@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"tagged-literal-bound.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: read error: <programs>/macros/tagged-literal-bound.fx:5:9: a use of `bindit`: `#Lq\"z\"` is not a name that may be bound",
+""
+],
+"by": [
+"x86_64-linux@a36fb65564720276bc6d1f87a46a8bb9beab7232"
+]
+}
+]
+}

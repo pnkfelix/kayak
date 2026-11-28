@@ -6732,6 +6732,57 @@ pub mod made__load__3__main {
         }
     }
 
+    pub fn mx_syntax_tag_chars_p(mut s: Str, mut i: Int) -> bool {
+        loop {
+            if _eq(i, string_length(s)) {
+                return true;
+            } else {
+                let k = char_to_integer(string_ref(s, i));
+                if ((_gt_eq(k, int_lit(48)) && _lt_eq(k, int_lit(57))) || (_gt_eq(k, int_lit(65)) && _lt_eq(k, int_lit(90))) || (_gt_eq(k, int_lit(97)) && _lt_eq(k, int_lit(122))) || _eq(k, int_lit(45))) {
+                    i = _plus(i, int_lit(1));
+                    continue;
+                } else {
+                    return false;
+                }
+            }
+        }
+    }
+
+    pub fn tagged_text(h: Str, u: Utf8) -> Str {
+        let n = string_length(h);
+        if (_gt(n, int_lit(8)) && string_eq_p(substring(h, int_lit(0), int_lit(8)), str_lit!("literal:")) && mx_syntax_tag_chars_p(h, int_lit(8))) {
+            string_append(str_lit!("#L"), string_append(substring(h, int_lit(8), n), string_append(str_lit!("\""), string_append(utf8_to_string(u), str_lit!("\"")))))
+        } else {
+            str_lit!("")
+        }
+    }
+
+    pub fn show_tagged(h: kayak_rt::data::DataAt<'static, Syn>, t: kayak_rt::data::DataAt<'static, Syn>) -> Str {
+        let tagcase_ = h;
+        if made__load__2__expander::Syn::__is_Atom(tagcase_) {
+            let (hd, a, b, x,) = made__load__2__expander::Syn::__Atom(tagcase_);
+            let tagcase_ = t;
+            if made__load__2__expander::Syn::__is_Atom(tagcase_) {
+                let (td, c, e, y,) = made__load__2__expander::Syn::__Atom(tagcase_);
+                if symbol_p(hd) {
+                    if utf8_p(td) {
+                        tagged_text(symbol_to_string(kayak_rt::value::unbox::<Symbol>(hd)), kayak_rt::value::unbox_other::<Utf8>(td))
+                    } else {
+                        str_lit!("")
+                    }
+                } else {
+                    str_lit!("")
+                }
+            } else {
+                let z = tagcase_;
+                str_lit!("")
+            }
+        } else {
+            let z = tagcase_;
+            str_lit!("")
+        }
+    }
+
     pub fn show_bytes(mut v: Bytes, mut i: Int, mut acc: Str) -> Str {
         loop {
             if _lt(i, int_lit(0)) {
@@ -6777,34 +6828,45 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn show_syn(s: kayak_rt::data::DataAt<'static, Syn>) -> Str {
+    pub fn show_syn<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, s: kayak_rt::data::DataAt<'static, Syn>) -> Str {
         let tagcase_ = s;
         if made__load__2__expander::Syn::__is_MxEagerReaderTypesLst(tagcase_) {
             let (items, d, a, b, x,) = made__load__2__expander::Syn::__MxEagerReaderTypesLst(tagcase_);
-            if null_p(items) {
-                str_lit!("()")
-            } else {
-                string_append(str_lit!("("), string_append(mx_syntax_show_each(items), str_lit!(")")))
-            }
+            show_list(mxp, maker_st, items)
         } else if made__load__2__expander::Syn::__is_Dotted(tagcase_) {
             let (items, tail, d, a, b, x,) = made__load__2__expander::Syn::__Dotted(tagcase_);
-            string_append(str_lit!("("), string_append(mx_syntax_show_each(items), string_append(str_lit!(" . "), string_append(show_syn(tail), str_lit!(")")))))
+            string_append(str_lit!("("), string_append(mx_syntax_show_each(mxp, maker_st, items), string_append(str_lit!(" . "), string_append(show_syn(mxp, maker_st, tail), str_lit!(")")))))
         } else if made__load__2__expander::Syn::__is_Vec(tagcase_) {
             let (items, d, a, b, x,) = made__load__2__expander::Syn::__Vec(tagcase_);
-            string_append(str_lit!("#("), string_append(mx_syntax_show_each(items), str_lit!(")")))
+            string_append(str_lit!("#("), string_append(mx_syntax_show_each(mxp, maker_st, items), str_lit!(")")))
         } else if made__load__2__expander::Syn::__is_Atom(tagcase_) {
             let (d, a, b, x,) = made__load__2__expander::Syn::__Atom(tagcase_);
             show_datum(d)
         } else { kayak_rt::data::no_variant() }
     }
 
-    pub fn mx_syntax_show_each(xs: SynsA) -> Str {
+    pub fn mx_syntax_show_each<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, xs: SynsA) -> Str {
         if null_p(xs) {
             str_lit!("")
         } else if null_p(cdr(xs)) {
-            show_syn(car(xs))
+            show_syn(mxp, maker_st, car(xs))
         } else {
-            string_append(show_syn(car(xs)), string_append(str_lit!(" "), mx_syntax_show_each(cdr(xs))))
+            string_append(show_syn(mxp, maker_st, car(xs)), string_append(str_lit!(" "), mx_syntax_show_each(mxp, maker_st, cdr(xs))))
+        }
+    }
+
+    pub fn show_list<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, items: SynsA) -> Str {
+        let tagged = if (pair_p(items) && pair_p(cdr(items)) && null_p(cdr(cdr(items)))) {
+            show_tagged(car(items), car(cdr(items)))
+        } else {
+            str_lit!("")
+        };
+        if not(string_eq_p(tagged, str_lit!(""))) {
+            tagged
+        } else if null_p(items) {
+            str_lit!("()")
+        } else {
+            string_append(str_lit!("("), string_append(mx_syntax_show_each(mxp, maker_st, items), str_lit!(")")))
         }
     }
 
@@ -7998,7 +8060,7 @@ pub mod made__load__3__main {
     }
 
     pub fn delta_eq_p<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, d: Int, e: Int) -> bool {
-        (_eq(d, e) || (_gt_eq(d, int_lit(100)) && _gt_eq(e, int_lit(100)) && string_eq_p(show_syn(syntax_sig_of(mxp, maker_st, d)), show_syn(syntax_sig_of(mxp, maker_st, e)))))
+        (_eq(d, e) || (_gt_eq(d, int_lit(100)) && _gt_eq(e, int_lit(100)) && string_eq_p(show_syn(mxp, maker_st, syntax_sig_of(mxp, maker_st, d)), show_syn(mxp, maker_st, syntax_sig_of(mxp, maker_st, e)))))
     }
 
     pub fn mx_types_addr_eq_p(mut a: Addr, mut b: Addr) -> bool {
@@ -10212,13 +10274,13 @@ pub mod made__load__3__main {
                 Ok(())
             }
         } else {
-            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(show_syn(s), str_lit!("` is not a name that may be bound"))), s)? {})
+            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(show_syn(mxp, maker_st, s), str_lit!("` is not a name that may be bound"))), s)? {})
         }
     }
 
     #[inline]
     pub fn not_definition<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::data::DataAt<'static, Syn>, what: Str) -> Result<(), Unwind> {
-        Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(show_syn(s), string_append(str_lit!("` is not a definition: a macro that makes "), string_append(str_lit!("definitions makes "), what)))), s)? {})
+        Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(show_syn(mxp, maker_st, s), string_append(str_lit!("` is not a definition: a macro that makes "), string_append(str_lit!("definitions makes "), what)))), s)? {})
     }
 
     #[inline]
@@ -10284,7 +10346,7 @@ pub mod made__load__3__main {
             with_kids(mxp, maker_st, at, k_binder(syn_symbol(mxp, maker_st, n)?, d));
             Ok(atm_lit(at, d))
         } else {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(show_syn(n), string_append(str_lit!("` is not a name that may "), str_lit!("be bound")))), n)? {};
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(show_syn(mxp, maker_st, n), string_append(str_lit!("` is not a name that may "), str_lit!("be bound")))), n)? {};
             Ok(atm_lit(at, d))
         }
     }
@@ -10596,7 +10658,7 @@ pub mod made__load__3__main {
     pub fn fill_seq<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mode: Int, ps: Pvars, at: Int, t: kayak_rt::data::DataAt<'static, Sty>, s: kayak_rt::data::DataAt<'static, Syn>, x: kayak_rt::data::DataAt<'static, Syn>) -> Result<(), Unwind> {
         let elem = seq_elem(mxp, maker_st, t);
         if null_p(elem) {
-            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(show_syn(s), string_append(str_lit!("` repeats a part by `...` where the form "), str_lit!("takes no list of them")))), s)? {})
+            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(show_syn(mxp, maker_st, s), string_append(str_lit!("` repeats a part by `...` where the form "), str_lit!("takes no list of them")))), s)? {})
         } else {
             let e = align(mxp, maker_st, mx_fail, mode, ps, car(elem), x, int_lit(-1), path_plus(mxp, maker_st, node_path(mxp, maker_st, at), true))?;
             repeated_x(mxp, maker_st, e);
@@ -10628,8 +10690,8 @@ pub mod made__load__3__main {
     pub fn fill_shape<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mode: Int, ps: Pvars, at: Int, t: kayak_rt::data::DataAt<'static, Sty>, s: kayak_rt::data::DataAt<'static, Syn>, root: Int) -> Result<(), Unwind> {
         let (said, shown) = (kayak_rt::closure1((mxp, maker_st, mx_fail, s,), |(mxp, maker_st, mx_fail, s,), why: Str| {
             Ok(match fail_at(mxp, maker_st, mx_fail, why, s)? {})
-        }), the::<kayak_rt::Proc0<'mxp, Str>>(kayak_rt::closure0((s,), |(s,)| {
-            string_append(str_lit!("`"), string_append(show_syn(s), str_lit!("`")))
+        }), the::<kayak_rt::Proc0<'mxp, Str>>(kayak_rt::closure0((mxp, maker_st, s,), |(mxp, maker_st, s,)| {
+            string_append(str_lit!("`"), string_append(show_syn(mxp, maker_st, s), str_lit!("`")))
         })));
         let tagcase_ = t;
         if made__load__2__expander::Sty::__is_SMu(tagcase_) {
@@ -12449,7 +12511,7 @@ pub mod made__load__3__main {
             } else if (not(null_p(now)) && _eq(car(was), car(now))) {
                 Ok(rest)
             } else {
-                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("this template's scopes have no one reading: `"), string_append(show_syn(s), string_append(str_lit!("`, headed by `"), string_append(symbol_to_string(syn_symbol(mxp, maker_st, car(split(s)))?), string_append(str_lit!("`, is read as "), string_append(said.call(was), string_append(str_lit!(" and then as "), said.call(now)))))))), s)? {};
+                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("this template's scopes have no one reading: `"), string_append(show_syn(mxp, maker_st, s), string_append(str_lit!("`, headed by `"), string_append(symbol_to_string(syn_symbol(mxp, maker_st, car(split(s)))?), string_append(str_lit!("`, is read as "), string_append(said.call(was), string_append(str_lit!(" and then as "), said.call(now)))))))), s)? {};
                 Ok(rest)
             }
         }
@@ -14508,10 +14570,10 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn syn_in_p(mut x: kayak_rt::data::DataAt<'static, Syn>, mut ys: SynsA) -> bool {
+    pub fn syn_in_p<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut x: kayak_rt::data::DataAt<'static, Syn>, mut ys: SynsA) -> bool {
         loop {
             if not(null_p(ys)) {
-                if string_eq_p(show_syn(x), show_syn(car(ys))) {
+                if string_eq_p(show_syn(mxp, maker_st, x), show_syn(mxp, maker_st, car(ys))) {
                     return true;
                 } else {
                     ys = cdr(ys);
@@ -14523,15 +14585,15 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn distinct_from(mut xs: SynsA, mut seen: SynsA) -> SynsA {
+    pub fn distinct_from<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut xs: SynsA, mut seen: SynsA) -> SynsA {
         loop {
             if null_p(xs) {
                 return nil::<kayak_rt::data::DataAt<'static, made__load__2__expander::Syn>>();
-            } else if syn_in_p(car(xs), seen) {
+            } else if syn_in_p(mxp, maker_st, car(xs), seen) {
                 xs = cdr(xs);
                 continue;
             } else {
-                return kayak_rt::heap_cons(car(xs), distinct_from(cdr(xs), kayak_rt::heap_cons(car(xs), seen)));
+                return cons(car(xs), distinct_from(mxp, maker_st, cdr(xs), cons(car(xs), seen)));
             }
         }
     }
@@ -14582,7 +14644,7 @@ pub mod made__load__3__main {
                 return Ok(sigma);
             } else {
                 let p = car(xs).0;
-                let same = distinct_from(adds_at(p, xs), nil::<kayak_rt::data::DataAt<'static, made__load__2__expander::Syn>>());
+                let same = distinct_from(mxp, maker_st, adds_at(p, xs), nil::<kayak_rt::data::DataAt<'static, made__load__2__expander::Syn>>());
                 let rest = adds_not_at(p, xs);
                 (sigma, xs) = (element_annotated(mxp, maker_st, mx_fail, sigma, p, same)?, rest);
                 continue;
@@ -15717,7 +15779,7 @@ pub mod made__load__3__main {
             match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a `syntax-rules` has no list of literals: drop the "), string_append(str_lit!("`()` (names its patterns match are written "), str_lit!("`#:trailmarks (name …)`)"))), car(parts))? {};
             Ok(none)
         } else if (not(null_p(proper(car(parts)))) && all_names_p(proper(car(parts)))) {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a `syntax-rules`' names its patterns match are its "), string_append(str_lit!("trailmarks: `#:trailmarks "), string_append(show_syn(car(parts)), str_lit!("`, each defined `(define-syntax name (trailmark))`")))), car(parts))? {};
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a `syntax-rules`' names its patterns match are its "), string_append(str_lit!("trailmarks: `#:trailmarks "), string_append(show_syn(mxp, maker_st, car(parts)), str_lit!("`, each defined `(define-syntax name (trailmark))`")))), car(parts))? {};
             Ok(none)
         } else {
             Ok(Product_11_12(the::<MxParserTypesNames>(nil::<Symbol>()), parts))
@@ -16019,7 +16081,7 @@ pub mod made__load__3__main {
         let said = if null_p(lettered) {
             ()
         } else {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(show_syn(car(lettered)), string_append(str_lit!("` is an address "), string_append(str_lit!("in Herman's letters: "), maker_st.path_usage.get().unwrap())))), car(lettered))? {}
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(show_syn(mxp, maker_st, car(lettered)), string_append(str_lit!("` is an address "), string_append(str_lit!("in Herman's letters: "), maker_st.path_usage.get().unwrap())))), car(lettered))? {}
         };
         let made = signature_made(mxp, maker_st, mx_fail, poly.1)?;
         let t = read_sty(mxp, maker_st, mx_fail, made.0, nil::<Product_11_12<Symbol, kayak_rt::data::DataAt<'static, made__load__2__expander::Sty>>>(), nil::<Product_11_12<Symbol, bool>>())?;
@@ -18198,40 +18260,40 @@ pub mod made__load__3__main {
         })
     }
 
-    pub fn sig_text(s: kayak_rt::data::DataAt<'static, Syn>) -> Str {
+    pub fn sig_text<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, s: kayak_rt::data::DataAt<'static, Syn>) -> Str {
         let tagcase_ = s;
         if made__load__2__expander::Syn::__is_MxEagerReaderTypesLst(tagcase_) {
             let (items, d, a, b, x,) = made__load__2__expander::Syn::__MxEagerReaderTypesLst(tagcase_);
             if null_p(items) {
                 str_lit!("()")
             } else {
-                string_append(str_lit!("("), string_append(sig_items(items, true, a, b), str_lit!(")")))
+                string_append(str_lit!("("), string_append(sig_items(mxp, maker_st, items, true, a, b), str_lit!(")")))
             }
         } else if made__load__2__expander::Syn::__is_Dotted(tagcase_) {
             let (items, tl, d, a, b, x,) = made__load__2__expander::Syn::__Dotted(tagcase_);
-            string_append(str_lit!("("), string_append(sig_items(items, false, a, b), string_append(str_lit!(" . "), string_append(sig_text(tl), str_lit!(")")))))
+            string_append(str_lit!("("), string_append(sig_items(mxp, maker_st, items, false, a, b), string_append(str_lit!(" . "), string_append(sig_text(mxp, maker_st, tl), str_lit!(")")))))
         } else {
             let y = tagcase_;
-            show_syn(s)
+            show_syn(mxp, maker_st, s)
         }
     }
 
     #[inline]
-    pub fn sig_items(xs: SynsA, proper: bool, a: Int, b: Int) -> Str {
-        sig_items_from(xs, true, proper, a, b)
+    pub fn sig_items<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, xs: SynsA, proper: bool, a: Int, b: Int) -> Str {
+        sig_items_from(mxp, maker_st, xs, true, proper, a, b)
     }
 
-    pub fn sig_items_from(xs: SynsA, first: bool, proper: bool, a: Int, b: Int) -> Str {
+    pub fn sig_items_from<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, xs: SynsA, first: bool, proper: bool, a: Int, b: Int) -> Str {
         if null_p(xs) {
             str_lit!("")
         } else if (not(first) && proper && sig_word_p(car(xs))) {
-            string_append(str_lit!(" . "), sig_text(mk_list(xs, a, b)))
+            string_append(str_lit!(" . "), sig_text(mxp, maker_st, mk_list(xs, a, b)))
         } else {
             string_append(if first {
                 str_lit!("")
             } else {
                 str_lit!(" ")
-            }, string_append(sig_text(car(xs)), sig_items_from(cdr(xs), false, proper, a, b)))
+            }, string_append(sig_text(mxp, maker_st, car(xs)), sig_items_from(mxp, maker_st, cdr(xs), false, proper, a, b)))
         }
     }
 
@@ -18271,28 +18333,28 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn flat(mut s: kayak_rt::data::DataAt<'static, Syn>) -> Str {
+    pub fn flat<'mxp, Place_Mxp: kayak_rt::Visit>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut s: kayak_rt::data::DataAt<'static, Syn>) -> Str {
         loop {
             let tagcase_ = s;
             if made__load__2__expander::Syn::__is_MxEagerReaderTypesLst(tagcase_) {
                 let (items, d, a, b, x,) = made__load__2__expander::Syn::__MxEagerReaderTypesLst(tagcase_);
-                return string_append(str_lit!("("), string_append(flat_items(items, true), str_lit!(")")));
+                return string_append(str_lit!("("), string_append(flat_items(mxp, maker_st, items, true), str_lit!(")")));
             } else if made__load__2__expander::Syn::__is_Dotted(tagcase_) {
                 let (items, tl, d, a, b, x,) = made__load__2__expander::Syn::__Dotted(tagcase_);
                 if (syn_nil_p(tl) || not(null_p(split(tl)))) {
-                    s = list_with(items, kayak_rt::heap_cons(tl, kayak_rt::nil()), a, b);
+                    s = list_with(items, kayak_rt::cons(tl, kayak_rt::nil()), a, b);
                     continue;
                 } else {
-                    return string_append(str_lit!("("), string_append(flat_items(items, true), string_append(str_lit!(" . "), string_append(flat(tl), str_lit!(")")))));
+                    return string_append(str_lit!("("), string_append(flat_items(mxp, maker_st, items, true), string_append(str_lit!(" . "), string_append(flat(mxp, maker_st, tl), str_lit!(")")))));
                 }
             } else {
                 let y = tagcase_;
-                return show_syn(s);
+                return show_syn(mxp, maker_st, s);
             }
         }
     }
 
-    pub fn flat_items(xs: SynsA, first: bool) -> Str {
+    pub fn flat_items<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, xs: SynsA, first: bool) -> Str {
         if null_p(xs) {
             str_lit!("")
         } else {
@@ -18300,7 +18362,7 @@ pub mod made__load__3__main {
                 str_lit!("")
             } else {
                 str_lit!(" ")
-            }, string_append(flat(car(xs)), flat_items(cdr(xs), false)))
+            }, string_append(flat(mxp, maker_st, car(xs)), flat_items(mxp, maker_st, cdr(xs), false)))
         }
     }
 
@@ -19128,7 +19190,7 @@ pub mod made__load__3__main {
             };
             let shown = mk_list(cons(mk_symbol(str_lit!("macro"), a, b), cons(shape, cons(car(r.2), r.1))), a, b);
             let back = elaborated(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), shown)?;
-            if string_eq_p(flat(back), flat(sig)) {
+            if string_eq_p(flat(mxp, maker_st, back), flat(mxp, maker_st, sig)) {
                 Ok(shown)
             } else {
                 match cannot(mxp, maker_st, sig)? {};
@@ -19171,7 +19233,7 @@ pub mod made__load__3__main {
         } else {
             kayak_rt::cons(car(cs), kayak_rt::nil())
         })?;
-        Ok(sig_text(if null_p(c) {
+        Ok(sig_text(mxp, maker_st, if null_p(c) {
             sig
         } else {
             car(c)
@@ -20713,11 +20775,11 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn texts(xs: SynsA) -> MxSolveStrings {
+    pub fn texts<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, xs: SynsA) -> MxSolveStrings {
         if null_p(xs) {
             nil::<Str>()
         } else {
-            kayak_rt::heap_cons(show_syn(car(xs)), texts(cdr(xs)))
+            cons(show_syn(mxp, maker_st, car(xs)), texts(mxp, maker_st, cdr(xs)))
         }
     }
 
@@ -20779,7 +20841,7 @@ pub mod made__load__3__main {
                 };
                 let tys = build(mxp, maker_st, s, n);
                 let shown = show_each_sig(mxp, maker_st, tys, us);
-                let mx_solve_strings = texts(shown);
+                let mx_solve_strings = texts(mxp, maker_st, shown);
                 if (not(null_p(last)) && mx_solve_strings_eq_p(car(last).0, mx_solve_strings)) {
                     return Ok(shown);
                 } else {
@@ -22309,7 +22371,7 @@ pub mod made__load__3__main {
                     continue;
                 } else {
                     let said = syntax_sig_of(mxp, maker_st, d);
-                    let shown = show_syn(said);
+                    let shown = show_syn(mxp, maker_st, said);
                     let part = syn_at_addr(nth(split(s), int_lit(1)), car(es).0);
                     let x = if (not(null_p(part)) && syn_symbol_p(car(part))) {
                         syn_name(car(part))
@@ -26568,15 +26630,15 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn show_renamed(s: kayak_rt::data::DataAt<'static, Syn>) -> Str {
-        show_syn(s)
+    pub fn show_renamed<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, s: kayak_rt::data::DataAt<'static, Syn>) -> Str {
+        show_syn(mxp, maker_st, s)
     }
 
     pub fn walked_one<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, form: kayak_rt::data::DataAt<'static, Syn>) -> Result<Str, Unwind> {
         let r = {
             let prompt_tag__ = maker_st.parse_tag.get().unwrap();
             match (move || -> Result<_, Unwind> {
-                set(maker_st.walked_out.get().unwrap(), show_renamed(alpha_renamed(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_walk(mxp, maker_st, a0, a1, a2)), form)?));
+                set(maker_st.walked_out.get().unwrap(), show_renamed(mxp, maker_st, alpha_renamed(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_walk(mxp, maker_st, a0, a1, a2)), form)?));
                 Ok(p_ok(nil::<kayak_rt::data::DataAt<'static, made__load__2__expander::MxParserTypesTop>>()))
             })() {
                 Ok(v_) => v_,
@@ -29577,12 +29639,11 @@ pub mod made__load__3__main {
         }
     }
 
-    #[inline]
     pub fn shaped_each<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, forms: SynsA) -> Result<List<Str>, Unwind> {
         if null_p(forms) {
             Ok(nil::<Str>())
         } else {
-            Ok(cons(show_renamed(top_shaped(mxp, maker_st, car(forms))?), shaped_each(mxp, maker_st, cdr(forms))?))
+            Ok(cons(show_renamed(mxp, maker_st, top_shaped(mxp, maker_st, car(forms))?), shaped_each(mxp, maker_st, cdr(forms))?))
         }
     }
 

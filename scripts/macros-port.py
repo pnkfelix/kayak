@@ -136,9 +136,11 @@ PATCHES = {
     "macros-types.fx": [
         ("(define one-var (->* (stys (-> (sty) sty)) stys)", "(define one-var (->* (stys (subr (read rs) (sty) sty)) stys)"),
     ],
+    # `show-syn` spins since Fixpt 9025322f (its `tag-chars?` counts up a
+    # string), and `shown` is only called here, in `fill-shape`.
     "macros-align.fx": [
         ('(shown (lambda () (string-append "`" (show-syn s) "`"))))',
-         '(shown (the (subr (read rs) () string) (lambda () (string-append "`" (show-syn s) "`")))))'),
+         '(shown (the (subr (maxeff (read rs) spin) () string) (lambda () (string-append "`" (show-syn s) "`")))))'),
     ],
 }
 # Names a local may have that shadow what KFX takes only as itself (the
