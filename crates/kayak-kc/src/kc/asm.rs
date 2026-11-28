@@ -482,74 +482,101 @@ pub mod kc_asm {
         0i64
     }
 
-    pub fn trimmed_left(mut cs: Chars) -> Chars {
+    // The text is read by its indices (C567), not as lists of its
+    // characters: a list of a line's characters, made again for each
+    // trimming and each operand, was most of `kc run`'s assembling.
+    #[inline]
+    pub fn blank_p(c: char) -> bool {
+        (char_eq_p(c, ' ') || char_eq_p(c, '\t'))
+    }
+
+    /// The first index from `i`, before `n`, of no blank; else `n`.
+    pub fn blanks_after(mut s: Str, mut i: i64, mut n: i64) -> i64 {
         loop {
-            if (not(null_p(cs)) && (char_eq_p(car(cs), ' ') || char_eq_p(car(cs), '\t'))) {
-                cs = cdr(cs);
+            if (i64_lt(i, n) && blank_p(string_ref_i64(s, i))) {
+                i = i64_plus(i, 1i64);
                 continue;
             } else {
-                return cs;
+                return i;
+            }
+        }
+    }
+
+    /// The least end, not before `i`, with only blanks from it to `n`.
+    pub fn blanks_before(mut s: Str, mut i: i64, mut n: i64) -> i64 {
+        loop {
+            if (i64_gt(n, i) && blank_p(string_ref_i64(s, i64_minus(n, 1i64)))) {
+                n = i64_minus(n, 1i64);
+                continue;
+            } else {
+                return n;
+            }
+        }
+    }
+
+    /// The text of `s` from `i` to `n`, its blanks either end cut.
+    pub fn slice_trimmed(s: Str, i: i64, n: i64) -> Str {
+        let a = blanks_after(s, i, n);
+        let b = blanks_before(s, a, n);
+        substring(s, i64_to_int(a), i64_to_int(b))
+    }
+
+    /// Where `c` is first, from `i`, before `n`; else `n`.
+    pub fn char_from(mut s: Str, mut c: char, mut i: i64, mut n: i64) -> i64 {
+        loop {
+            if i64_gt_eq(i, n) {
+                return n;
+            } else if char_eq_p(string_ref_i64(s, i), c) {
+                return i;
+            } else {
+                i = i64_plus(i, 1i64);
+                continue;
+            }
+        }
+    }
+
+    /// Where the word from `i` ends: a blank, or `n`.
+    pub fn word_stop(mut s: Str, mut i: i64, mut n: i64) -> i64 {
+        loop {
+            if (i64_gt_eq(i, n) || blank_p(string_ref_i64(s, i))) {
+                return i;
+            } else {
+                i = i64_plus(i, 1i64);
+                continue;
+            }
+        }
+    }
+
+    /// The operands of `s` from `start` to `n`, apart at the commas
+    /// outside parentheses, each trimmed; `i` where it is.
+    pub fn split_commas(mut s: Str, mut i: i64, mut n: i64, mut depth: i64, mut start: i64, mut acc: Strings) -> Strings {
+        loop {
+            if i64_gt_eq(i, n) {
+                return reverse(if i64_eq(start, n) {
+                    acc
+                } else {
+                    kayak_rt::heap_cons(slice_trimmed(s, start, n), acc)
+                });
+            } else if (char_eq_p(string_ref_i64(s, i), ',') && i64_eq(depth, 0i64)) {
+                (i, start, acc) = (i64_plus(i, 1i64), i64_plus(i, 1i64), kayak_rt::heap_cons(slice_trimmed(s, start, i), acc));
+                continue;
+            } else if char_eq_p(string_ref_i64(s, i), '(') {
+                (i, depth) = (i64_plus(i, 1i64), i64_plus(depth, 1i64));
+                continue;
+            } else if char_eq_p(string_ref_i64(s, i), ')') {
+                (i, depth) = (i64_plus(i, 1i64), i64_minus(depth, 1i64));
+                continue;
+            } else {
+                i = i64_plus(i, 1i64);
+                continue;
             }
         }
     }
 
     #[inline]
-    pub fn trimmed(s: Str) -> Str {
-        list_to_string(reverse(trimmed_left(reverse(trimmed_left(string_chars(s))))))
-    }
-
-    pub fn lines_of(mut cs: Chars, mut line: Chars, mut acc: Strings) -> Strings {
-        loop {
-            if null_p(cs) {
-                return reverse(if null_p(line) {
-                    acc
-                } else {
-                    kayak_rt::heap_cons(list_to_string(reverse(line)), acc)
-                });
-            } else if char_eq_p(car(cs), '\n') {
-                (cs, line, acc) = (cdr(cs), nil::<char>(), kayak_rt::heap_cons(list_to_string(reverse(line)), acc));
-                continue;
-            } else {
-                (cs, line) = (cdr(cs), kayak_rt::heap_cons(car(cs), line));
-                continue;
-            }
-        }
-    }
-
-    pub fn word_end(mut cs: Chars, mut acc: Chars) -> Product_11_12<Str, Chars> {
-        loop {
-            if (null_p(cs) || char_eq_p(car(cs), ' ') || char_eq_p(car(cs), '\t')) {
-                return Product_11_12(list_to_string(reverse(acc)), trimmed_left(cs));
-            } else {
-                (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
-                continue;
-            }
-        }
-    }
-
-    /// Operands, apart at the commas outside parentheses.
-    pub fn split_commas(mut cs: Chars, mut depth: i64, mut cur: Chars, mut acc: Strings) -> Strings {
-        loop {
-            if null_p(cs) {
-                return reverse(if null_p(cur) {
-                    acc
-                } else {
-                    kayak_rt::heap_cons(trimmed(list_to_string(reverse(cur))), acc)
-                });
-            } else if (char_eq_p(car(cs), ',') && i64_eq(depth, 0i64)) {
-                (cs, cur, acc) = (cdr(cs), nil::<char>(), kayak_rt::heap_cons(trimmed(list_to_string(reverse(cur))), acc));
-                continue;
-            } else if char_eq_p(car(cs), '(') {
-                (cs, depth, cur) = (cdr(cs), i64_plus(depth, 1i64), kayak_rt::heap_cons(car(cs), cur));
-                continue;
-            } else if char_eq_p(car(cs), ')') {
-                (cs, depth, cur) = (cdr(cs), i64_minus(depth, 1i64), kayak_rt::heap_cons(car(cs), cur));
-                continue;
-            } else {
-                (cs, cur) = (cdr(cs), kayak_rt::heap_cons(car(cs), cur));
-                continue;
-            }
-        }
+    pub fn operands_from(s: Str, i: i64) -> Strings {
+        let n = string_length_i64(s);
+        split_commas(s, blanks_after(s, i, n), n, 0i64, blanks_after(s, i, n), nil::<Str>())
     }
 
     #[inline]
@@ -558,27 +585,27 @@ pub mod kc_asm {
     }
 
     pub fn number_text_p(s: Str) -> bool {
-        let cs = string_chars(s);
-        (not(null_p(cs)) && (digit_p(car(cs)) || (char_eq_p(car(cs), '-') && not(null_p(cdr(cs))) && digit_p(car(cdr(cs))))))
+        let n = string_length_i64(s);
+        (i64_gt(n, 0i64) && (digit_p(string_ref_i64(s, 0i64)) || (char_eq_p(string_ref_i64(s, 0i64), '-') && i64_gt(n, 1i64) && digit_p(string_ref_i64(s, 1i64)))))
     }
 
-    pub fn digits_value(mut cs: Chars, mut acc: i64) -> i64 {
+    pub fn digits_value(mut s: Str, mut i: i64, mut n: i64, mut acc: i64) -> i64 {
         loop {
-            if null_p(cs) {
+            if i64_gt_eq(i, n) {
                 return acc;
             } else {
-                (cs, acc) = (cdr(cs), i64_plus(i64_star(acc, 10i64), i64_minus(char_to_i64(car(cs)), 48i64)));
+                (i, acc) = (i64_plus(i, 1i64), i64_plus(i64_star(acc, 10i64), i64_minus(char_to_i64(string_ref_i64(s, i)), 48i64)));
                 continue;
             }
         }
     }
 
     pub fn number_of(s: Str) -> i64 {
-        let cs = string_chars(s);
-        if char_eq_p(car(cs), '-') {
-            i64_minus(0i64, digits_value(cdr(cs), 0i64))
+        let n = string_length_i64(s);
+        if char_eq_p(string_ref_i64(s, 0i64), '-') {
+            i64_minus(0i64, digits_value(s, 1i64, n, 0i64))
         } else {
-            digits_value(cs, 0i64)
+            digits_value(s, 0i64, n, 0i64)
         }
     }
 
@@ -647,29 +674,15 @@ pub mod kc_asm {
         }
     }
 
-    /// The text before `c`, and what is after it.
-    pub fn cut_at(mut cs: Chars, mut c: char, mut acc: Chars) -> Product_11_12<Str, Chars> {
+    /// Where a `+` or `-` from `i` is, or -1.
+    pub fn sign_at(mut s: Str, mut i: i64, mut n: i64) -> i64 {
         loop {
-            if null_p(cs) {
-                return Product_11_12(list_to_string(reverse(acc)), nil::<char>());
-            } else if char_eq_p(car(cs), c) {
-                return Product_11_12(list_to_string(reverse(acc)), cdr(cs));
-            } else {
-                (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
-                continue;
-            }
-        }
-    }
-
-    /// Where a `+` or `-` after the first character is, or -1.
-    pub fn sign_at(mut cs: Chars, mut i: i64) -> i64 {
-        loop {
-            if null_p(cs) {
+            if i64_gt_eq(i, n) {
                 return the::<i64>(-1i64);
-            } else if (i64_gt(i, 0i64) && (char_eq_p(car(cs), '+') || char_eq_p(car(cs), '-'))) {
+            } else if (char_eq_p(string_ref_i64(s, i), '+') || char_eq_p(string_ref_i64(s, i), '-')) {
                 return i;
             } else {
-                (cs, i) = (cdr(cs), i64_plus(i, 1i64));
+                i = i64_plus(i, 1i64);
                 continue;
             }
         }
@@ -682,7 +695,7 @@ pub mod kc_asm {
         } else if number_text_p(s) {
             Product_11_12(number_of(s), str_lit!(""))
         } else {
-            let k = sign_at(string_chars(s), 0i64);
+            let k = sign_at(s, 1i64, string_length_i64(s));
             if i64_lt(k, 0i64) {
                 Product_11_12(the::<i64>(0i64), s)
             } else {
@@ -698,10 +711,15 @@ pub mod kc_asm {
 
     /// `D(%b)`, `D(%b,%i,s)`, `sym(%rip)`.
     pub fn mem_of(s: Str) -> kayak_rt::data::DataAt<'static, Opd> {
-        let a = cut_at(string_chars(s), '(', nil::<char>());
-        let d = disp_of(a.0);
-        let inside = cut_at(a.1, ')', nil::<char>()).0;
-        let parts = split_commas(string_chars(inside), 0i64, nil::<char>(), nil::<Str>());
+        let n = string_length_i64(s);
+        let p = char_from(s, '(', 0i64, n);
+        let d = disp_of(substring(s, int_lit(0), i64_to_int(p)));
+        let a = if i64_lt(p, n) {
+            i64_plus(p, 1i64)
+        } else {
+            n
+        };
+        let parts = split_commas(s, a, char_from(s, ')', a, n), 0i64, a, nil::<Str>());
         let base = if string_eq_p(car(parts), str_lit!("")) {
             the::<i64>(-1i64)
         } else {
@@ -744,29 +762,11 @@ pub mod kc_asm {
                     o_imem(0i64, str_lit!(""), 0i64)
                 }
             }
-        } else if string_member_char_p('(', s) {
+        } else if i64_lt(char_from(s, '(', 0i64, string_length_i64(s)), string_length_i64(s)) {
             mem_of(s)
         } else {
             o_sym(s)
         }
-    }
-
-    pub fn has_char_p(mut cs: Chars, mut c: char) -> bool {
-        loop {
-            if null_p(cs) {
-                return false;
-            } else if char_eq_p(car(cs), c) {
-                return true;
-            } else {
-                cs = cdr(cs);
-                continue;
-            }
-        }
-    }
-
-    #[inline]
-    pub fn string_member_char_p(c: char, s: Str) -> bool {
-        has_char_p(string_chars(s), c)
     }
 
     /// `v`'s low `n` bytes, the least first, onto `acc` (reversed).
@@ -1256,8 +1256,8 @@ pub mod kc_asm {
         } else { kayak_rt::data::no_variant() }
     }
 
-    pub fn line_read(r: kayak_rt::data::DataAt<'static, Reading>, line0: Str) -> kayak_rt::data::DataAt<'static, Reading> {
-        let line = trimmed(line0);
+    pub fn line_read(r: kayak_rt::data::DataAt<'static, Reading>, line: Str) -> kayak_rt::data::DataAt<'static, Reading> {
+        let k = word_stop(line, 0i64, string_length_i64(line));
         let tagcase_ = r;
         if Reading::__is_Reading(tagcase_) {
             let (ss, cur, gs, cs, sets, labels,) = Reading::__Reading(tagcase_);
@@ -1267,9 +1267,8 @@ pub mod kc_asm {
                 let name = substring(line, int_lit(0), _minus(string_length(line), int_lit(1)));
                 reading(nth_set(ss, cur, kayak_rt::heap_cons(p_label(name), kayak_rt::nil())), cur, gs, cs, sets, kayak_rt::heap_cons(Product_11_12(name, cur), labels))
             } else if has_prefix_p(line, str_lit!(".")) {
-                let w = word_end(string_chars(line), nil::<char>());
-                let d = w.0;
-                let args = split_commas(w.1, 0i64, nil::<char>(), nil::<Str>());
+                let d = substring(line, int_lit(0), i64_to_int(k));
+                let args = operands_from(line, k);
                 if string_eq_p(d, str_lit!(".text")) {
                     reading(ss, 0i64, gs, cs, sets, labels)
                 } else if string_eq_p(d, str_lit!(".data")) {
@@ -1307,19 +1306,20 @@ pub mod kc_asm {
                     r
                 }
             } else {
-                let w = word_end(string_chars(line), nil::<char>());
-                let os = map(kayak_rt::as_proc(operand_of), split_commas(w.1, 0i64, nil::<char>(), nil::<Str>()));
-                added(r, instruction(w.0, os, sets))
+                let os = map(kayak_rt::as_proc(operand_of), operands_from(line, k));
+                added(r, instruction(substring(line, int_lit(0), i64_to_int(k)), os, sets))
             }
         } else { kayak_rt::data::no_variant() }
     }
 
-    pub fn lines_read(mut r: kayak_rt::data::DataAt<'static, Reading>, mut ls: Strings) -> kayak_rt::data::DataAt<'static, Reading> {
+    /// Each line of `s` from `i` read, trimmed, onto `r`.
+    pub fn text_read(mut r: kayak_rt::data::DataAt<'static, Reading>, mut s: Str, mut i: i64, mut n: i64) -> kayak_rt::data::DataAt<'static, Reading> {
         loop {
-            if null_p(ls) {
+            if i64_gt_eq(i, n) {
                 return r;
             } else {
-                (r, ls) = (line_read(r, car(ls)), cdr(ls));
+                let e = char_from(s, '\n', i, n);
+                (r, i) = (line_read(r, slice_trimmed(s, i, e)), i64_plus(e, 1i64));
                 continue;
             }
         }
@@ -2564,7 +2564,7 @@ pub mod kc_asm {
     // multiple of 16, every relocation resolved in it, so that it runs
     // wherever it is put whole; its bytes.
     pub fn asm_image(text: Str) -> List<i64> {
-        let tagcase_ = lines_read(reading(kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::nil()))))), 0i64, nil::<Str>(), nil::<Product_11_12_13<Str, i64, i64>>(), nil::<Product_11_12<Str, i64>>(), nil::<Product_11_12<Str, i64>>()), lines_of(string_chars(text), nil::<char>(), nil::<Str>()));
+        let tagcase_ = text_read(reading(kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::nil()))))), 0i64, nil::<Str>(), nil::<Product_11_12_13<Str, i64, i64>>(), nil::<Product_11_12<Str, i64>>(), nil::<Product_11_12<Str, i64>>()), text, 0i64, string_length_i64(text));
         if Reading::__is_Reading(tagcase_) {
             let (ss0, cur, gs, commons, sets, labels,) = Reading::__Reading(tagcase_);
             let ss = map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), ps: Pieces| {
@@ -2654,7 +2654,7 @@ pub mod kc_asm {
     // `TEXT`, its bytes; as `as` makes it (this file's head) if `GNU-AS-LAYOUT`,
     // else its branches laid out as kc lays them (C549, `kc-longs`).
     pub fn asm_object(gnu_as_layout: bool, text: Str) -> List<i64> {
-        let tagcase_ = lines_read(reading(kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::nil()))))), 0i64, nil::<Str>(), nil::<Product_11_12_13<Str, i64, i64>>(), nil::<Product_11_12<Str, i64>>(), nil::<Product_11_12<Str, i64>>()), lines_of(string_chars(text), nil::<char>(), nil::<Str>()));
+        let tagcase_ = text_read(reading(kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::data::DataAt<'static, kc_asm::Piece>>(), kayak_rt::nil()))))), 0i64, nil::<Str>(), nil::<Product_11_12_13<Str, i64, i64>>(), nil::<Product_11_12<Str, i64>>(), nil::<Product_11_12<Str, i64>>()), text, 0i64, string_length_i64(text));
         if Reading::__is_Reading(tagcase_) {
             let (ss0, cur, gs, commons, sets, labels,) = Reading::__Reading(tagcase_);
             let ss = map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), ps: Pieces| {

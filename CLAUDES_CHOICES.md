@@ -18298,3 +18298,39 @@ group when nothing changed" first.
   lines. Keeping `asm`'s text would save its making, not its assembly.
 
 - **The full check**: `check: all passed`, 7 min 15 s; kc-steps cold (kc changed). The pre-check passed first (2 min 41 s).
+
+## C567. kc's assembler reads its text by index, not as lists of characters (2026-11-28)
+
+The user, after C566: "Let's look to see if it's possible to speed up
+kc's assembler".
+
+- **Profiled** (`kc --image` of tests/kc/control/marks.fx's assembly,
+  46 KB, 40 runs): 70% of kc's samples in `asm-image`, 55% in reading
+  the text (`line-read`), not in encoding. Each line was a list of its
+  characters, made again by each trimming (`string-chars`, two
+  `reverse`s, `list->string`), by `word-end`, by each operand
+  (`split-commas`, then `trimmed`), by `operand-of`'s look for a `(`
+  and by `mem-of`'s cuts; the runtime's `string->list` makes a UTF-8
+  copy first (`Str::text`).
+- **Now** (kc/asm.kfx) the text is read by its indices
+  (`string-ref-i64`): each line found (`char-from`) and made one trimmed
+  string (`slice-trimmed`), as each operand is; a word's end, a
+  displacement's sign, a memory operand's parentheses and a number's
+  digits found in place. `lines-of` and `lines-read` are `text-read`;
+  `trimmed-left`, `trimmed`, `word-end`, `cut-at`, `has-char?` and
+  `string-member-char?` are gone. What is read is the same: marks.fx's
+  image is the same bytes but the routines' addresses (another build of
+  kc).
+- **Measured** (`perf stat -r 20`, `kc --image`, marks.fx): 20.0 ms of
+  CPU, 25.7 ms elapsed, before; 11.8 ms and 15.1 ms now, of which about
+  5 ms is kc's start.
+- **What is left** of the image's making is mostly the heap's new
+  memory: of its 2,954 page faults, 2,384 are `alloc_zeroed`'s memset of
+  each 2 MB chunk (kayak-heap's `new_chunk`), 512 a chunk; the label maps
+  (`labels-in`, `syms-map`) and the reading each fill about one. Tried
+  and not kept: chunks mapped and advised as huge pages
+  (`MADV_HUGEPAGE`; this machine's THP is `madvise`): 913 faults, 7.9 ms
+  of CPU; a warm `kc run` of fixnum-max 6.8 to 4.8 ms of CPU, of marks
+  16.2 to 10.9 ms. A change of kayak-heap's, left for the user.
+
+- **The full check**: `check: all passed`, 2 min 17 s; kc-steps cold (kc changed), 53 s, 0 wrong. The pre-check passed first (4 min 26 s).

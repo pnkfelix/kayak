@@ -65,54 +65,77 @@
 
       ;;; ------------------------------------------------------------ reading
 
-      (define-rec
-        (trimmed-left (subr kfx (chars) chars)
-          (lambda (cs) (if (and (not (null? cs)) (or (char=? (car cs) #\space) (char=? (car cs) #\tab))) (trimmed-left (cdr cs)) cs))))
-
-      (define trimmed (subr kfx (string) string)
-        (lambda (s) (list->string (reverse (trimmed-left (reverse (trimmed-left (string-chars s))))))))
-
-      (define-rec
-        (lines-of (subr kfx (chars chars strings) strings)
-          (lambda (cs line acc)
-            (cond ((null? cs) (reverse (if (null? line) acc (cons (list->string (reverse line)) acc))))
-                  ((char=? (car cs) #\newline) (lines-of (cdr cs) nil (cons (list->string (reverse line)) acc)))
-                  (else (lines-of (cdr cs) (cons (car cs) line) acc))))))
+      "The text is read by its indices (C567), not as lists of its
+       characters: a list of a line's characters, made again for each
+       trimming and each operand, was most of `kc run`'s assembling."
+      (define blank? (subr kfx (char) bool)
+        (lambda (c) (or (char=? c #\space) (char=? c #\tab))))
 
       (define-rec
-        (word-end (subr kfx (chars chars) (tupleof string chars))
-          (lambda (cs acc)
-            (if (or (null? cs) (char=? (car cs) #\space) (char=? (car cs) #\tab))
-                (tuple (list->string (reverse acc)) (trimmed-left cs))
-                (word-end (cdr cs) (cons (car cs) acc))))))
+        (blanks-after (subr kfx (string i64 i64) i64)
+          (lambda (s i n)
+            "The first index from `i`, before `n`, of no blank; else `n`."
+            (if (and (i64< i n) (blank? (string-ref-i64 s i))) (blanks-after s (i64+ i 1) n) i))))
 
       (define-rec
-        (split-commas (subr kfx (chars i64 chars strings) strings)
-          (lambda (cs depth cur acc)
-            "Operands, apart at the commas outside parentheses."
-            (cond ((null? cs) (reverse (if (null? cur) acc (cons (trimmed (list->string (reverse cur))) acc))))
-                  ((and (char=? (car cs) #\,) (i64= depth 0)) (split-commas (cdr cs) depth nil (cons (trimmed (list->string (reverse cur))) acc)))
-                  ((char=? (car cs) #\() (split-commas (cdr cs) (i64+ depth 1) (cons (car cs) cur) acc))
-                  ((char=? (car cs) #\)) (split-commas (cdr cs) (i64- depth 1) (cons (car cs) cur) acc))
-                  (else (split-commas (cdr cs) depth (cons (car cs) cur) acc))))))
+        (blanks-before (subr kfx (string i64 i64) i64)
+          (lambda (s i n)
+            "The least end, not before `i`, with only blanks from it to `n`."
+            (if (and (i64> n i) (blank? (string-ref-i64 s (i64- n 1)))) (blanks-before s i (i64- n 1)) n))))
+
+      (define slice-trimmed (subr kfx (string i64 i64) string)
+        (lambda (s i n)
+          "The text of `s` from `i` to `n`, its blanks either end cut."
+          (let* ((a (blanks-after s i n)) (b (blanks-before s a n)))
+            (substring s (i64->int a) (i64->int b)))))
+
+      (define-rec
+        (char-from (subr kfx (string char i64 i64) i64)
+          (lambda (s c i n)
+            "Where `c` is first, from `i`, before `n`; else `n`."
+            (cond ((i64>= i n) n) ((char=? (string-ref-i64 s i) c) i) (else (char-from s c (i64+ i 1) n))))))
+
+      (define-rec
+        (word-stop (subr kfx (string i64 i64) i64)
+          (lambda (s i n)
+            "Where the word from `i` ends: a blank, or `n`."
+            (if (or (i64>= i n) (blank? (string-ref-i64 s i))) i (word-stop s (i64+ i 1) n)))))
+
+      (define-rec
+        (split-commas (subr kfx (string i64 i64 i64 i64 strings) strings)
+          (lambda (s i n depth start acc)
+            "The operands of `s` from `start` to `n`, apart at the commas
+             outside parentheses, each trimmed; `i` where it is."
+            (cond ((i64>= i n) (reverse (if (i64= start n) acc (cons (slice-trimmed s start n) acc))))
+                  ((and (char=? (string-ref-i64 s i) #\,) (i64= depth 0))
+                   (split-commas s (i64+ i 1) n depth (i64+ i 1) (cons (slice-trimmed s start i) acc)))
+                  ((char=? (string-ref-i64 s i) #\() (split-commas s (i64+ i 1) n (i64+ depth 1) start acc))
+                  ((char=? (string-ref-i64 s i) #\)) (split-commas s (i64+ i 1) n (i64- depth 1) start acc))
+                  (else (split-commas s (i64+ i 1) n depth start acc))))))
+
+      (define operands-from (subr kfx (string i64) strings)
+        (lambda (s i)
+          (let ((n (string-length-i64 s))) (split-commas s (blanks-after s i n) n 0 (blanks-after s i n) nil))))
 
       (define digit? (subr kfx (char) bool)
         (lambda (c) (and (char>=? c #\0) (char<=? c #\9))))
 
       (define number-text? (subr kfx (string) bool)
         (lambda (s)
-          (let ((cs (string-chars s)))
-            (and (not (null? cs))
-                 (or (digit? (car cs)) (and (char=? (car cs) #\-) (not (null? (cdr cs))) (digit? (car (cdr cs)))))))))
+          (let ((n (string-length-i64 s)))
+            (and (i64> n 0)
+                 (or (digit? (string-ref-i64 s 0))
+                     (and (char=? (string-ref-i64 s 0) #\-) (i64> n 1) (digit? (string-ref-i64 s 1))))))))
 
       (define-rec
-        (digits-value (subr kfx (chars i64) i64)
-          (lambda (cs acc) (if (null? cs) acc (digits-value (cdr cs) (i64+ (i64* acc 10) (i64- (char->i64 (car cs)) 48)))))))
+        (digits-value (subr kfx (string i64 i64 i64) i64)
+          (lambda (s i n acc)
+            (if (i64>= i n) acc (digits-value s (i64+ i 1) n (i64+ (i64* acc 10) (i64- (char->i64 (string-ref-i64 s i)) 48)))))))
 
       (define number-of (subr kfx (string) i64)
         (lambda (s)
-          (let ((cs (string-chars s)))
-            (if (char=? (car cs) #\-) (i64- 0 (digits-value (cdr cs) 0)) (digits-value cs 0)))))
+          (let ((n (string-length-i64 s)))
+            (if (char=? (string-ref-i64 s 0) #\-) (i64- 0 (digits-value s 1 n 0)) (digits-value s 0 n 0)))))
 
       (define regs64 strings (list "rax" "rcx" "rdx" "rbx" "rsp" "rbp" "rsi" "rdi" "r8" "r9" "r10" "r11" "r12" "r13" "r14" "r15"))
       (define regs32 strings (list "eax" "ecx" "edx" "ebx" "esp" "ebp" "esi" "edi" "r8d" "r9d" "r10d" "r11d" "r12d" "r13d" "r14d" "r15d"))
@@ -136,20 +159,12 @@
         (lambda (o) (tagcase o (o-reg (n w) n) (else other (not-yet "a register where one is wanted")))))
 
       (define-rec
-        (cut-at (subr kfx (chars char chars) (tupleof string chars))
-          (lambda (cs c acc)
-            "The text before `c`, and what is after it."
-            (cond ((null? cs) (tuple (list->string (reverse acc)) nil))
-                  ((char=? (car cs) c) (tuple (list->string (reverse acc)) (cdr cs)))
-                  (else (cut-at (cdr cs) c (cons (car cs) acc)))))))
-
-      (define-rec
-        (sign-at (subr kfx (chars i64) i64)
-          (lambda (cs i)
-            "Where a `+` or `-` after the first character is, or -1."
-            (cond ((null? cs) (the i64 -1))
-                  ((and (i64> i 0) (or (char=? (car cs) #\+) (char=? (car cs) #\-))) i)
-                  (else (sign-at (cdr cs) (i64+ i 1)))))))
+        (sign-at (subr kfx (string i64 i64) i64)
+          (lambda (s i n)
+            "Where a `+` or `-` from `i` is, or -1."
+            (cond ((i64>= i n) (the i64 -1))
+                  ((or (char=? (string-ref-i64 s i) #\+) (char=? (string-ref-i64 s i) #\-)) i)
+                  (else (sign-at s (i64+ i 1) n))))))
 
       (define disp-of (subr kfx (string) (tupleof i64 string))
         (lambda (s)
@@ -157,7 +172,7 @@
           (cond ((string=? s "") (tuple (the i64 0) ""))
                 ((number-text? s) (tuple (number-of s) ""))
                 (else
-                 (let ((k (sign-at (string-chars s) 0)))
+                 (let ((k (sign-at s 1 (string-length-i64 s))))
                    (if (i64< k 0)
                        (tuple (the i64 0) s)
                        (let ((sym (substring s 0 (i64->int k)))
@@ -167,10 +182,11 @@
       (define mem-of (subr kfx (string) opd)
         (lambda (s)
           "`D(%b)`, `D(%b,%i,s)`, `sym(%rip)`."
-          (let* ((a (cut-at (string-chars s) #\( nil))
-                 (d (disp-of (extract a 1)))
-                 (inside (extract (cut-at (extract a 2) #\) nil) 1))
-                 (parts (split-commas (string-chars inside) 0 nil nil))
+          (let* ((n (string-length-i64 s))
+                 (p (char-from s #\( 0 n))
+                 (d (disp-of (substring s 0 (i64->int p))))
+                 (a (if (i64< p n) (i64+ p 1) n))
+                 (parts (split-commas s a (char-from s #\) a n) 0 a nil))
                  (base (if (string=? (car parts) "") (the i64 -1) (reg-number (reg-of (car parts))))))
             (if (null? (cdr parts))
                 (o-mem (extract d 1) (extract d 2) base -1 1)
@@ -189,15 +205,8 @@
                      (if (char=? (string-ref v 0) #\%)
                          (o-ireg (reg-number (reg-of v)))
                          (tagcase (mem-of v) (o-mem (d sym b i sc) (o-imem d sym b)) (else other (o-imem 0 "" 0))))))
-                  ((string-member-char? #\( s) (mem-of s))
+                  ((i64< (char-from s #\( 0 (string-length-i64 s)) (string-length-i64 s)) (mem-of s))
                   (else (o-sym s))))))
-
-      (define-rec
-        (has-char? (subr kfx (chars char) bool)
-          (lambda (cs c) (cond ((null? cs) #f) ((char=? (car cs) c) #t) (else (has-char? (cdr cs) c))))))
-
-      (define string-member-char? (subr kfx (char string) bool)
-        (lambda (c s) (has-char? (string-chars s) c)))
 
       ;;; ------------------------------------------------------------ encoding
 
@@ -384,8 +393,8 @@
           (tagcase r (reading (ss cur gs cs sets labels) (reading (nth-set ss cur ps) cur gs cs sets labels)))))
 
       (define line-read (subr kfx (reading string) reading)
-        (lambda (r line0)
-          (let ((line (trimmed line0)))
+        (lambda (r line)
+          (let ((k (word-stop line 0 (string-length-i64 line))))
             (tagcase r
               (reading (ss cur gs cs sets labels)
                 (cond
@@ -394,7 +403,7 @@
                    (let ((name (substring line 0 (- (string-length line) 1))))
                      (reading (nth-set ss cur (list (p-label name))) cur gs cs sets (cons (tuple name cur) labels))))
                   ((has-prefix? line ".")
-                   (let* ((w (word-end (string-chars line) nil)) (d (extract w 1)) (args (split-commas (extract w 2) 0 nil nil)))
+                   (let* ((d (substring line 0 (i64->int k))) (args (operands-from line k)))
                      (cond
                        ((string=? d ".text") (reading ss 0 gs cs sets labels))
                        ((string=? d ".data") (reading ss 1 gs cs sets labels))
@@ -414,13 +423,17 @@
                        ((string=? d ".set") (reading ss cur gs cs (cons (tuple (car args) (number-of (second-of args))) sets) labels))
                        (else (begin (not-yet (string-append "a directive " d)) r)))))
                   (else
-                   (let* ((w (word-end (string-chars line) nil))
-                          (os (map operand-of (split-commas (extract w 2) 0 nil nil))))
-                     (added r (instruction (extract w 1) os sets))))))))))
+                   (let ((os (map operand-of (operands-from line k))))
+                     (added r (instruction (substring line 0 (i64->int k)) os sets))))))))))
 
       (define-rec
-        (lines-read (subr kfx (reading strings) reading)
-          (lambda (r ls) (if (null? ls) r (lines-read (line-read r (car ls)) (cdr ls))))))
+        (text-read (subr kfx (reading string i64 i64) reading)
+          (lambda (r s i n)
+            "Each line of `s` from `i` read, trimmed, onto `r`."
+            (if (i64>= i n)
+                r
+                (let ((e (char-from s #\newline i n)))
+                  (text-read (line-read r (slice-trimmed s i e)) s (i64+ e 1) n))))))
 
       ;;; ------------------------------------------------------------ layout
 
@@ -944,7 +957,7 @@
      wherever it is put whole; its bytes."
     (define asm-image (subr kfx (string) (listof i64 acyclic))
       (lambda (text)
-        (tagcase (lines-read (reading (list nil nil nil nil nil) 0 nil nil nil nil) (lines-of (string-chars text) nil nil))
+        (tagcase (text-read (reading (list nil nil nil nil nil) 0 nil nil nil nil) text 0 (string-length-i64 text))
           (reading (ss0 cur gs commons sets labels)
             (let* ((ss (map (lambda ((ps pieces)) (rev-onto-pieces ps nil)) ss0))
                    (longs (map (lambda ((ps pieces)) (settled #f ps (branches-of ps nil))) ss))
@@ -978,7 +991,7 @@
      else its branches laid out as kc lays them (C549, `kc-longs`)."
     (define asm-object (subr kfx (bool string) (listof i64 acyclic))
       (lambda (gnu-as-layout text)
-        (tagcase (lines-read (reading (list nil nil nil nil nil) 0 nil nil nil nil) (lines-of (string-chars text) nil nil))
+        (tagcase (text-read (reading (list nil nil nil nil nil) 0 nil nil nil nil) text 0 (string-length-i64 text))
           (reading (ss0 cur gs commons sets labels)
             (let* ((ss (map (lambda ((ps pieces)) (rev-onto-pieces ps nil)) ss0))
                    (longs (map (lambda ((ps pieces)) (settled gnu-as-layout ps (branches-of ps nil))) ss))
