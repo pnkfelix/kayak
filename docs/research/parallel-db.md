@@ -124,6 +124,17 @@ Reading the format against two runs at once found what §3 left open:
   slower reader of an older head finds a file gone, reads its group as
   empty and runs its queries again.
 
+## 3b. Step 4: no shard named by a head (`kayak-db 6`, C565)
+
+§3a's heads each named every shard, and an open read and put together
+every head no head names: with kc-steps' sixteen workers, sixteen heads
+of 889 lines, and a warm sweep slower than a cold one (TODO §59). The
+survey of what others built (`db-stores.md`) and a profile chose §3's
+first shape again, heads kept for the revisions alone: a head names no
+shard; a group's files, `gMARKHASH.RUN`, are found by the listing; a
+shard's file names those of its group it was made of, which a reader
+skips and a save removes. `db-stores.md` §7 has the measures.
+
 ## 4. What it costs
 
 - Each node's record grows by a fingerprint for each key it read (step 1).

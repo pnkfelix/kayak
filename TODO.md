@@ -2594,13 +2594,15 @@ expression. Fixpt's tagged literals (`#Ltag"text"`, 9025322f) are made of
 one. To do: a constant term of each in L0, made by kcrt (both hosts) from
 its text or bytes, `string->utf8` as the engine's `%fx26-string->utf8`.
 
-## 59. kc's database: an open's cost by heads (C563)
+## 59. ~~kc's database: an open's cost by heads (C563)~~ (C565)
 
-Every open reads and puts together each head there that no head names,
-whole (`db-opened`, `lines-scanned!`): about 45 ms each of kc-steps' heads
-(their 891 groups' lines, 180 to 350 KB), and kc-steps' sixteen workers
-leave about sixteen. So a warm sweep (906 bodies) is slower than a cold
-one (20922): 97 s, against 65 (C563, measured; C560's 28 s warm does not
-come again, its kc 197 s on this machine the same day). To do: read a
-head's line of a group only when the group is asked for, or keep the
-heads few (a save putting together what a worker's run of steps made).
+~~Every open reads and puts together each head there that no head names,
+whole (`db-opened`, `lines-scanned!`): about 45 ms each of kc-steps' heads,
+and kc-steps' sixteen workers leave about sixteen. So a warm sweep is
+slower than a cold one: 97 s, against 65.~~ C565 (`kayak-db 6`,
+docs/research/db-stores.md §7): a head names no shard; a group's files
+found by the listing, each naming those it replaces. kc-steps 52 s cold,
+19 s warm (69 and 95 before). Left: a group written a few times a sweep
+with nothing changed (each program's, kc-steps' `kc run`s); `kc run`
+assembling again the `asm` values not kept (32% of a warm sweep); the
+heap's zeroing (`refill`).

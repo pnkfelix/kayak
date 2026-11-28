@@ -135,11 +135,14 @@
              ;; (kayak-db 5), each a node of no record holding its key.
              (foreign (ref imap @q))
              ;; The head's generation, the heads it was made of (opened, or
-             ;; last saved), and the files the last head saved names.
+             ;; last saved); the files the last save made old, its shards'
+             ;; it replaced and their values' its own do not name (kayak-db
+             ;; 6); and its files' mark, whose they are (`db-mark`).
              (gen (ref i64 @q))
              (parents (ref (listof string acyclic) @q))
              (superseded (ref (listof string acyclic) @q))
-             (kept (ref (listof string acyclic) @q))
+             (dropped (ref (listof string acyclic) @q))
+             (mark (ref string @q))
              (last (ref (listof i64 acyclic) @q))
              (runs (ref i64 @q))
              (ran (ref sexps @q))
@@ -745,77 +748,50 @@
     (let ((x (sm-get (get (extract d shards)) n)))
       (if (null? x) (begin (error "kayak-db: no such shard") (shard "" "" "" 0 #t #f)) (car x)))))
 
-"A shard's file, the first name of where it is; `` if none."
+(define db-prefix? (subr kfx (string string) bool)
+  (lambda (s p) (and (i64>= (string-length-i64 s) (string-length-i64 p)) (string=? (substring s 0 (string-length p)) p))))
 (define-rec
-  (first-word (subr kfx ((listof char acyclic) (listof char acyclic)) string)
-    (lambda (cs acc) (if (or (null? cs) (char=? (car cs) #\space)) (list->string (reverse acc)) (first-word (cdr cs) (cons (car cs) acc))))))
-(define where-file (subr kfx (string) string) (lambda (w) (first-word (string-chars w) nil)))
+  (db-words-joined (subr kfx ((listof string acyclic)) string)
+    (lambda (ws) (cond ((null? ws) "") ((null? (cdr ws)) (car ws)) (else (string-append (car ws) (string-append " " (db-words-joined (cdr ws)))))))))
 
-"Where a shard is, as its head's line has it, may be more than one file's
- (C559, the union): each `FILE VALUE ...`, the newest first, ` ; `
- between, their nodes put together when the shard is read."
+"The words of `s` from `i`, between spaces (kayak-db 6: a shard's names,
+ a group's files), onto `acc` reversed."
 (define-rec
-  (where-split (subr kfx ((listof char acyclic) (listof char acyclic) (listof string acyclic)) (listof string acyclic))
-    (lambda (cs w acc)
-      (cond ((null? cs) (reverse (cons (list->string (reverse w)) acc)))
-            ((and (char=? (car cs) #\space) (not (null? (cdr cs))) (char=? (car (cdr cs)) #\;))
-             (where-split (if (null? (cdr (cdr cs))) nil (cdr (cdr (cdr cs)))) nil (cons (list->string (reverse w)) acc)))
-            (else (where-split (cdr cs) (cons (car cs) w) acc))))))
-(define where-groups (subr kfx (string) (listof string acyclic))
-  (lambda (w) (if (string=? w "") nil (where-split (string-chars w) nil nil))))
-(define-rec
-  (where-joined (subr kfx ((listof string acyclic)) string)
-    (lambda (gs) (cond ((null? gs) "") ((null? (cdr gs)) (car gs)) (else (string-append (car gs) (string-append " ; " (where-joined (cdr gs)))))))))
-(define-rec
-  (where-inserted (subr kfx (string (listof string acyclic)) (listof string acyclic))
-    (lambda (g gs)
-      "`g` among `gs`, newest first by file, once."
-      (cond ((null? gs) (list g))
-            ((string=? (where-file g) (where-file (car gs))) gs)
-            ((string<? (where-file (car gs)) (where-file g)) (cons g gs))
-            (else (cons (car gs) (where-inserted g (cdr gs))))))))
-(define-rec
-  (where-union (subr kfx ((listof string acyclic) (listof string acyclic)) (listof string acyclic))
-    (lambda (gs acc) (if (null? gs) acc (where-union (cdr gs) (where-inserted (car gs) acc))))))
-"When a group's file was written, its name's clock (`gHASH.SECONDS-PID`,
- kayak-db 5); -1 if it has none."
-(define-rec
-  (seconds-after-dot (subr kfx ((listof char acyclic)) i64)
-    (lambda (cs)
-      (cond ((null? cs) -1)
-            ((char=? (car cs) #\.) (seconds-of (cdr cs) 0 0))
-            (else (seconds-after-dot (cdr cs))))))
-  (seconds-of (subr kfx ((listof char acyclic) i64 i64) i64)
-    (lambda (cs k acc)
-      (cond ((i64= k 12) acc)
-            ((null? cs) -1)
-            ((and (i64>= (char->i64 (car cs)) 48) (i64<= (char->i64 (car cs)) 57)) (seconds-of (cdr cs) (i64+ k 1) (i64+ (i64* acc 10) (i64- (char->i64 (car cs)) 48))))
-            (else -1)))))
-(define where-seconds (subr kfx (string) i64)
-  (lambda (g) (seconds-after-dot (string-chars (where-file g)))))
+  (sc-words (subr kfx (string i64 i64 (listof string acyclic)) (listof string acyclic))
+    (lambda (s i n acc)
+      (let ((i (sc-ws s i n)))
+        (if (i64>= i n)
+            (reverse acc)
+            (let ((e (sc-name-end s i n)))
+              (if (i64= e i)
+                  (reverse acc)
+                  (sc-words s e n (cons (substring s (i64->int i) (i64->int e)) acc)))))))))
+(define db-words (subr kfx (string) (listof string acyclic))
+  (lambda (s) (sc-words s 0 (string-length-i64 s) nil)))
 
-"Of a group's files, the newest first, those it is put together of
- (C563): the newest, and those written within `where-window` seconds
- before it, the runs at once with its. One older was, nearly always, read
- by the run that wrote a newer, whose file holds what it did: put
- together with it for good (each of a program's steps writes its group,
- and every head kept the version it saw), a group's files grew from one
- run to the next, kc-steps' warm runs 28 s, then 197, then 391. One run
- open longer than that while another wrote its group may lose what it
- made there: those queries run again."
-(define where-window i64 60)
-(define where-recent (subr kfx ((listof string acyclic)) (listof string acyclic))
-  (lambda (gs)
-    (if (or (null? gs) (null? (cdr gs)))
-        gs
-        (let ((t0 (where-seconds (car gs))))
-          (cons (car gs) (filter (lambda ((g string)) (i64>= (where-seconds g) (i64- t0 where-window))) (cdr gs)))))))
+"Where a shard is (kayak-db 6): its group's files there, the newest
+ first, and, once read, the values' own files they name, a space between
+ each; its file is the first."
+(define where-file (subr kfx (string) string)
+  (lambda (w) (substring w 0 (i64->int (sc-name-end w 0 (string-length-i64 w))))))
+(define where-of (subr kfx ((listof string acyclic)) string)
+  (lambda (ws) (db-words-joined ws)))
+(define where-files (subr kfx (string) (listof string acyclic))
+  (lambda (w) (filter (lambda ((x string)) (db-prefix? x "g")) (db-words w))))
+(define where-values (subr kfx (string) (listof string acyclic))
+  (lambda (w) (filter (lambda ((x string)) (db-prefix? x "v")) (db-words w))))
+
+"Whose a file is (kayak-db 6): the hash of the `whose` that wrote it, and
+ `-`, after its kind's letter, so that a listing says which files are
+ another kc's without reading them."
+(define db-mark (subr kfx (string) string)
+  (lambda (whose) (string-append (group-hash whose) "-")))
 
 "A value's own file (kayak-db 5): by its key's hash and its fingerprint,
  so that two runs that write one write the same text, and none is named by
- a number of one run's."
-(define value-file-of (subr kfx (sexp i64) string)
-  (lambda (k fp) (string-append "v" (string-append (group-hash (key-text k)) (string-append "." (i64->string fp))))))
+ a number of one run's; and whose (`db-mark`, kayak-db 6)."
+(define value-file-of (subr kfx (string sexp i64) string)
+  (lambda (m k fp) (string-append "v" (string-append m (string-append (group-hash (key-text k)) (string-append "." (i64->string fp)))))))
 
 (define-rec
   (ascii-unescaped (subr kfx ((listof char acyclic) (listof char acyclic)) string)
@@ -915,7 +891,7 @@
 (define extra-merged! (subr qe (db i64 string) bool)
   (lambda (d n text)
     (let* ((m (string-length-i64 text))
-           (hd "(kayak-shard 5 ")
+           (hd "(kayak-shard 6 ")
            (ok (and (i64> m (string-length-i64 hd)) (string=? (substring text 0 (string-length hd)) hd))))
       (if (not ok)
           #f
@@ -927,12 +903,37 @@
                  (rk (keys-remapped! d n (extract kl 1) (km-none) (im-none))))
             (records-merged! d text recs (extract rk 1) (extract rk 2) (extract rt 1) #f))))))
 
+"A shard's file's names (kayak-db 6), in its first line after its counts:
+ its values' own files, and the files of its group it replaces, those it
+ was made of; `` if it is no shard's."
+(define shard-names (subr kfx (string) (listof string acyclic))
+  (lambda (text)
+    (let* ((m (string-length-i64 text))
+           (hd "(kayak-shard 6 "))
+      (if (not (and (i64> m (string-length-i64 hd)) (string=? (substring text 0 (string-length hd)) hd)))
+          nil
+          (sc-words text (db-nth (sc-ints text (string-length-i64 hd) m 2 nil) 2) m nil)))))
+
 (define-rec
-  (extras-merged! (subr qe (db i64 (listof string acyclic) bool) bool)
-    (lambda (d n gs added)
-      (if (null? gs)
-          added
-          (extras-merged! d n (cdr gs) (or (extra-merged! d n ((get (extract d reads)) (where-file (car gs)))) added))))))
+  (extras-merged! (subr qe (db i64 (listof string acyclic) (listof string acyclic) (listof string acyclic) bool) (tupleof bool (listof string acyclic)))
+    (lambda (d n gs skip vals added)
+      "The group's other files, the newest first, each a file read
+       replaces skipped (kayak-db 6: what it holds, that one does, and
+       it is old, `db-dropped`), each other's nodes put in (C559's union);
+       whether any was, and the values' files they name."
+      (cond ((null? gs) (tuple added vals))
+            ((string-member? (car gs) skip)
+             (begin
+               (set (extract d dropped) (cons (car gs) (get (extract d dropped))))
+               (extras-merged! d n (cdr gs) skip vals added)))
+            (else
+             (let* ((text ((get (extract d reads)) (car gs)))
+                    (names (shard-names text))
+                    (a (extra-merged! d n text)))
+               (extras-merged! d n (cdr gs)
+                               (onto (filter (lambda ((x string)) (db-prefix? x "g")) names) skip)
+                               (onto (filter (lambda ((x string)) (db-prefix? x "v")) names) vals)
+                               (or a added))))))))
 
 "Shard `n` read, if the database has it and it is not yet (C472): its
  file's keys numbered, its nodes' records noted, read when asked for. A
@@ -948,10 +949,12 @@
             (shard (h where text0 next loaded dirty)
               (if loaded
                   #u
-                  (let* ((file (where-file where))
+                  (let* ((gs (where-files where))
+                         (file (if (null? gs) "" (car gs)))
                          (text (if (string=? file "") "" ((get (extract d reads)) file)))
+                         (names (shard-names text))
                          (m (string-length-i64 text))
-                         (hd "(kayak-shard 5 ")
+                         (hd "(kayak-shard 6 ")
                          (ok (and (i64> m (string-length-i64 hd)) (string=? (substring text 0 (string-length hd)) hd)))
                          (counts (if ok (sc-ints text (string-length-i64 hd) m 2 nil) (the (listof i64 acyclic) (list (the i64 0) (the i64 0))))))
                     (begin
@@ -967,17 +970,19 @@
                                 (let ((e2 (reads-table-scanned! d text (i64+ (sc-ws text e m) 6) m n)))
                                   (nodes-scanned! d text (i64+ (sc-ws text e2 m) 6) m n)))))
                           #u)
-                      ;; The group's other files (C559's union): their nodes
-                      ;; put in; if any was, the shard written anew, one file.
-                      (let ((gs (where-groups where)))
-                        (if (or (null? gs) (null? (cdr gs)))
-                            #u
-                            (let ((added (extras-merged! d n (cdr gs) #f)))
-                              (tagcase (db-shard d n)
-                                (shard (h2 w2 t2 next2 loaded2 dirty2)
-                                  (begin
-                                    (sm-set! d n (shard h2 (car gs) t2 next2 loaded2 (or dirty2 added)))
-                                    (if added (set (extract d dirty) #t) #u))))))))))))))))
+                      ;; The group's other files (C559's union): those its
+                      ;; file does not replace, their nodes put in; if any
+                      ;; was, the shard written anew, one file. Where it is
+                      ;; after: its files, and their values' files.
+                      (let* ((x (extras-merged! d n (if (null? gs) nil (cdr gs))
+                                                (filter (lambda ((x string)) (db-prefix? x "g")) names)
+                                                (filter (lambda ((x string)) (db-prefix? x "v")) names) #f))
+                             (added (extract x 1)))
+                        (tagcase (db-shard d n)
+                          (shard (h2 w2 t2 next2 loaded2 dirty2)
+                            (begin
+                              (sm-set! d n (shard h2 (where-of (append gs (extract x 2))) t2 next2 loaded2 (or dirty2 added)))
+                              (if added (set (extract d dirty) #t) #u))))))))))))))
 
 "The shard of group `g`, read; a new one if the database has none."
 (define db-shard-of-group! (subr qe (db string) i64)
@@ -1013,11 +1018,11 @@
           #u
           (tagcase (node-kept (car n))
             (v-file (j)
-              (let ((x (value-checked ((get (extract d reads)) (value-file-of (node-key (car n)) (node-fp (car n)))) (node-fp (car n)))))
+              (let ((x (value-checked ((get (extract d reads)) (value-file-of (get (extract d mark)) (node-key (car n)) (node-fp (car n)))) (node-fp (car n)))))
                 (tagcase (car n)
                   (node (k inp v c f ds du val)
                     (begin
-                      (if (null? x) (db-said-why! d k (string-append "its value's file gone: " (value-file-of k f))) #u)
+                      (if (null? x) (db-said-why! d k (string-append "its value's file gone: " (value-file-of (get (extract d mark)) k f))) #u)
                       (set (extract d nodes) (im-put (get (extract d nodes)) i (node k inp v c f ds du (if (null? x) (v-none) (v-read (car x)))))))))))
             (else other #u))))))
 
@@ -1038,7 +1043,8 @@
              (gen (the (ref i64 @q) (new 0)))
              (parents (the (ref (listof string acyclic) @q) (new nil)))
              (superseded (the (ref (listof string acyclic) @q) (new nil)))
-             (kept (the (ref (listof string acyclic) @q) (new nil)))
+             (dropped (the (ref (listof string acyclic) @q) (new nil)))
+             (mark (the (ref string @q) (new "")))
              (last (the (ref (listof i64 acyclic) @q) (new (zeros durabilities))))
              (runs (the (ref i64 @q) (new 0)))
              (ran (the (ref sexps @q) (new nil)))
@@ -1135,7 +1141,7 @@
       (v-text (s) s)
       (v-read (s) s)
       (v-file (i)
-        (let ((x (value-checked ((get (extract d reads)) (value-file-of (node-key n) (node-fp n))) (node-fp n))))
+        (let ((x (value-checked ((get (extract d reads)) (value-file-of (get (extract d mark)) (node-key n) (node-fp n))) (node-fp n))))
           (if (null? x) "" (car x))))
       (v-at (sh o len esc)
         (let* ((t (shard-text (db-shard d sh)))
@@ -1333,19 +1339,28 @@
 
 "The database as files (C472, `kayak-db 3`; kayak-db 4, each read with its
  fingerprint, C556; kayak-db 5, runs at once, C559,
- `docs/research/parallel-db.md`; C417's two, read and written whole,
+ `docs/research/parallel-db.md`; kayak-db 6, no shard named by a head,
+ C565, `docs/research/db-stores.md`; C417's two, read and written whole,
  before): a run reads what it reads, and writes what changed, each file
  once, never again, so that runs at once on one database each read files
- as the head they opened wrote them.
+ as they were written. Each file's name but a head's has its mark
+ (`db-mark`), so that a listing says whose it is.
 
- - a head, `h.GEN.RUN` (`db-head-name`): `(kayak-db 5 WHOSE GEN REVISION
-   (LAST ...) (PARENT ...) ((HASH FILE VALUE ...) ...))`, whose it is (a
-   compiler's identity), its generation, one past its parents', the heads
-   it was made of; the durabilities' revisions; and each shard, its
-   group's hash, its file and its values' own files. Opening reads the
-   heads of the greatest generation, put together (`db-opened`);
- - a shard's file, `gHASH.RUN`, RUN its save's: `(kayak-shard 5 NEXT
-   LENGTH)`, NEXT its count of places, then its values of `inline-most`
+ - a head, `h.GEN.RUN` (`db-head-name`): `(kayak-db 6 WHOSE GEN REVISION
+   (LAST ...) (PARENT ...))`, whose it is (a compiler's identity), its
+   generation, one past its parents', the heads it was made of; and the
+   durabilities' revisions. Opening reads those no head there names as a
+   parent, put together (`db-opened`); it names no shard, so that what an
+   open reads is a head's few words, not each group's line (kayak-db 5's
+   heads named every shard, and an open read sixteen of them: TODO §59);
+ - a shard's file, `gMARKHASH.RUN`, RUN its save's: `(kayak-shard 6 NEXT
+   LENGTH NAME ...)`, NEXT its count of places, LENGTH its values', the
+   NAMEs its values' own files and the files of its group it was made of
+   (it replaces them: a reader of the group skips them, and they are
+   old). An open finds a group's files by the listing, and its shard is
+   read when a key of it is first asked for: the newest file, and each
+   other there that no file read replaces, put together (C559's union).
+   Then its values of `inline-most`
    characters or fewer (C473), one after another, `LENGTH` in all, each
    written with each `\` `\\` and each character past ASCII `\u{HEX}` if
    it has one past ASCII, and marked so; then `(keys #L=KEY ...)`, each
@@ -1360,7 +1375,7 @@
    `(LEN ...)`, stepped over unread until its node is asked for (C417).
    ASCII alone, so that an offset is a character's. No number of a run's
    is in a file, so that two runs' files may be put together;
- - a longer value's file, `vKEYHASH.FP` (`value-file-of`): its text, as it
+ - a longer value's file, `vMARKKEYHASH.FP` (`value-file-of`): its text, as it
    is, read when it is asked for and believed if its fingerprint is the
    graph's. Small values are not files of their own, since each file
    written is flushed to the disk (FX-26's `write-file`, C473).
@@ -1370,7 +1385,7 @@
  fingerprint and reads are kept, so that it is verified as any is, and
  made again only when its value is read. Old files are removed by whoever
  saves (`db-collectable`), those not written lately."
-(define db-format string "kayak-db 5")
+(define db-format string "kayak-db 6")
 
 "A file to write: its name, and its text."
 (define-datatype db-file (db-file string string))
@@ -1517,7 +1532,7 @@
                                                     said ")")))
                                             nodes)
                                       (tagcase p
-                                        (in-file (ts) (if (null? ts) files (cons (db-file (value-file-of (node-key n) (node-fp n)) (car ts)) files)))
+                                        (in-file (ts) (if (null? ts) files (cons (db-file (value-file-of (get (extract d mark)) (node-key n) (node-fp n)) (car ts)) files)))
                                         (else other files))
                                       (tagcase p (in-shard (raw e) (cons raw payload)) (else other payload))
                                       seen2 labels2
@@ -1538,8 +1553,6 @@
   (sm-numbers (subr kfx (smap (listof i64 acyclic)) (listof i64 acyclic))
     (lambda (t acc) (tagcase t (sm-none () acc) (sm-node (l k x h r) (sm-numbers l (cons k (sm-numbers r acc))))))))
 
-(define db-prefix? (subr kfx (string string) bool)
-  (lambda (s p) (and (i64>= (string-length-i64 s) (string-length-i64 p)) (string=? (substring s 0 (string-length p)) p))))
 
 (define-rec
   (db-words-of (subr kfx ((listof char acyclic) (listof char acyclic) (listof string acyclic)) (listof string acyclic))
@@ -1549,9 +1562,6 @@
             ((char=? (car cs) #\space) (db-words-of (cdr cs) nil (if (null? w) acc (cons (list->string (reverse w)) acc))))
             (else (db-words-of (cdr cs) (cons (car cs) w) acc))))))
 
-(define-rec
-  (db-words-joined (subr kfx ((listof string acyclic)) string)
-    (lambda (ws) (cond ((null? ws) "") ((null? (cdr ws)) (car ws)) (else (string-append (car ws) (string-append " " (db-words-joined (cdr ws)))))))))
 
 (define-rec
   (db-value-names (subr qe (db (listof i64 acyclic) (listof string acyclic)) (listof string acyclic))
@@ -1564,8 +1574,8 @@
                          (if (null? n)
                              acc
                              (tagcase (node-kept (car n))
-                               (v-file (j) (cons (value-file-of (node-key (car n)) (node-fp (car n))) acc))
-                               (v-read (t) (cons (value-file-of (node-key (car n)) (node-fp (car n))) acc))
+                               (v-file (j) (cons (value-file-of (get (extract d mark)) (node-key (car n)) (node-fp (car n))) acc))
+                               (v-read (t) (cons (value-file-of (get (extract d mark)) (node-key (car n)) (node-fp (car n))) acc))
                                (else other acc)))))))))
 
 (define-rec
@@ -1573,33 +1583,39 @@
                       (tupleof (listof db-file acyclic) (listof db-file acyclic) (listof string acyclic)))
     (lambda (d ns keep run values graphs heads)
       "Each shard of `ns`: if a node of it changed, its file written anew,
-       `gHASH.RUN` (kayak-db 5: never written again, so that a run reading
-       an older head finds its files as that head wrote them), and its
-       values' files; its line of the head, `(HASH FILE VALUE ...)`, where
-       it is. A shard never written, none."
+       `gMARKHASH.RUN` (kayak-db 5: never written again, so that a run
+       reading older files finds them as they were written), and its
+       values' files; its first line names those, and the files of its
+       group it was made of, which it replaces (kayak-db 6), and which,
+       with their values' files it does not name, are old (`db-dropped`)."
       (if (null? ns)
           (tuple values graphs (reverse heads))
           (tagcase (db-shard d (car ns))
             (shard (h where text next loaded dirty)
               (if (not dirty)
-                  (shards-saved d (cdr ns) keep run values graphs
-                                (if (string=? where "") heads (cons (string-list-append (list " (" h " " where ")")) heads)))
+                  (shards-saved d (cdr ns) keep run values graphs heads)
                   (let ((is (numbers-from (i64* (car ns) shard-span) 0 next nil)))
                     (tagcase (nodes-files d (car ns) is keep (made-files nil nil nil nil (km-none) 0 0 (km-none) nil 0))
                       (made-files (keys nodes files payload seen labels at fkeys frecs fn)
-                        (let* ((file (string-append "g" (string-append h (string-append "." run))))
+                        (let* ((file (string-append "g" (string-append (get (extract d mark)) (string-append h (string-append "." run)))))
+                               (vs (db-value-names d is nil))
+                               (old (where-files where))
                                (t (string-list-append
-                                    (append (list "(kayak-shard 5 " (i64->string next) " " (i64->string at) ")\n" (string-list-append (reverse payload)) "\n(keys")
+                                    (append (list "(kayak-shard 6 " (i64->string next) " " (i64->string at)
+                                                  (string-list-append (map (lambda ((x string)) (string-append " " x)) (append vs old)))
+                                                  ")\n" (string-list-append (reverse payload)) "\n(keys")
                                       (append (reverse keys)
                                         (append (list ")\n(reads")
                                           (append (reverse frecs)
                                             (append (list ")\n(nodes") (append (reverse nodes) (list ")\n")))))))))
-                               (w (db-words-joined (cons file (db-value-names d is nil)))))
+                               (w (where-of (cons file vs))))
                           (begin
                             (sm-set! d (car ns) (shard h w t next #t #f))
+                            (set (extract d dropped)
+                                 (onto old (onto (filter (lambda ((x string)) (not (string-member? x vs))) (where-values where)) (get (extract d dropped)))))
                             (shards-saved d (cdr ns) keep run (onto (reverse files) values)
                                           (cons (db-file file t) graphs)
-                                          (cons (string-list-append (list " (" h " " w ")")) heads))))))))))))))
+                                          heads)))))))))))))
 
 (define-rec
   (db-padded (subr kfx (string i64) string)
@@ -1615,24 +1631,24 @@
  kept, `run` naming this save (kayak-db 5: unique, the clock's seconds
  first, so that a later run's names sort after), in the order to write
  them: the values', the shards', the head last, `h.GEN.RUN`, one past the
- heads it was made of, which it names (`db-opened`). Its nodes after are
- as those files have them."
+ heads it was made of, which it names (`db-opened`); it names no shard
+ (kayak-db 6: a listing finds them). Its nodes after are as those files
+ have them."
 (define db-saved (subr qe (db string (subr kfx (sexp) bool) string) (listof db-file acyclic))
   (lambda (d whose keep run)
-    (let* ((r (shards-saved d (sm-numbers (get (extract d shards)) nil) keep run nil nil nil))
+    (let* ((m (set (extract d mark) (db-mark whose)))
+           (r (shards-saved d (sm-numbers (get (extract d shards)) nil) keep run nil nil nil))
            (g (i64+ (get (extract d gen)) 1))
            (name (db-head-name g run))
            (text (string-list-append
                    (append (list "(" db-format " " (str-text whose) " " (i64->string g) " " (i64->string (get (extract d rev))) " (")
                      (append (cdr (numbers-text (get (extract d last))))
-                       (append (list ") (" (db-words-joined (get (extract d parents))) ") (")
-                         (append (extract r 3) (list "))\n"))))))))
+                       (list ") (" (db-words-joined (get (extract d parents))) "))\n"))))))
       (begin
         (set (extract d dirty) #f)
         (set (extract d gen) g)
         (set (extract d superseded) (get (extract d parents)))
         (set (extract d parents) (list name))
-        (set (extract d kept) (cons name (concat (map (lambda ((l string)) (db-words-of (string-chars (substring l 2 (i64->int (i64- (string-length-i64 l) 1)))) nil nil)) (extract r 3)))))
         (onto (extract r 1) (onto (extract r 2) (list (db-file name text))))))))
 
 "What lists the database's files (kayak-db 5): their names."
@@ -1647,34 +1663,6 @@
 (define-rec
   (most-gen (subr kfx ((listof string acyclic) i64) i64)
     (lambda (ns m) (if (null? ns) m (most-gen (cdr ns) (let ((g (head-gen (car ns)))) (if (i64> g m) g m)))))))
-
-(define-rec
-  (lines-scanned! (subr qe (db string i64 i64) unit)
-    (lambda (d s i n)
-      "A head's shards, `(HASH FILE VALUE ...)` each: a group not met yet
-       numbered next, none read; a group another head has too, both its
-       files and the other's, the newer first (kayak-db 5: by name, a run's
-       name its clock's first), their nodes put together when it is read
-       (C559: the newer's alone lost what the other run made)."
-      (let ((i (sc-ws s i n)))
-        (if (not (i64= (sc-char s i n) 40))
-            #u
-            (let* ((he (sc-name-end s (i64+ i 1) n))
-                   (h (substring s (i64->int (i64+ i 1)) (i64->int he)))
-                   (close (sc-close s he n))
-                   (w (substring s (i64->int (sc-ws s he n)) (i64->int close)))
-                   (k (km-get (get (extract d groups)) h)))
-              (begin
-                (if (i64>= k 0)
-                    (tagcase (db-shard d k)
-                      (shard (h0 w0 t0 next loaded dirty)
-                        (sm-set! d k (shard h (where-joined (where-recent (where-union (where-groups w) (where-groups w0)))) "" 0 #f #f))))
-                    (let ((m (get (extract d nshards))))
-                      (begin
-                        (set (extract d nshards) (i64+ m 1))
-                        (set (extract d groups) (km-put (get (extract d groups)) h m))
-                        (sm-set! d m (shard h (where-joined (where-recent (where-union (where-groups w) nil))) "" 0 #f #f)))))
-                (lines-scanned! d s (i64+ close 1) n))))))))
 
 "A head's text, if it is one of this format and `whose`: where its
  generation begins; else -1."
@@ -1703,25 +1691,6 @@
     (let* ((ps (head-parents-at graph e)) (close (sc-close graph (i64+ ps 1) (string-length-i64 graph))))
       (db-words-of (string-chars (substring graph (i64->int (i64+ ps 1)) (i64->int close))) nil nil))))
 
-(define-rec
-  (lines-named (subr kfx (string i64 i64 (listof string acyclic)) (listof string acyclic))
-    (lambda (s i n acc)
-      "The files a head's lines name, `(HASH FILE VALUE ...)` each."
-      (let ((i (sc-ws s i n)))
-        (if (not (i64= (sc-char s i n) 40))
-            acc
-            (let* ((he (sc-name-end s (i64+ i 1) n)) (close (sc-close s he n)))
-              (lines-named s (i64+ close 1) n
-                           (onto (db-words-of (string-chars (substring s (i64->int (sc-ws s he n)) (i64->int close))) nil nil) acc))))))))
-
-"The files a head names, its shards' and their values' (kayak-db 5)."
-(define head-named (subr kfx (string i64) (listof string acyclic))
-  (lambda (graph e)
-    (let* ((n (string-length-i64 graph))
-           (ps (head-parents-at graph e))
-           (at (sc-ws graph (i64+ (sc-close graph (i64+ ps 1) n) 1) n)))
-      (lines-named graph (i64+ at 1) n nil))))
-
 "A head read: its revision and its `last`, if it is a head of this format
  and `whose`; else none."
 (define-datatype head-read (head-read i64 (listof i64 acyclic)) (no-head))
@@ -1736,20 +1705,15 @@
             (part (w wt atoms e)
               (if (not (tagcase w (str (t f p) (string=? t whose)) (else other #f)))
                   (no-head)
-                  ;; GEN REV (LAST ...) (PARENT ...) ((HASH FILE ...) ...)
+                  ;; GEN REV (LAST ...) (PARENT ...)
                   (let* ((ns (sc-ints graph e n 2 nil))
-                         (lasts (sc-ints graph (i64+ (sc-ws graph (db-nth ns 2) n) 1) n durabilities nil))
-                         (ps (sc-ws graph (i64+ (sc-close graph (db-nth lasts durabilities) n) 1) n))
-                         (at (sc-ws graph (i64+ (sc-close graph (i64+ ps 1) n) 1) n)))
-                    (begin
-                      (lines-scanned! d graph (i64+ at 1) n)
-                      (head-read (db-nth ns 1) (reverse (cdr (reverse lasts)))))))))))))
+                         (lasts (sc-ints graph (i64+ (sc-ws graph (db-nth ns 2) n) 1) n durabilities nil)))
+                    (head-read (db-nth ns 1) (reverse (cdr (reverse lasts))))))))))))
 
 (define-rec
   (heads-scanned! (subr qe (db reader (listof string acyclic) string (listof string acyclic) i64 (listof i64 acyclic)) unit)
     (lambda (d rd names whose read rev last)
-      "Each head of `names` read, its shards put in (`lines-scanned!`); then
-       the revision and `last`: one head's own; of several, a revision past
+      "Each head of `names` read; then the revision and `last`: one head's own; of several, a revision past
        all theirs, `last` that at every durability, so that the shortcut
        takes no node across their runs (`models/db.qnt`'s `merge`)."
       (if (null? names)
@@ -1797,13 +1761,54 @@
             (heads-listed rd ls whose (i64- tries 1))
             (tuple names (filter (lambda ((h head-text)) (tagcase h (head-text (n t e) (not (string=? t ""))))) hs)))))))
 
+(define-rec
+  (dot-at (subr kfx (string i64 i64) i64)
+    (lambda (s i n) (let ((c (sc-char s i n))) (if (or (i64< c 0) (i64= c 46)) i (dot-at s (i64+ i 1) n))))))
+
+(define-rec
+  (newest-inserted (subr kfx (string (listof string acyclic)) (listof string acyclic))
+    (lambda (x fs)
+      "File `x` among a group's files `fs`, the newest first (a run's name
+       its clock's first), once."
+      (cond ((null? fs) (list x))
+            ((string=? x (car fs)) fs)
+            ((string<? (car fs) x) (cons x fs))
+            (else (cons (car fs) (newest-inserted x (cdr fs))))))))
+
+(define-rec
+  (groups-listed! (subr qe (db (listof string acyclic) string) unit)
+    (lambda (d ns p)
+      "The groups of the files listed `ns` whose names begin `p`,
+       `gMARKHASH.RUN` (kayak-db 6), each a shard not yet read, its files
+       where it is, the newest first."
+      (if (null? ns)
+          #u
+          (begin
+            (if (db-prefix? (car ns) p)
+                (let* ((x (car ns))
+                       (pl (string-length-i64 p))
+                       (h (substring x (i64->int pl) (i64->int (dot-at x pl (string-length-i64 x)))))
+                       (k (km-get (get (extract d groups)) h)))
+                  (if (i64>= k 0)
+                      (tagcase (db-shard d k)
+                        (shard (h0 w0 t0 next loaded dirty)
+                          (sm-set! d k (shard h0 (where-of (newest-inserted x (where-files w0))) "" 0 #f #f))))
+                      (let ((m (get (extract d nshards))))
+                        (begin
+                          (set (extract d nshards) (i64+ m 1))
+                          (set (extract d groups) (km-put (get (extract d groups)) h m))
+                          (sm-set! d m (shard h x "" 0 #f #f))))))
+                #u)
+            (groups-listed! d (cdr ns) p))))))
+
 (define db-opened (subr qe (reader lister string) db)
   (lambda (rd ls whose)
     "The database whose files `rd` reads and `ls` lists (kayak-db 5): each
      head there, `h.GEN.RUN`, `whose`, that no head there names as its
      parent, put together; one, most often, several where runs saved at
      once. A save removes the heads it was made of (`db-collectable`), so
-     that those there are few. None, an empty one. Its shards read as
+     that those there are few. None, an empty one. Its groups those whose
+     files the listing has, of its mark (kayak-db 6); its shards read as
      their keys are asked for."
     (let* ((d (db-make))
            (listed (begin (set (extract d reads) rd) (heads-listed rd ls whose 8)))
@@ -1815,20 +1820,9 @@
       (begin
         (set (extract d gen) (if (i64< g 0) 0 g))
         (heads-scanned! d rd (map (lambda ((h head-text)) (tagcase h (head-text (n t e) n))) frontier) whose nil 1 (zeros durabilities))
+        (set (extract d mark) (db-mark whose))
+        (groups-listed! d names (string-append "g" (db-mark whose)))
         d))))
-
-(define-rec
-  (heads-named (subr qe (reader (listof string acyclic) (listof string acyclic)) (listof string acyclic))
-    (lambda (rd hs acc)
-      "The files heads `hs` name, any whose (a file another's head names is
-       kept)."
-      (if (null? hs)
-          acc
-          (let* ((t (rd (car hs))) (n (string-length-i64 t))
-                 (e (if (and (i64> n 13) (i64= (sc-char t (the i64 12) n) 34))
-                        (tagcase (sc-str t (the i64 12) n (am-none)) (part (w wt atoms e) e))
-                        (the i64 -1))))
-            (heads-named rd (cdr hs) (if (i64< e 0) acc (onto (head-named t e) acc))))))))
 
 "A head's `whose`, as its text says (kayak-db 5); `` if it is none."
 (define head-whose (subr kfx (string) string)
@@ -1864,32 +1858,40 @@
                (heads-ancestors rd (onto ps (cdr todo)) present whose (cons (car todo) acc))))))))
 
 "Of `names`, the database's files listed after a save, those it may
- remove (kayak-db 5): at once, the heads its head was made of, which it
- holds, and every head there that one of them names as a parent, and
- theirs (C563: a run that wrote its head and was stopped before it
- removed its parents left them; once the head naming them was removed,
- none named them, and they were read again, each open uniting what they
- held), and `dropped`, heads of another kc not written lately
- (`db-foreign-heads`); and a shard's or a value's file that no head left
- names (`rd` reads them), which whoever removes them removes only if not
- written lately (a run at once with this one may be reading an older
- head's, or have written its own and not yet its head). A file gone
- reads as none: its queries run again."
-(define db-collectable (subr qe (db (listof string acyclic) reader string (listof string acyclic) bool) (listof string acyclic))
-  (lambda (d names rd whose dropped files?)
-    "With `files?` false, the heads alone (C563): which files no head names
-     is known only by reading every head there whole, as an open does, and
-     a save does not ask it each time."
+ remove (kayak-db 5): the heads its head was made of, which it holds, and
+ every head there that one of them names as a parent, and theirs (C563: a
+ run that wrote its head and was stopped before it removed its parents
+ left them; once the head naming them was removed, none named them, and
+ they were read again), and `foreign`, heads of another kc not written
+ lately (`db-foreign-heads`); the files it found old (kayak-db 6): a
+ group's its own files replace, and their values' files those do not
+ name (`db-dropped`); and, with `files?`, every shard's and value's file
+ of another mark than its own, another kc's. Two lists: those to remove
+ at once, the heads and its own values' files (one a run at once with
+ this one wrote anew, of the same key and fingerprint, it may find gone,
+ and make again); and those to remove only if not written lately, the
+ shards' files and another kc's (a run at once with this one may be
+ reading them; a group's file left, its group's next reader skips, and
+ finds old again). A file gone reads as none: its queries run again."
+(define db-collectable (subr qe (db (listof string acyclic) reader string (listof string acyclic) bool) (tupleof (listof string acyclic) (listof string acyclic)))
+  (lambda (d names rd whose foreign files?)
     (let* ((heads (filter (lambda ((x string)) (i64>= (head-gen x) 0)) names))
-           (gone (onto dropped (heads-ancestors rd (get (extract d superseded)) heads whose nil)))
-           (mine (get (extract d parents)))
-           (others (filter (lambda ((x string)) (and (not (string-member? x gone)) (not (string-member? x mine)))) heads))
-           (named (if files? (onto (get (extract d kept)) (heads-named rd others nil)) nil)))
-      (filter (lambda ((x string))
-                (cond ((i64>= (head-gen x) 0) (string-member? x gone))
-                      ((and files? (or (db-prefix? x "g") (db-prefix? x "v"))) (not (string-member? x named)))
-                      (else #f)))
-              names))))
+           (gone (onto foreign (heads-ancestors rd (get (extract d superseded)) heads whose nil)))
+           (old (get (extract d dropped)))
+           (g (string-append "g" (db-mark whose)))
+           (v (string-append "v" (db-mark whose))))
+      (begin
+        (set (extract d dropped) nil)
+        (tuple (filter (lambda ((x string))
+                         (if (i64>= (head-gen x) 0) (string-member? x gone) (and (db-prefix? x v) (string-member? x old))))
+                       names)
+               (filter (lambda ((x string))
+                         (cond ((i64>= (head-gen x) 0) #f)
+                               ((db-prefix? x v) #f)
+                               ((string-member? x old) #t)
+                               ((and files? (or (db-prefix? x "g") (db-prefix? x "v"))) (not (db-prefix? x g)))
+                               (else #f)))
+                       names))))))
 
 "The generation of the head the database was last saved as (kayak-db 5)."
 (define db-generation (subr qe (db) i64) (lambda (d) (get (extract d gen))))

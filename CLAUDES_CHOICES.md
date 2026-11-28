@@ -18215,3 +18215,50 @@ found) committed first, this kept aside as a patch, then applied again.
   Each passed run again. (C562's number unused: the pin move was C562
   until C563 came first.)
 - **The full check**: `check: all passed`, 8 min 11 s; beyond KFX, the engine 430 agree (428 before), 100 its checker refuses (97: `utf8-length`). The pre-check passed first (3 min 38 s).
+
+## C565. kc's database names no shard in a head: groups by the listing, `kayak-db 6` (2026-11-28)
+
+The user, on C563's warm sweep slower than a cold one: "If warm continues
+to be slower than cold, then that sounds like a problem, no?", then "do
+any of them cover revisiting the design of the database itself", a
+survey ("fire off an opus agent to do research on the internet,
+especially academia"), and "Capture the research results into a doc in
+the repo. Then profile and choose a path to try".
+- **The survey**: docs/research/db-stores.md, the agent's report kept as
+  it wrote it, with what kayak already had and FX-26 lacks said first.
+  Its choice, D: per-group files, read lazily, few by compaction, no
+  heads naming them (git's reftable and commit-graph chains, the Go
+  build cache, PIE against Pluto, Monkey and Dostoevsky).
+- **The profile** (`perf`, a warm kc-steps sweep, the machine idle): 83%
+  of kc's samples putting heads together at each open (`lines-scanned!`),
+  the compiling under 10%. 69 s cold, 95 s warm.
+- **The path** (db-stores.md §7, parallel-db.md §3b), lib/db.kfx:
+  - a head `(kayak-db 6 WHOSE GEN REV (LAST ...) (PARENT ...))`, no lines;
+  - shard and value files named with a mark, a hash of whose
+    (`db-mark`): `gMARKHASH.RUN`, `vMARKKEYHASH.FP`; another kc's known by
+    name, unread;
+  - an open finds groups by the listing (`groups-listed!`, the newest
+    file first);
+  - a shard's first line names its values' files and the files of its
+    group it was made of (`shard-names`): a reader skips those and puts
+    any other together (C559's union, `extras-merged!`); C563's minute's
+    window (`where-recent`) and the union's ordering gone;
+  - a save makes old what it replaced and the values' files its own does
+    not name (`db-dropped`); `db-collectable` gives two lists: at once
+    (heads, its own values' files) and if not written in the last minute
+    (shards' files, another kc's, at every eighth generation as C563's).
+    A value dropped young was otherwise named by nothing again (found by
+    hand, an edit within a minute): removed at once, a run at once with
+    this one that wrote it again making it again at worst.
+- **Measured** (kc-steps, cold then warm twice): 52 s, 19 s, 20 s, 0
+  wrong (69, 95, 95 before); about 3,650 shard files, level (each
+  program's group written a few times a sweep: `kc run` makes the `asm`
+  values again, not kept, and writes its group, nothing changed; TODO
+  §59's left). A warm sweep's profile after: the open 5%, the save 4.5%.
+- **Tests**: tests/kfx/db: the harness lists the whole directory (groups
+  are found by listing); `at-once` as before (9/2, B's note kept);
+  `collect` (x3 removes five heads, four its ancestors and another kc's,
+  one left; three of group `a`'s files old, its own left; another kc's
+  file old); `recent` gone with `where-recent`.
+
+- **The full check**: `check: all passed`, 7 min 17 s; kc-steps cold (kc changed). The pre-check passed first (2 min 41 s).

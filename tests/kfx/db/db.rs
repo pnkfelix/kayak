@@ -736,7 +736,7 @@ pub type Reader = kayak_rt::Proc1<'static, Str, Str>;
 // queries being run, the innermost first; for each durability, 0 to 3, the
 // revision an input of it or more last changed in; how many times a body
 // has run, and whose (for tests and measures).
-pub type Db = Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_7foreign_3gen_7parents_10superseded_4kept_4last_4runs_3ran_3why_4whys<Ref<i64>, Ref<kayak_rt::data::DataAt<'static, Imap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<kayak_rt::data::DataAt<'static, Smap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<i64>, Ref<Reader>, Ref<bool>, Ref<List<kayak_rt::data::DataAt<'static, Frame>>>, Ref<kayak_rt::data::DataAt<'static, Imap>>, Ref<i64>, Ref<List<Str>>, Ref<List<Str>>, Ref<List<Str>>, Ref<List<i64>>, Ref<i64>, Ref<Sexps>, Ref<bool>, Ref<List<Str>>>;
+pub type Db = Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_7foreign_3gen_7parents_10superseded_7dropped_4mark_4last_4runs_3ran_3why_4whys<Ref<i64>, Ref<kayak_rt::data::DataAt<'static, Imap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<kayak_rt::data::DataAt<'static, Smap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<i64>, Ref<Reader>, Ref<bool>, Ref<List<kayak_rt::data::DataAt<'static, Frame>>>, Ref<kayak_rt::data::DataAt<'static, Imap>>, Ref<i64>, Ref<List<Str>>, Ref<List<Str>>, Ref<List<Str>>, Ref<Str>, Ref<List<i64>>, Ref<i64>, Ref<Sexps>, Ref<bool>, Ref<List<Str>>>;
 
 // What runs a query: given the database and a key, its value.
 pub type Runner = kayak_rt::Proc2<'static, Db, kayak_rt::data::DataAt<'static, Sexp>, Str>;
@@ -2341,153 +2341,83 @@ pub fn db_shard(d: Db, n: i64) -> kayak_rt::data::DataAt<'static, Shard> {
     }
 }
 
-// A shard's file, the first name of where it is; `` if none.
-pub fn first_word(mut cs: List<char>, mut acc: List<char>) -> Str {
-    loop {
-        if (null_p(cs) || char_eq_p(car(cs), ' ')) {
-            return list_to_string(reverse(acc));
+#[inline]
+pub fn db_prefix_p(s: Str, p: Str) -> bool {
+    (i64_gt_eq(string_length_i64(s), string_length_i64(p)) && string_eq_p(substring(s, int_lit(0), string_length(p)), p))
+}
+
+pub fn db_words_joined(ws: List<Str>) -> Str {
+    if null_p(ws) {
+        str_lit!("")
+    } else if null_p(cdr(ws)) {
+        car(ws)
+    } else {
+        string_append(car(ws), string_append(str_lit!(" "), db_words_joined(cdr(ws))))
+    }
+}
+
+// The words of `s` from `i`, between spaces (kayak-db 6: a shard's names,
+// a group's files), onto `acc` reversed.
+pub fn sc_words(s: Str, i: i64, n: i64, acc: List<Str>) -> List<Str> {
+    let i = sc_ws(s, i, n);
+    if i64_gt_eq(i, n) {
+        reverse(acc)
+    } else {
+        let e = sc_name_end(s, i, n);
+        if i64_eq(e, i) {
+            reverse(acc)
         } else {
-            (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
-            continue;
+            sc_words(s, e, n, kayak_rt::heap_cons(substring(s, i64_to_int(i), i64_to_int(e)), acc))
         }
     }
 }
 
+#[inline]
+pub fn db_words(s: Str) -> List<Str> {
+    sc_words(s, 0i64, string_length_i64(s), nil::<Str>())
+}
+
+// Where a shard is (kayak-db 6): its group's files there, the newest
+// first, and, once read, the values' own files they name, a space between
+// each; its file is the first.
 #[inline]
 pub fn where_file(w: Str) -> Str {
-    first_word(string_chars(w), nil::<char>())
-}
-
-// Where a shard is, as its head's line has it, may be more than one file's
-// (C559, the union): each `FILE VALUE ...`, the newest first, ` ; `
-// between, their nodes put together when the shard is read.
-pub fn where_split(mut cs: List<char>, mut w: List<char>, mut acc: List<Str>) -> List<Str> {
-    loop {
-        if null_p(cs) {
-            return reverse(kayak_rt::heap_cons(list_to_string(reverse(w)), acc));
-        } else if (char_eq_p(car(cs), ' ') && not(null_p(cdr(cs))) && char_eq_p(car(cdr(cs)), ';')) {
-            (cs, w, acc) = (if null_p(cdr(cdr(cs))) {
-                nil::<char>()
-            } else {
-                cdr(cdr(cdr(cs)))
-            }, nil::<char>(), kayak_rt::heap_cons(list_to_string(reverse(w)), acc));
-            continue;
-        } else {
-            (cs, w) = (cdr(cs), kayak_rt::heap_cons(car(cs), w));
-            continue;
-        }
-    }
+    substring(w, int_lit(0), i64_to_int(sc_name_end(w, 0i64, string_length_i64(w))))
 }
 
 #[inline]
-pub fn where_groups(w: Str) -> List<Str> {
-    if string_eq_p(w, str_lit!("")) {
-        nil::<Str>()
-    } else {
-        where_split(string_chars(w), nil::<char>(), nil::<Str>())
-    }
-}
-
-pub fn where_joined(gs: List<Str>) -> Str {
-    if null_p(gs) {
-        str_lit!("")
-    } else if null_p(cdr(gs)) {
-        car(gs)
-    } else {
-        string_append(car(gs), string_append(str_lit!(" ; "), where_joined(cdr(gs))))
-    }
-}
-
-/// `g` among `gs`, newest first by file, once.
-pub fn where_inserted(g: Str, gs: List<Str>) -> List<Str> {
-    if null_p(gs) {
-        kayak_rt::heap_cons(g, kayak_rt::nil())
-    } else if string_eq_p(where_file(g), where_file(car(gs))) {
-        gs
-    } else if string_lt_p(where_file(car(gs)), where_file(g)) {
-        kayak_rt::heap_cons(g, gs)
-    } else {
-        kayak_rt::heap_cons(car(gs), where_inserted(g, cdr(gs)))
-    }
-}
-
-pub fn where_union(mut gs: List<Str>, mut acc: List<Str>) -> List<Str> {
-    loop {
-        if null_p(gs) {
-            return acc;
-        } else {
-            (gs, acc) = (cdr(gs), where_inserted(car(gs), acc));
-            continue;
-        }
-    }
-}
-
-// When a group's file was written, its name's clock (`gHASH.SECONDS-PID`,
-// kayak-db 5); -1 if it has none.
-pub fn seconds_after_dot(mut cs: List<char>) -> i64 {
-    loop {
-        if null_p(cs) {
-            return -1i64;
-        } else if char_eq_p(car(cs), '.') {
-            return seconds_of(cdr(cs), 0i64, 0i64);
-        } else {
-            cs = cdr(cs);
-            continue;
-        }
-    }
-}
-
-pub fn seconds_of(mut cs: List<char>, mut k: i64, mut acc: i64) -> i64 {
-    loop {
-        if i64_eq(k, 12i64) {
-            return acc;
-        } else if null_p(cs) {
-            return -1i64;
-        } else if (i64_gt_eq(char_to_i64(car(cs)), 48i64) && i64_lt_eq(char_to_i64(car(cs)), 57i64)) {
-            (cs, k, acc) = (cdr(cs), i64_plus(k, 1i64), i64_plus(i64_star(acc, 10i64), i64_minus(char_to_i64(car(cs)), 48i64)));
-            continue;
-        } else {
-            return -1i64;
-        }
-    }
+pub fn where_of(ws: List<Str>) -> Str {
+    db_words_joined(ws)
 }
 
 #[inline]
-pub fn where_seconds(g: Str) -> i64 {
-    seconds_after_dot(string_chars(where_file(g)))
+pub fn where_files(w: Str) -> List<Str> {
+    filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Str| {
+        db_prefix_p(x, str_lit!("g"))
+    })), db_words(w))
 }
 
-// Of a group's files, the newest first, those it is put together of
-// (C563): the newest, and those written within `where-window` seconds
-// before it, the runs at once with its. One older was, nearly always, read
-// by the run that wrote a newer, whose file holds what it did: put
-// together with it for good (each of a program's steps writes its group,
-// and every head kept the version it saw), a group's files grew from one
-// run to the next, kc-steps' warm runs 28 s, then 197, then 391. One run
-// open longer than that while another wrote its group may lose what it
-// made there: those queries run again.
 #[inline]
-pub fn where_window() -> i64 {
-    60i64
+pub fn where_values(w: Str) -> List<Str> {
+    filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Str| {
+        db_prefix_p(x, str_lit!("v"))
+    })), db_words(w))
 }
 
-pub fn where_recent(gs: List<Str>) -> List<Str> {
-    if (null_p(gs) || null_p(cdr(gs))) {
-        gs
-    } else {
-        let t0 = where_seconds(car(gs));
-        kayak_rt::heap_cons(car(gs), filter(kayak_rt::as_proc(kayak_rt::closure1s((t0,), |(t0,), g: Str| {
-            i64_gt_eq(where_seconds(g), i64_minus(t0, where_window()))
-        })), cdr(gs)))
-    }
+// Whose a file is (kayak-db 6): the hash of the `whose` that wrote it, and
+// `-`, after its kind's letter, so that a listing says which files are
+// another kc's without reading them.
+#[inline]
+pub fn db_mark(whose: Str) -> Str {
+    string_append(group_hash(whose), str_lit!("-"))
 }
 
 // A value's own file (kayak-db 5): by its key's hash and its fingerprint,
 // so that two runs that write one write the same text, and none is named by
-// a number of one run's.
+// a number of one run's; and whose (`db-mark`, kayak-db 6).
 #[inline]
-pub fn value_file_of(k: kayak_rt::data::DataAt<'static, Sexp>, fp: i64) -> Str {
-    string_append(str_lit!("v"), string_append(group_hash(key_text(k)), string_append(str_lit!("."), i64_to_string(fp))))
+pub fn value_file_of(m: Str, k: kayak_rt::data::DataAt<'static, Sexp>, fp: i64) -> Str {
+    string_append(str_lit!("v"), string_append(m, string_append(group_hash(key_text(k)), string_append(str_lit!("."), i64_to_string(fp)))))
 }
 
 pub fn ascii_unescaped(mut cs: List<char>, mut acc: List<char>) -> Str {
@@ -2652,7 +2582,7 @@ pub fn records_merged_x(mut d: Db, mut text: Str, mut recs: List<Product_11_12<i
 // (C559's union, of files two runs at once wrote); whether any was.
 pub fn extra_merged_x(d: Db, n: i64, text: Str) -> bool {
     let m = string_length_i64(text);
-    let hd = str_lit!("(kayak-shard 5 ");
+    let hd = str_lit!("(kayak-shard 6 ");
     let ok = (i64_gt(m, string_length_i64(hd)) && string_eq_p(substring(text, int_lit(0), string_length(hd)), hd));
     if not(ok) {
         false
@@ -2667,12 +2597,40 @@ pub fn extra_merged_x(d: Db, n: i64, text: Str) -> bool {
     }
 }
 
-pub fn extras_merged_x(mut d: Db, mut n: i64, mut gs: List<Str>, mut added: bool) -> bool {
+// A shard's file's names (kayak-db 6), in its first line after its counts:
+// its values' own files, and the files of its group it replaces, those it
+// was made of; `` if it is no shard's.
+pub fn shard_names(text: Str) -> List<Str> {
+    let m = string_length_i64(text);
+    let hd = str_lit!("(kayak-shard 6 ");
+    if not((i64_gt(m, string_length_i64(hd)) && string_eq_p(substring(text, int_lit(0), string_length(hd)), hd))) {
+        nil::<Str>()
+    } else {
+        sc_words(text, db_nth(sc_ints(text, string_length_i64(hd), m, 2i64, nil::<i64>()), 2i64), m, nil::<Str>())
+    }
+}
+
+/// The group's other files, the newest first, each a file read
+/// replaces skipped (kayak-db 6: what it holds, that one does, and
+/// it is old, `db-dropped`), each other's nodes put in (C559's union);
+/// whether any was, and the values' files they name.
+pub fn extras_merged_x(mut d: Db, mut n: i64, mut gs: List<Str>, mut skip: List<Str>, mut vals: List<Str>, mut added: bool) -> Product_11_12<bool, List<Str>> {
     loop {
         if null_p(gs) {
-            return added;
+            return Product_11_12(added, vals);
+        } else if string_member_p(car(gs), skip) {
+            set(d.13, kayak_rt::heap_cons(car(gs), get(d.13)));
+            gs = cdr(gs);
+            continue;
         } else {
-            (gs, added) = (cdr(gs), (extra_merged_x(d, n, (get(d.6)).call(where_file(car(gs)))) || added));
+            let text = (get(d.6)).call(car(gs));
+            let names = shard_names(text);
+            let a = extra_merged_x(d, n, text);
+            (gs, skip, vals, added) = (cdr(gs), onto(filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Str| {
+                db_prefix_p(x, str_lit!("g"))
+            })), names), skip), onto(filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Str| {
+                db_prefix_p(x, str_lit!("v"))
+            })), names), vals), (a || added));
             continue;
         }
     }
@@ -2694,14 +2652,20 @@ pub fn db_shard_read_x(d: Db, n: i64) -> () {
             if loaded {
                 ()
             } else {
-                let file = where_file(r#where);
+                let gs = where_files(r#where);
+                let file = if null_p(gs) {
+                    str_lit!("")
+                } else {
+                    car(gs)
+                };
                 let text = if string_eq_p(file, str_lit!("")) {
                     str_lit!("")
                 } else {
                     (get(d.6)).call(file)
                 };
+                let names = shard_names(text);
                 let m = string_length_i64(text);
-                let hd = str_lit!("(kayak-shard 5 ");
+                let hd = str_lit!("(kayak-shard 6 ");
                 let ok = (i64_gt(m, string_length_i64(hd)) && string_eq_p(substring(text, int_lit(0), string_length(hd)), hd));
                 let counts = if ok {
                     sc_ints(text, string_length_i64(hd), m, 2i64, nil::<i64>())
@@ -2728,22 +2692,26 @@ pub fn db_shard_read_x(d: Db, n: i64) -> () {
                 } else {
                     ()
                 };
-                let gs = where_groups(r#where);
-                if (null_p(gs) || null_p(cdr(gs))) {
-                    ()
+                let x = extras_merged_x(d, n, if null_p(gs) {
+                    nil::<Str>()
                 } else {
-                    let added = extras_merged_x(d, n, cdr(gs), false);
-                    let tagcase_ = db_shard(d, n);
-                    if Shard::__is_Shard(tagcase_) {
-                        let (h2, w2, t2, next2, loaded2, dirty2,) = Shard::__Shard(tagcase_);
-                        sm_set_x(d, n, shard(h2, car(gs), t2, next2, loaded2, (dirty2 || added)));
-                        if added {
-                            set(d.7, true)
-                        } else {
-                            ()
-                        }
-                    } else { kayak_rt::data::no_variant() }
-                }
+                    cdr(gs)
+                }, filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Str| {
+                    db_prefix_p(x, str_lit!("g"))
+                })), names), filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Str| {
+                    db_prefix_p(x, str_lit!("v"))
+                })), names), false);
+                let added = x.0;
+                let tagcase_ = db_shard(d, n);
+                if Shard::__is_Shard(tagcase_) {
+                    let (h2, w2, t2, next2, loaded2, dirty2,) = Shard::__Shard(tagcase_);
+                    sm_set_x(d, n, shard(h2, where_of(append(gs, x.1)), t2, next2, loaded2, (dirty2 || added)));
+                    if added {
+                        set(d.7, true)
+                    } else {
+                        ()
+                    }
+                } else { kayak_rt::data::no_variant() }
             }
         } else { kayak_rt::data::no_variant() }
     }
@@ -2769,17 +2737,17 @@ pub fn db_shard_of_group_x(d: Db, g: Str) -> i64 {
 // and why, the newest first (`db-whys`).
 #[inline]
 pub fn db_why_x(d: Db) -> () {
-    set(d.17, true)
+    set(d.18, true)
 }
 
 #[inline]
 pub fn db_whys(d: Db) -> List<Str> {
-    get(d.18)
+    get(d.19)
 }
 
 pub fn db_said_why_x(d: Db, k: kayak_rt::data::DataAt<'static, Sexp>, why: Str) -> () {
-    if get(d.17) {
-        set(d.18, kayak_rt::heap_cons(string_append(key_text(k), string_append(str_lit!(": "), why)), get(d.18)))
+    if get(d.18) {
+        set(d.19, kayak_rt::heap_cons(string_append(key_text(k), string_append(str_lit!(": "), why)), get(d.19)))
     } else {
         ()
     }
@@ -2787,14 +2755,14 @@ pub fn db_said_why_x(d: Db, k: kayak_rt::data::DataAt<'static, Sexp>, why: Str) 
 
 #[inline]
 pub fn db_runs(d: Db) -> i64 {
-    get(d.15)
+    get(d.16)
 }
 
 // The keys whose bodies ran, the newest first: so that a test can say what
 // an edit made run again, and what it spared.
 #[inline]
 pub fn db_ran(d: Db) -> Sexps {
-    get(d.16)
+    get(d.17)
 }
 
 // Node `i`'s value read from its file, if it is there unread: as it was
@@ -2808,12 +2776,12 @@ pub fn db_node_read_x(d: Db, i: i64) -> () {
         let tagcase_ = node_kept(car(n));
         if Value::__is_VFile(tagcase_) {
             let (j,) = Value::__VFile(tagcase_);
-            let x = value_checked((get(d.6)).call(value_file_of(node_key(car(n)), node_fp(car(n)))), node_fp(car(n)));
+            let x = value_checked((get(d.6)).call(value_file_of(get(d.14), node_key(car(n)), node_fp(car(n)))), node_fp(car(n)));
             let tagcase_ = car(n);
             if Node::__is_Node(tagcase_) {
                 let (k, inp, v, c, f, ds, du, val,) = Node::__Node(tagcase_);
                 if null_p(x) {
-                    db_said_why_x(d, k, string_append(str_lit!("its value's file gone: "), value_file_of(k, f)))
+                    db_said_why_x(d, k, string_append(str_lit!("its value's file gone: "), value_file_of(get(d.14), k, f)))
                 } else {
                     ()
                 };
@@ -2831,9 +2799,9 @@ pub fn db_node_read_x(d: Db, i: i64) -> () {
 }
 
 pub fn db_make() -> Db {
-    Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_7foreign_3gen_7parents_10superseded_4kept_4last_4runs_3ran_3why_4whys(the::<Ref<i64>>(kayak_rt::heap_new(1i64)), the::<Ref<kayak_rt::data::DataAt<'static, Imap>>>(kayak_rt::heap_new(im_none())), the::<Ref<kayak_rt::data::DataAt<'static, Kmap>>>(kayak_rt::heap_new(km_none())), the::<Ref<kayak_rt::data::DataAt<'static, Smap>>>(kayak_rt::heap_new(sm_none())), the::<Ref<kayak_rt::data::DataAt<'static, Kmap>>>(kayak_rt::heap_new(km_none())), the::<Ref<i64>>(kayak_rt::heap_new(0i64)), the::<Ref<Reader>>(kayak_rt::heap_new(kayak_rt::closure1((), |(), name: Str| {
+    Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_7foreign_3gen_7parents_10superseded_7dropped_4mark_4last_4runs_3ran_3why_4whys(the::<Ref<i64>>(kayak_rt::heap_new(1i64)), the::<Ref<kayak_rt::data::DataAt<'static, Imap>>>(kayak_rt::heap_new(im_none())), the::<Ref<kayak_rt::data::DataAt<'static, Kmap>>>(kayak_rt::heap_new(km_none())), the::<Ref<kayak_rt::data::DataAt<'static, Smap>>>(kayak_rt::heap_new(sm_none())), the::<Ref<kayak_rt::data::DataAt<'static, Kmap>>>(kayak_rt::heap_new(km_none())), the::<Ref<i64>>(kayak_rt::heap_new(0i64)), the::<Ref<Reader>>(kayak_rt::heap_new(kayak_rt::closure1((), |(), name: Str| {
         str_lit!("")
-    }))), the::<Ref<bool>>(kayak_rt::heap_new(false)), the::<Ref<List<kayak_rt::data::DataAt<'static, Frame>>>>(kayak_rt::heap_new(nil::<kayak_rt::data::DataAt<'static, Frame>>())), the::<Ref<kayak_rt::data::DataAt<'static, Imap>>>(kayak_rt::heap_new(im_none())), the::<Ref<i64>>(kayak_rt::heap_new(0i64)), the::<Ref<List<Str>>>(kayak_rt::heap_new(nil::<Str>())), the::<Ref<List<Str>>>(kayak_rt::heap_new(nil::<Str>())), the::<Ref<List<Str>>>(kayak_rt::heap_new(nil::<Str>())), the::<Ref<List<i64>>>(kayak_rt::heap_new(zeros(durabilities()))), the::<Ref<i64>>(kayak_rt::heap_new(0i64)), the::<Ref<Sexps>>(kayak_rt::heap_new(nil::<kayak_rt::data::DataAt<'static, Sexp>>())), the::<Ref<bool>>(kayak_rt::heap_new(false)), the::<Ref<List<Str>>>(kayak_rt::heap_new(nil::<Str>())))
+    }))), the::<Ref<bool>>(kayak_rt::heap_new(false)), the::<Ref<List<kayak_rt::data::DataAt<'static, Frame>>>>(kayak_rt::heap_new(nil::<kayak_rt::data::DataAt<'static, Frame>>())), the::<Ref<kayak_rt::data::DataAt<'static, Imap>>>(kayak_rt::heap_new(im_none())), the::<Ref<i64>>(kayak_rt::heap_new(0i64)), the::<Ref<List<Str>>>(kayak_rt::heap_new(nil::<Str>())), the::<Ref<List<Str>>>(kayak_rt::heap_new(nil::<Str>())), the::<Ref<List<Str>>>(kayak_rt::heap_new(nil::<Str>())), the::<Ref<Str>>(kayak_rt::heap_new(str_lit!(""))), the::<Ref<List<i64>>>(kayak_rt::heap_new(zeros(durabilities()))), the::<Ref<i64>>(kayak_rt::heap_new(0i64)), the::<Ref<Sexps>>(kayak_rt::heap_new(nil::<kayak_rt::data::DataAt<'static, Sexp>>())), the::<Ref<bool>>(kayak_rt::heap_new(false)), the::<Ref<List<Str>>>(kayak_rt::heap_new(nil::<Str>())))
 }
 
 #[inline]
@@ -2984,7 +2952,7 @@ pub fn node_value_in(d: Db, n: kayak_rt::data::DataAt<'static, Node>) -> Str {
         s
     } else if Value::__is_VFile(tagcase_) {
         let (i,) = Value::__VFile(tagcase_);
-        let x = value_checked((get(d.6)).call(value_file_of(node_key(n), node_fp(n))), node_fp(n));
+        let x = value_checked((get(d.6)).call(value_file_of(get(d.14), node_key(n), node_fp(n))), node_fp(n));
         if null_p(x) {
             str_lit!("")
         } else {
@@ -3049,7 +3017,7 @@ pub fn db_set_x(d: Db, k: kayak_rt::data::DataAt<'static, Sexp>, text: Str, du: 
     } else {
         let r = i64_plus(get(d.0), 1i64);
         set(d.0, r);
-        set(d.14, bumped(get(d.14), if (not(null_p(old)) && i64_gt(node_durability(car(old)), du)) {
+        set(d.15, bumped(get(d.15), if (not(null_p(old)) && i64_gt(node_durability(car(old)), du)) {
             node_durability(car(old))
         } else {
             du
@@ -3124,7 +3092,7 @@ pub fn db_made_current(d: Db, run: Runner, i: i64, k: kayak_rt::data::DataAt<'st
         ()
     } else if i64_eq(node_verified(car(old)), r) {
         ()
-    } else if i64_lt_eq(db_nth(get(d.14), node_durability(car(old))), node_verified(car(old))) {
+    } else if i64_lt_eq(db_nth(get(d.15), node_durability(car(old))), node_verified(car(old))) {
         db_put_x(d, i, node_verified_at(car(old), r))
     } else {
         let du = db_reads_durability(d, run, node_deps(car(old)), i64_minus(durabilities(), 1i64));
@@ -3203,8 +3171,8 @@ pub fn db_execute(d: Db, run: Runner, i: i64, k: kayak_rt::data::DataAt<'static,
     let r = get(d.0);
     let fp = queries::fnv_string(x, queries::fnv_offset());
     set(d.8, cdr(get(d.8)));
-    set(d.15, i64_plus(get(d.15), 1i64));
-    set(d.16, kayak_rt::heap_cons(k, get(d.16)));
+    set(d.16, i64_plus(get(d.16), 1i64));
+    set(d.17, kayak_rt::heap_cons(k, get(d.17)));
     {
         let tagcase_ = fr;
         if Frame::__is_Frame(tagcase_) {
@@ -3249,19 +3217,28 @@ pub fn db_fingerprint(d: Db, run: Runner, k: kayak_rt::data::DataAt<'static, Sex
 
 // The database as files (C472, `kayak-db 3`; kayak-db 4, each read with its
 // fingerprint, C556; kayak-db 5, runs at once, C559,
-// `docs/research/parallel-db.md`; C417's two, read and written whole,
+// `docs/research/parallel-db.md`; kayak-db 6, no shard named by a head,
+// C565, `docs/research/db-stores.md`; C417's two, read and written whole,
 // before): a run reads what it reads, and writes what changed, each file
 // once, never again, so that runs at once on one database each read files
-// as the head they opened wrote them.
+// as they were written. Each file's name but a head's has its mark
+// (`db-mark`), so that a listing says whose it is.
 //
-// - a head, `h.GEN.RUN` (`db-head-name`): `(kayak-db 5 WHOSE GEN REVISION
-// (LAST ...) (PARENT ...) ((HASH FILE VALUE ...) ...))`, whose it is (a
-// compiler's identity), its generation, one past its parents', the heads
-// it was made of; the durabilities' revisions; and each shard, its
-// group's hash, its file and its values' own files. Opening reads the
-// heads of the greatest generation, put together (`db-opened`);
-// - a shard's file, `gHASH.RUN`, RUN its save's: `(kayak-shard 5 NEXT
-// LENGTH)`, NEXT its count of places, then its values of `inline-most`
+// - a head, `h.GEN.RUN` (`db-head-name`): `(kayak-db 6 WHOSE GEN REVISION
+// (LAST ...) (PARENT ...))`, whose it is (a compiler's identity), its
+// generation, one past its parents', the heads it was made of; and the
+// durabilities' revisions. Opening reads those no head there names as a
+// parent, put together (`db-opened`); it names no shard, so that what an
+// open reads is a head's few words, not each group's line (kayak-db 5's
+// heads named every shard, and an open read sixteen of them: TODO §59);
+// - a shard's file, `gMARKHASH.RUN`, RUN its save's: `(kayak-shard 6 NEXT
+// LENGTH NAME ...)`, NEXT its count of places, LENGTH its values', the
+// NAMEs its values' own files and the files of its group it was made of
+// (it replaces them: a reader of the group skips them, and they are
+// old). An open finds a group's files by the listing, and its shard is
+// read when a key of it is first asked for: the newest file, and each
+// other there that no file read replaces, put together (C559's union).
+// Then its values of `inline-most`
 // characters or fewer (C473), one after another, `LENGTH` in all, each
 // written with each `` `\` and each character past ASCII `u{HEX}` if
 // it has one past ASCII, and marked so; then `(keys #L=KEY ...)`, each
@@ -3276,7 +3253,7 @@ pub fn db_fingerprint(d: Db, run: Runner, k: kayak_rt::data::DataAt<'static, Sex
 // `(LEN ...)`, stepped over unread until its node is asked for (C417).
 // ASCII alone, so that an offset is a character's. No number of a run's
 // is in a file, so that two runs' files may be put together;
-// - a longer value's file, `vKEYHASH.FP` (`value-file-of`): its text, as it
+// - a longer value's file, `vMARKKEYHASH.FP` (`value-file-of`): its text, as it
 // is, read when it is asked for and believed if its fingerprint is the
 // graph's. Small values are not files of their own, since each file
 // written is flushed to the disk (FX-26's `write-file`, C473).
@@ -3288,7 +3265,7 @@ pub fn db_fingerprint(d: Db, run: Runner, k: kayak_rt::data::DataAt<'static, Sex
 // saves (`db-collectable`), those not written lately.
 #[inline]
 pub fn db_format() -> Str {
-    str_lit!("kayak-db 5")
+    str_lit!("kayak-db 6")
 }
 
 // A file to write: its name, and its text.
@@ -3839,7 +3816,7 @@ pub fn nodes_files(mut d: Db, mut sh: i64, mut is: List<i64>, mut keep: kayak_rt
                                 if null_p(ts) {
                                     files
                                 } else {
-                                    kayak_rt::heap_cons(db_file(value_file_of(node_key(n), node_fp(n)), car(ts)), files)
+                                    kayak_rt::heap_cons(db_file(value_file_of(get(d.14), node_key(n), node_fp(n)), car(ts)), files)
                                 }
                             } else {
                                 let other = tagcase_;
@@ -3923,11 +3900,6 @@ pub fn sm_numbers(mut t: kayak_rt::data::DataAt<'static, Smap>, mut acc: List<i6
     }
 }
 
-#[inline]
-pub fn db_prefix_p(s: Str, p: Str) -> bool {
-    (i64_gt_eq(string_length_i64(s), string_length_i64(p)) && string_eq_p(substring(s, int_lit(0), string_length(p)), p))
-}
-
 /// The words of `cs`, between spaces.
 pub fn db_words_of(mut cs: List<char>, mut w: List<char>, mut acc: List<Str>) -> List<Str> {
     loop {
@@ -3951,16 +3923,6 @@ pub fn db_words_of(mut cs: List<char>, mut w: List<char>, mut acc: List<Str>) ->
     }
 }
 
-pub fn db_words_joined(ws: List<Str>) -> Str {
-    if null_p(ws) {
-        str_lit!("")
-    } else if null_p(cdr(ws)) {
-        car(ws)
-    } else {
-        string_append(car(ws), string_append(str_lit!(" "), db_words_joined(cdr(ws))))
-    }
-}
-
 /// The own files of the values of nodes `is` (kayak-db 5), each once.
 pub fn db_value_names(mut d: Db, mut is: List<i64>, mut acc: List<Str>) -> List<Str> {
     loop {
@@ -3974,10 +3936,10 @@ pub fn db_value_names(mut d: Db, mut is: List<i64>, mut acc: List<Str>) -> List<
                 let tagcase_ = node_kept(car(n));
                 if Value::__is_VFile(tagcase_) {
                     let (j,) = Value::__VFile(tagcase_);
-                    kayak_rt::heap_cons(value_file_of(node_key(car(n)), node_fp(car(n))), acc)
+                    kayak_rt::heap_cons(value_file_of(get(d.14), node_key(car(n)), node_fp(car(n))), acc)
                 } else if Value::__is_VRead(tagcase_) {
                     let (t,) = Value::__VRead(tagcase_);
-                    kayak_rt::heap_cons(value_file_of(node_key(car(n)), node_fp(car(n))), acc)
+                    kayak_rt::heap_cons(value_file_of(get(d.14), node_key(car(n)), node_fp(car(n))), acc)
                 } else {
                     let other = tagcase_;
                     acc
@@ -3989,10 +3951,11 @@ pub fn db_value_names(mut d: Db, mut is: List<i64>, mut acc: List<Str>) -> List<
 }
 
 /// Each shard of `ns`: if a node of it changed, its file written anew,
-/// `gHASH.RUN` (kayak-db 5: never written again, so that a run reading
-/// an older head finds its files as that head wrote them), and its
-/// values' files; its line of the head, `(HASH FILE VALUE ...)`, where
-/// it is. A shard never written, none.
+/// `gMARKHASH.RUN` (kayak-db 5: never written again, so that a run
+/// reading older files finds them as they were written), and its
+/// values' files; its first line names those, and the files of its
+/// group it was made of, which it replaces (kayak-db 6), and which,
+/// with their values' files it does not name, are old (`db-dropped`).
 pub fn shards_saved(mut d: Db, mut ns: List<i64>, mut keep: kayak_rt::Proc1s<'static, kayak_rt::data::DataAt<'static, Sexp>, bool>, mut run: Str, mut values: List<kayak_rt::data::DataAt<'static, DbFile>>, mut graphs: List<kayak_rt::data::DataAt<'static, DbFile>>, mut heads: List<Str>) -> Product_11_12_13<List<kayak_rt::data::DataAt<'static, DbFile>>, List<kayak_rt::data::DataAt<'static, DbFile>>, List<Str>> {
     loop {
         if null_p(ns) {
@@ -4002,22 +3965,25 @@ pub fn shards_saved(mut d: Db, mut ns: List<i64>, mut keep: kayak_rt::Proc1s<'st
             if Shard::__is_Shard(tagcase_) {
                 let (h, r#where, text, next, loaded, dirty,) = Shard::__Shard(tagcase_);
                 if not(dirty) {
-                    (ns, heads) = (cdr(ns), if string_eq_p(r#where, str_lit!("")) {
-                        heads
-                    } else {
-                        kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit!(" ("), kayak_rt::heap_cons(h, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(r#where, kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))), heads)
-                    });
+                    ns = cdr(ns);
                     continue;
                 } else {
                     let is = numbers_from(i64_star(car(ns), shard_span()), 0i64, next, nil::<i64>());
                     let tagcase_ = nodes_files(d, car(ns), is, keep, made_files(nil::<Str>(), nil::<Str>(), nil::<kayak_rt::data::DataAt<'static, DbFile>>(), nil::<Str>(), km_none(), 0i64, 0i64, km_none(), nil::<Str>(), 0i64));
                     if MadeFiles::__is_MadeFiles(tagcase_) {
                         let (keys, nodes, files, payload, seen, labels, at, fkeys, frecs, r#fn,) = MadeFiles::__MadeFiles(tagcase_);
-                        let file = string_append(str_lit!("g"), string_append(h, string_append(str_lit!("."), run)));
-                        let t = string_list_append(append(kayak_rt::heap_cons(str_lit!("(kayak-shard 5 "), kayak_rt::heap_cons(i64_to_string(next), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(at), kayak_rt::heap_cons(str_lit!(")\n"), kayak_rt::heap_cons(string_list_append(reverse(payload)), kayak_rt::heap_cons(str_lit!("\n(keys"), kayak_rt::nil()))))))), append(reverse(keys), append(kayak_rt::heap_cons(str_lit!(")\n(reads"), kayak_rt::nil()), append(reverse(frecs), append(kayak_rt::heap_cons(str_lit!(")\n(nodes"), kayak_rt::nil()), append(reverse(nodes), kayak_rt::heap_cons(str_lit!(")\n"), kayak_rt::nil()))))))));
-                        let w = db_words_joined(kayak_rt::heap_cons(file, db_value_names(d, is, nil::<Str>())));
+                        let file = string_append(str_lit!("g"), string_append(get(d.14), string_append(h, string_append(str_lit!("."), run))));
+                        let vs = db_value_names(d, is, nil::<Str>());
+                        let old = where_files(r#where);
+                        let t = string_list_append(append(kayak_rt::heap_cons(str_lit!("(kayak-shard 6 "), kayak_rt::heap_cons(i64_to_string(next), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(at), kayak_rt::heap_cons(string_list_append(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Str| {
+                            string_append(str_lit!(" "), x)
+                        })), append(vs, old))), kayak_rt::heap_cons(str_lit!(")\n"), kayak_rt::heap_cons(string_list_append(reverse(payload)), kayak_rt::heap_cons(str_lit!("\n(keys"), kayak_rt::nil())))))))), append(reverse(keys), append(kayak_rt::heap_cons(str_lit!(")\n(reads"), kayak_rt::nil()), append(reverse(frecs), append(kayak_rt::heap_cons(str_lit!(")\n(nodes"), kayak_rt::nil()), append(reverse(nodes), kayak_rt::heap_cons(str_lit!(")\n"), kayak_rt::nil()))))))));
+                        let w = where_of(kayak_rt::heap_cons(file, vs));
                         sm_set_x(d, car(ns), shard(h, w, t, next, true, false));
-                        (ns, values, graphs, heads) = (cdr(ns), onto(reverse(files), values), kayak_rt::heap_cons(db_file(file, t), graphs), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit!(" ("), kayak_rt::heap_cons(h, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(w, kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))), heads));
+                        set(d.13, onto(old, onto(filter(kayak_rt::as_proc(kayak_rt::closure1s((vs,), |(vs,), x: Str| {
+                            not(string_member_p(x, vs))
+                        })), where_values(r#where)), get(d.13))));
+                        (ns, values, graphs) = (cdr(ns), onto(reverse(files), values), kayak_rt::heap_cons(db_file(file, t), graphs));
                         continue;
                     } else { kayak_rt::data::no_variant() }
                 }
@@ -4049,20 +4015,19 @@ pub fn db_head_name(g: i64, run: Str) -> Str {
 // kept, `run` naming this save (kayak-db 5: unique, the clock's seconds
 // first, so that a later run's names sort after), in the order to write
 // them: the values', the shards', the head last, `h.GEN.RUN`, one past the
-// heads it was made of, which it names (`db-opened`). Its nodes after are
-// as those files have them.
+// heads it was made of, which it names (`db-opened`); it names no shard
+// (kayak-db 6: a listing finds them). Its nodes after are as those files
+// have them.
 pub fn db_saved(d: Db, whose: Str, keep: kayak_rt::Proc1s<'static, kayak_rt::data::DataAt<'static, Sexp>, bool>, run: Str) -> List<kayak_rt::data::DataAt<'static, DbFile>> {
+    let m = set(d.14, db_mark(whose));
     let r = shards_saved(d, sm_numbers(get(d.3), nil::<i64>()), keep, run, nil::<kayak_rt::data::DataAt<'static, DbFile>>(), nil::<kayak_rt::data::DataAt<'static, DbFile>>(), nil::<Str>());
     let g = i64_plus(get(d.10), 1i64);
     let name = db_head_name(g, run);
-    let text = string_list_append(append(kayak_rt::heap_cons(str_lit!("("), kayak_rt::heap_cons(db_format(), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(str_text(whose), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(g), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(get(d.0)), kayak_rt::heap_cons(str_lit!(" ("), kayak_rt::nil()))))))))), append(cdr(numbers_text(get(d.14))), append(kayak_rt::heap_cons(str_lit!(") ("), kayak_rt::heap_cons(db_words_joined(get(d.11)), kayak_rt::heap_cons(str_lit!(") ("), kayak_rt::nil()))), append(r.2, kayak_rt::heap_cons(str_lit!("))\n"), kayak_rt::nil()))))));
+    let text = string_list_append(append(kayak_rt::heap_cons(str_lit!("("), kayak_rt::heap_cons(db_format(), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(str_text(whose), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(g), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(get(d.0)), kayak_rt::heap_cons(str_lit!(" ("), kayak_rt::nil()))))))))), append(cdr(numbers_text(get(d.15))), kayak_rt::heap_cons(str_lit!(") ("), kayak_rt::heap_cons(db_words_joined(get(d.11)), kayak_rt::heap_cons(str_lit!("))\n"), kayak_rt::nil()))))));
     set(d.7, false);
     set(d.10, g);
     set(d.12, get(d.11));
     set(d.11, kayak_rt::heap_cons(name, kayak_rt::nil()));
-    set(d.13, kayak_rt::heap_cons(name, concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), l: Str| {
-        db_words_of(string_chars(substring(l, int_lit(2), i64_to_int(i64_minus(string_length_i64(l), 1i64)))), nil::<char>(), nil::<Str>())
-    })), r.2))));
     onto(r.0, onto(r.1, kayak_rt::heap_cons(db_file(name, text), kayak_rt::nil())))
 }
 
@@ -4096,37 +4061,6 @@ pub fn most_gen(mut ns: List<Str>, mut m: i64) -> i64 {
             });
             continue;
         }
-    }
-}
-
-/// A head's shards, `(HASH FILE VALUE ...)` each: a group not met yet
-/// numbered next, none read; a group another head has too, both its
-/// files and the other's, the newer first (kayak-db 5: by name, a run's
-/// name its clock's first), their nodes put together when it is read
-/// (C559: the newer's alone lost what the other run made).
-pub fn lines_scanned_x(d: Db, s: Str, i: i64, n: i64) -> () {
-    let i = sc_ws(s, i, n);
-    if not(i64_eq(sc_char(s, i, n), 40i64)) {
-        ()
-    } else {
-        let he = sc_name_end(s, i64_plus(i, 1i64), n);
-        let h = substring(s, i64_to_int(i64_plus(i, 1i64)), i64_to_int(he));
-        let close = sc_close(s, he, n);
-        let w = substring(s, i64_to_int(sc_ws(s, he, n)), i64_to_int(close));
-        let k = km_get(get(d.4), h);
-        if i64_gt_eq(k, 0i64) {
-            let tagcase_ = db_shard(d, k);
-            if Shard::__is_Shard(tagcase_) {
-                let (h0, w0, t0, next, loaded, dirty,) = Shard::__Shard(tagcase_);
-                sm_set_x(d, k, shard(h, where_joined(where_recent(where_union(where_groups(w), where_groups(w0)))), str_lit!(""), 0i64, false, false))
-            } else { kayak_rt::data::no_variant() }
-        } else {
-            let m = get(d.5);
-            set(d.5, i64_plus(m, 1i64));
-            set(d.4, km_put(get(d.4), h, m));
-            sm_set_x(d, m, shard(h, where_joined(where_recent(where_union(where_groups(w), nil::<Str>()))), str_lit!(""), 0i64, false, false))
-        };
-        lines_scanned_x(d, s, i64_plus(close, 1i64), n)
     }
 }
 
@@ -4174,26 +4108,6 @@ pub fn head_parents(graph: Str, e: i64) -> List<Str> {
     let ps = head_parents_at(graph, e);
     let close = sc_close(graph, i64_plus(ps, 1i64), string_length_i64(graph));
     db_words_of(string_chars(substring(graph, i64_to_int(i64_plus(ps, 1i64)), i64_to_int(close))), nil::<char>(), nil::<Str>())
-}
-
-/// The files a head's lines name, `(HASH FILE VALUE ...)` each.
-pub fn lines_named(s: Str, i: i64, n: i64, acc: List<Str>) -> List<Str> {
-    let i = sc_ws(s, i, n);
-    if not(i64_eq(sc_char(s, i, n), 40i64)) {
-        acc
-    } else {
-        let he = sc_name_end(s, i64_plus(i, 1i64), n);
-        let close = sc_close(s, he, n);
-        lines_named(s, i64_plus(close, 1i64), n, onto(db_words_of(string_chars(substring(s, i64_to_int(sc_ws(s, he, n)), i64_to_int(close))), nil::<char>(), nil::<Str>()), acc))
-    }
-}
-
-// The files a head names, its shards' and their values' (kayak-db 5).
-pub fn head_named(graph: Str, e: i64) -> List<Str> {
-    let n = string_length_i64(graph);
-    let ps = head_parents_at(graph, e);
-    let at = sc_ws(graph, i64_plus(sc_close(graph, i64_plus(ps, 1i64), n), 1i64), n);
-    lines_named(graph, i64_plus(at, 1i64), n, nil::<Str>())
 }
 
 // A head read: its revision and its `last`, if it is a head of this format
@@ -4301,17 +4215,13 @@ pub fn head_scanned_x(d: Db, graph: Str, whose: Str) -> kayak_rt::data::DataAt<'
             } else {
                 let ns = sc_ints(graph, e, n, 2i64, nil::<i64>());
                 let lasts = sc_ints(graph, i64_plus(sc_ws(graph, db_nth(ns, 2i64), n), 1i64), n, durabilities(), nil::<i64>());
-                let ps = sc_ws(graph, i64_plus(sc_close(graph, db_nth(lasts, durabilities()), n), 1i64), n);
-                let at = sc_ws(graph, i64_plus(sc_close(graph, i64_plus(ps, 1i64), n), 1i64), n);
-                lines_scanned_x(d, graph, i64_plus(at, 1i64), n);
                 head_read(db_nth(ns, 1i64), reverse(cdr(reverse(lasts))))
             }
         } else { kayak_rt::data::no_variant() }
     }
 }
 
-/// Each head of `names` read, its shards put in (`lines-scanned!`); then
-/// the revision and `last`: one head's own; of several, a revision past
+/// Each head of `names` read; then the revision and `last`: one head's own; of several, a revision past
 /// all theirs, `last` that at every durability, so that the shortcut
 /// takes no node across their runs (`models/db.qnt`'s `merge`).
 pub fn heads_scanned_x(mut d: Db, mut rd: Reader, mut names: List<Str>, mut whose: Str, mut read: List<Str>, mut rev: i64, mut last: List<i64>) -> () {
@@ -4322,11 +4232,11 @@ pub fn heads_scanned_x(mut d: Db, mut rd: Reader, mut names: List<Str>, mut whos
                 return ();
             } else if null_p(cdr(read)) {
                 set(d.0, rev);
-                return set(d.14, last);
+                return set(d.15, last);
             } else {
                 let r = i64_plus(rev, 1i64);
                 set(d.0, r);
-                return set(d.14, bumped(zeros(durabilities()), i64_minus(durabilities(), 1i64), r, 0i64));
+                return set(d.15, bumped(zeros(durabilities()), i64_minus(durabilities(), 1i64), r, 0i64));
             }
         } else {
             let tagcase_ = head_scanned_x(d, rd.call(car(names)), whose);
@@ -4467,11 +4377,72 @@ pub fn heads_listed(mut rd: Reader, mut ls: Lister, mut whose: Str, mut tries: i
     }
 }
 
+pub fn dot_at(mut s: Str, mut i: i64, mut n: i64) -> i64 {
+    loop {
+        let c = sc_char(s, i, n);
+        if (i64_lt(c, 0i64) || i64_eq(c, 46i64)) {
+            return i;
+        } else {
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+/// File `x` among a group's files `fs`, the newest first (a run's name
+/// its clock's first), once.
+pub fn newest_inserted(x: Str, fs: List<Str>) -> List<Str> {
+    if null_p(fs) {
+        kayak_rt::heap_cons(x, kayak_rt::nil())
+    } else if string_eq_p(x, car(fs)) {
+        fs
+    } else if string_lt_p(car(fs), x) {
+        kayak_rt::heap_cons(x, fs)
+    } else {
+        kayak_rt::heap_cons(car(fs), newest_inserted(x, cdr(fs)))
+    }
+}
+
+/// The groups of the files listed `ns` whose names begin `p`,
+/// `gMARKHASH.RUN` (kayak-db 6), each a shard not yet read, its files
+/// where it is, the newest first.
+pub fn groups_listed_x(mut d: Db, mut ns: List<Str>, mut p: Str) -> () {
+    loop {
+        if null_p(ns) {
+            return ();
+        } else {
+            if db_prefix_p(car(ns), p) {
+                let x = car(ns);
+                let pl = string_length_i64(p);
+                let h = substring(x, i64_to_int(pl), i64_to_int(dot_at(x, pl, string_length_i64(x))));
+                let k = km_get(get(d.4), h);
+                if i64_gt_eq(k, 0i64) {
+                    let tagcase_ = db_shard(d, k);
+                    if Shard::__is_Shard(tagcase_) {
+                        let (h0, w0, t0, next, loaded, dirty,) = Shard::__Shard(tagcase_);
+                        sm_set_x(d, k, shard(h0, where_of(newest_inserted(x, where_files(w0))), str_lit!(""), 0i64, false, false))
+                    } else { kayak_rt::data::no_variant() }
+                } else {
+                    let m = get(d.5);
+                    set(d.5, i64_plus(m, 1i64));
+                    set(d.4, km_put(get(d.4), h, m));
+                    sm_set_x(d, m, shard(h, x, str_lit!(""), 0i64, false, false))
+                }
+            } else {
+                ()
+            };
+            ns = cdr(ns);
+            continue;
+        }
+    }
+}
+
 /// The database whose files `rd` reads and `ls` lists (kayak-db 5): each
 /// head there, `h.GEN.RUN`, `whose`, that no head there names as its
 /// parent, put together; one, most often, several where runs saved at
 /// once. A save removes the heads it was made of (`db-collectable`), so
-/// that those there are few. None, an empty one. Its shards read as
+/// that those there are few. None, an empty one. Its groups those whose
+/// files the listing has, of its mark (kayak-db 6); its shards read as
 /// their keys are asked for.
 pub fn db_opened(rd: Reader, ls: Lister, whose: Str) -> Db {
     let d = db_make();
@@ -4508,35 +4479,9 @@ pub fn db_opened(rd: Reader, ls: Lister, whose: Str) -> Db {
             n
         } else { kayak_rt::data::no_variant() }
     })), frontier), whose, nil::<Str>(), 1i64, zeros(durabilities()));
+    set(d.14, db_mark(whose));
+    groups_listed_x(d, names, string_append(str_lit!("g"), db_mark(whose)));
     d
-}
-
-/// The files heads `hs` name, any whose (a file another's head names is
-/// kept).
-pub fn heads_named(mut rd: Reader, mut hs: List<Str>, mut acc: List<Str>) -> List<Str> {
-    loop {
-        if null_p(hs) {
-            return acc;
-        } else {
-            let t = rd.call(car(hs));
-            let n = string_length_i64(t);
-            let e = if (i64_gt(n, 13i64) && i64_eq(sc_char(t, the::<i64>(12i64), n), 34i64)) {
-                let tagcase_ = sc_str(t, the::<i64>(12i64), n, am_none());
-                if Part::__is_Part(tagcase_) {
-                    let (w, wt, atoms, e,) = Part::__Part(tagcase_);
-                    e
-                } else { kayak_rt::data::no_variant() }
-            } else {
-                the::<i64>(-1i64)
-            };
-            (hs, acc) = (cdr(hs), if i64_lt(e, 0i64) {
-                acc
-            } else {
-                onto(head_named(t, e), acc)
-            });
-            continue;
-        }
-    }
 }
 
 // A head's `whose`, as its text says (kayak-db 5); `` if it is none.
@@ -4609,43 +4554,49 @@ pub fn heads_ancestors(mut rd: Reader, mut todo: List<Str>, mut present: List<St
 }
 
 // Of `names`, the database's files listed after a save, those it may
-// remove (kayak-db 5): at once, the heads its head was made of, which it
-// holds, and every head there that one of them names as a parent, and
-// theirs (C563: a run that wrote its head and was stopped before it
-// removed its parents left them; once the head naming them was removed,
-// none named them, and they were read again, each open uniting what they
-// held), and `dropped`, heads of another kc not written lately
-// (`db-foreign-heads`); and a shard's or a value's file that no head left
-// names (`rd` reads them), which whoever removes them removes only if not
-// written lately (a run at once with this one may be reading an older
-// head's, or have written its own and not yet its head). A file gone
-// reads as none: its queries run again.
-/// With `files?` false, the heads alone (C563): which files no head names
-/// is known only by reading every head there whole, as an open does, and
-/// a save does not ask it each time.
-pub fn db_collectable(d: Db, names: List<Str>, rd: Reader, whose: Str, dropped: List<Str>, files_p: bool) -> List<Str> {
+// remove (kayak-db 5): the heads its head was made of, which it holds, and
+// every head there that one of them names as a parent, and theirs (C563: a
+// run that wrote its head and was stopped before it removed its parents
+// left them; once the head naming them was removed, none named them, and
+// they were read again), and `foreign`, heads of another kc not written
+// lately (`db-foreign-heads`); the files it found old (kayak-db 6): a
+// group's its own files replace, and their values' files those do not
+// name (`db-dropped`); and, with `files?`, every shard's and value's file
+// of another mark than its own, another kc's. Two lists: those to remove
+// at once, the heads and its own values' files (one a run at once with
+// this one wrote anew, of the same key and fingerprint, it may find gone,
+// and make again); and those to remove only if not written lately, the
+// shards' files and another kc's (a run at once with this one may be
+// reading them; a group's file left, its group's next reader skips, and
+// finds old again). A file gone reads as none: its queries run again.
+pub fn db_collectable(d: Db, names: List<Str>, rd: Reader, whose: Str, foreign: List<Str>, files_p: bool) -> Product_11_12<List<Str>, List<Str>> {
     let heads = filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Str| {
         i64_gt_eq(head_gen(x), 0i64)
     })), names);
-    let gone = onto(dropped, heads_ancestors(rd, get(d.12), heads, whose, nil::<Str>()));
-    let mine = get(d.11);
-    let others = filter(kayak_rt::as_proc(kayak_rt::closure1s((gone, mine,), |(gone, mine,), x: Str| {
-        (not(string_member_p(x, gone)) && not(string_member_p(x, mine)))
-    })), heads);
-    let named = if files_p {
-        onto(get(d.13), heads_named(rd, others, nil::<Str>()))
-    } else {
-        nil::<Str>()
-    };
-    filter(kayak_rt::as_proc(kayak_rt::closure1s((files_p, gone, named,), |(files_p, gone, named,), x: Str| {
+    let gone = onto(foreign, heads_ancestors(rd, get(d.12), heads, whose, nil::<Str>()));
+    let old = get(d.13);
+    let g = string_append(str_lit!("g"), db_mark(whose));
+    let v = string_append(str_lit!("v"), db_mark(whose));
+    set(d.13, nil::<Str>());
+    Product_11_12(filter(kayak_rt::as_proc(kayak_rt::closure1s((gone, old, v,), |(gone, old, v,), x: Str| {
         if i64_gt_eq(head_gen(x), 0i64) {
             string_member_p(x, gone)
+        } else {
+            (db_prefix_p(x, v) && string_member_p(x, old))
+        }
+    })), names), filter(kayak_rt::as_proc(kayak_rt::closure1s((files_p, old, g, v,), |(files_p, old, g, v,), x: Str| {
+        if i64_gt_eq(head_gen(x), 0i64) {
+            false
+        } else if db_prefix_p(x, v) {
+            false
+        } else if string_member_p(x, old) {
+            true
         } else if (files_p && (db_prefix_p(x, str_lit!("g")) || db_prefix_p(x, str_lit!("v")))) {
-            not(string_member_p(x, named))
+            not(db_prefix_p(x, g))
         } else {
             false
         }
-    })), names)
+    })), names))
 }
 
 // The generation of the head the database was last saved as (kayak-db 5).

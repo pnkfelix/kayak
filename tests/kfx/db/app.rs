@@ -92,16 +92,16 @@ pub fn files_named(fs: List<kayak_rt::data::DataAt<'static, DbFile>>) -> List<St
     }
 }
 
-pub fn reread(d: Db, whose: Str) -> Db {
+pub fn reread(d: Db, whose: Str) -> Product_11_12<Db, List<kayak_rt::data::DataAt<'static, DbFile>>> {
     let fs = db_saved(d, str_lit!("test"), kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: kayak_rt::data::DataAt<'static, Sexp>| {
         true
     })), str_lit!("000000000001-test"));
     let before = db_reader(d);
-    db_opened(kayak_rt::closure1((fs, before,), |(fs, before,), name: Str| {
+    Product_11_12(db_opened(kayak_rt::closure1((fs, before,), |(fs, before,), name: Str| {
         file_in(fs, name, before)
     }), kayak_rt::closure0((fs,), |(fs,)| {
         files_named(fs)
-    }), whose)
+    }), whose), fs)
 }
 
 pub fn words_from(mut cs: List<char>, mut w: List<char>, mut acc: List<Str>) -> List<Str> {
@@ -197,9 +197,10 @@ pub fn asked(d: Db, what: Str) -> Str {
 // C559's union, group `a` both runs': each's keys kept, `note a` B's):
 // `base`'s files opened by two runs, each editing one file and saving under
 // its own name; a third opens all their files, the heads of one generation
-// put together, each group's newer file taken (`total`'s, both wrote, B's):
-// what it gives is what the two edits make, its stale `total` run again,
-// verified by its reads' fingerprints.
+// put together, a group both wrote (`a`'s) of both files, neither of which
+// replaces the other (kayak-db 6): what it gives is what the two edits
+// make, its stale `total` run again, verified by its reads' fingerprints.
+// `dir` the files there before `base`'s save, which lists them all.
 #[inline]
 pub fn opened_from(fs: List<kayak_rt::data::DataAt<'static, DbFile>>, before: Reader) -> Db {
     db_opened(kayak_rt::closure1((fs, before,), |(fs, before,), name: Str| {
@@ -209,10 +210,10 @@ pub fn opened_from(fs: List<kayak_rt::data::DataAt<'static, DbFile>>, before: Re
     }), str_lit!("test"))
 }
 
-pub fn at_once(base: Db) -> Str {
-    let fs0 = db_saved(base, str_lit!("test"), kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: kayak_rt::data::DataAt<'static, Sexp>| {
+pub fn at_once(base: Db, dir: List<kayak_rt::data::DataAt<'static, DbFile>>) -> Str {
+    let fs0 = onto(db_saved(base, str_lit!("test"), kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: kayak_rt::data::DataAt<'static, Sexp>| {
         true
-    })), str_lit!("000000000002-base"));
+    })), str_lit!("000000000002-base")), dir);
     let before = db_reader(base);
     let a = opened_from(fs0, before);
     let b = opened_from(fs0, before);
@@ -240,14 +241,18 @@ pub fn at_once(base: Db) -> Str {
 // What a save may remove (C563): four saves one after another, x0 to x3,
 // each opening the files before it, as if each run were stopped before it
 // removed its parents, so that every head is still there; and a head of
-// another `whose`. x3's save removes the head it was made of, x2, and x2's
-// parent and its parent, x1 and x0, which none would name once x2 was gone,
+// another `whose`, and a shard's file of another kc's. x3's save removes
+// the head it was made of, x2, and x2's parent and its, x1, x0, and the
+// heads before x0 there (`dir`'s), which none would name once x2 was gone,
 // and the other's head, given as not written lately: one head left, its.
-pub fn collect(base: Db) -> Str {
+// And, if not written lately (kayak-db 6), the files of group `a` x3's
+// replaces, x2's and those x2's replaced, which x3's skipped; and the
+// other kc's file: none of group `a`'s left but x3's.
+pub fn collect(base: Db, dir: List<kayak_rt::data::DataAt<'static, DbFile>>) -> Str {
     let keep = kayak_rt::closure1s((), |(), k: kayak_rt::data::DataAt<'static, Sexp>| {
         true
     });
-    let f0 = db_saved(base, str_lit!("test"), keep, str_lit!("000000000005-x0"));
+    let f0 = onto(db_saved(base, str_lit!("test"), keep, str_lit!("000000000005-x0")), dir);
     let before = db_reader(base);
     let x1 = opened_from(f0, before);
     let f1 = {
@@ -265,18 +270,28 @@ pub fn collect(base: Db) -> Str {
         db_set_x(x3, k_of(str_lit!("file a")), str_lit!("qqq"), 0i64);
         db_saved(x3, str_lit!("test"), keep, str_lit!("000000000008-x3"))
     };
-    let all = kayak_rt::heap_cons(db_file(str_lit!("h.0000000001.000000000001-f"), str_lit!("(kayak-db 5 \"another\" 1 0 (0 0 0 0) () ())\n")), onto(f3, fs));
+    let all = kayak_rt::heap_cons(db_file(str_lit!("h.0000000001.000000000001-f"), str_lit!("(kayak-db 6 \"another\" 1 0 (0 0 0 0) ())\n")), kayak_rt::heap_cons(db_file(string_append(str_lit!("g"), string_append(db_mark(str_lit!("another")), str_lit!("1.000000000001-f"))), str_lit!("")), onto(f3, fs)));
     let rd = kayak_rt::closure1((before, all,), |(before, all,), name: Str| {
         file_in(all, name, before)
     });
     let names = files_named(all);
     let gone = db_collectable(x3, names, rd, str_lit!("test"), db_foreign_heads(names, rd, str_lit!("test")), true);
+    let now = gone.0;
+    let later = gone.1;
     let head_p = kayak_rt::closure1s((), |(), x: Str| {
         (i64_gt(string_length_i64(x), 2i64) && string_eq_p(substring(x, int_lit(0), int_lit(2)), str_lit!("h.")))
     });
-    string_append(str_lit!("collect-gone="), string_append(i64_to_string(size(filter(head_p, gone))), string_append(str_lit!(" left="), i64_to_string(size(filter(kayak_rt::as_proc(kayak_rt::closure1s((gone, head_p,), |(gone, head_p,), x: Str| {
-        (head_p.call(x) && not(string_member_p(x, gone)))
-    })), names))))))
+    let ga = string_append(str_lit!("g"), string_append(db_mark(str_lit!("test")), group_hash(str_lit!("a"))));
+    let of_a_p = kayak_rt::closure1s((ga,), |(ga,), x: Str| {
+        db_prefix_p(x, ga)
+    });
+    string_list_append(kayak_rt::heap_cons(str_lit!("collect-gone="), kayak_rt::heap_cons(i64_to_string(size(filter(head_p, now))), kayak_rt::heap_cons(str_lit!(" left="), kayak_rt::heap_cons(i64_to_string(size(filter(kayak_rt::as_proc(kayak_rt::closure1s((now, head_p,), |(now, head_p,), x: Str| {
+        (head_p.call(x) && not(string_member_p(x, now)))
+    })), names))), kayak_rt::heap_cons(str_lit!(" a-old="), kayak_rt::heap_cons(i64_to_string(size(filter(of_a_p, later))), kayak_rt::heap_cons(str_lit!(" a-left="), kayak_rt::heap_cons(i64_to_string(size(filter(kayak_rt::as_proc(kayak_rt::closure1s((later, of_a_p,), |(later, of_a_p,), x: Str| {
+        (of_a_p.call(x) && not(string_member_p(x, later)))
+    })), names))), kayak_rt::heap_cons(str_lit!(" foreign="), kayak_rt::heap_cons(i64_to_string(size(filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Str| {
+        db_prefix_p(x, string_append(str_lit!("g"), db_mark(str_lit!("another"))))
+    })), later))), kayak_rt::nil())))))))))))
 }
 
 pub fn main() -> Str {
@@ -299,17 +314,17 @@ pub fn main() -> Str {
         db_side_put_x(d, str_lit!("long"), long_text(5000i64, str_lit!("")));
         ()
     };
-    let d2 = reread(d, str_lit!("test"));
+    let r2 = reread(d, str_lit!("test"));
+    let d2 = r2.0;
     let side = string_append(str_lit!("side="), string_append(db_side(d2, str_lit!("short")), string_append(str_lit!(","), i64_to_string(string_length_i64(db_side(d2, str_lit!("long")))))));
     let read_back = asked(d2, str_lit!("read-back"));
     let edited = {
         db_set_x(d2, k_of(str_lit!("file a")), str_lit!("abcd"), 0i64);
         asked(d2, str_lit!("edited"))
     };
-    let other = string_append(str_lit!("another's-keys="), i64_to_string(size(db_keys(reread(d, str_lit!("another"))))));
-    let merged = at_once(d2);
-    let collected = collect(d2);
-    let recent = string_append(str_lit!("recent="), where_joined(where_recent(where_groups(str_lit!("g1.000000000100-a v1 ; g1.000000000050-b ; g1.000000000030-c")))));
-    string_list_append(kayak_rt::heap_cons(first, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(again, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(same, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(longer, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(side, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(read_back, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(edited, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(other, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(merged, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(collected, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(recent, kayak_rt::nil()))))))))))))))))))))))
+    let other = string_append(str_lit!("another's-keys="), i64_to_string(size(db_keys(reread(d, str_lit!("another")).0))));
+    let merged = at_once(d2, r2.1);
+    let collected = collect(d2, r2.1);
+    string_list_append(kayak_rt::heap_cons(first, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(again, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(same, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(longer, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(side, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(read_back, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(edited, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(other, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(merged, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(collected, kayak_rt::nil()))))))))))))))))))))
 }
 

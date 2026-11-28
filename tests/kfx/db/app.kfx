@@ -35,14 +35,15 @@
   (files-named (subr kfx ((listof db-file acyclic)) (listof string acyclic))
     (lambda (fs) (if (null? fs) nil (cons (tagcase (car fs) (db-file (n t) n)) (files-named (cdr fs)))))))
 
-(define reread (subr qe (db string) db)
+(define reread (subr qe (db string) (tupleof db (listof db-file acyclic)))
   (lambda (d whose)
     ;; Its files as `db-saved` gives them (C472), those it does not (the
     ;; shards and values as they were) read as before.
     (let* ((fs (db-saved d "test" (lambda ((k sexp)) #t) "000000000001-test"))
            (before (db-reader d)))
-      ;; Listed (kayak-db 5): this save's files, its head the newest.
-      (db-opened (lambda ((name string)) (file-in fs name before)) (lambda () (files-named fs)) whose))))
+      ;; Listed (kayak-db 5): this save's files, its head the newest; and
+      ;; the files, as a directory has them after.
+      (tuple (db-opened (lambda ((name string)) (file-in fs name before)) (lambda () (files-named fs)) whose) fs))))
 
 (define-rec
   (words-from (subr kfx ((listof char acyclic) (listof char acyclic) (listof string acyclic)) (listof string acyclic))
@@ -87,17 +88,18 @@
  C559's union, group `a` both runs': each's keys kept, `note a` B's):
  `base`'s files opened by two runs, each editing one file and saving under
  its own name; a third opens all their files, the heads of one generation
- put together, each group's newer file taken (`total`'s, both wrote, B's):
- what it gives is what the two edits make, its stale `total` run again,
- verified by its reads' fingerprints."
+ put together, a group both wrote (`a`'s) of both files, neither of which
+ replaces the other (kayak-db 6): what it gives is what the two edits
+ make, its stale `total` run again, verified by its reads' fingerprints.
+ `dir` the files there before `base`'s save, which lists them all."
 (define opened-from (subr qe ((listof db-file acyclic) reader) db)
   (lambda (fs before)
-    ;; Its files `fs`, those it does not have (unchanged since an earlier
-    ;; save) read as `before` reads them, as one directory has them all.
+    ;; Its files `fs`, those it does not have read as `before` reads them;
+    ;; `fs` all a directory has (kayak-db 6: its groups found by listing).
     (db-opened (lambda ((name string)) (file-in fs name before)) (lambda () (files-named fs)) "test")))
-(define at-once (subr qe (db) string)
-  (lambda (base)
-    (let* ((fs0 (db-saved base "test" (lambda ((k sexp)) #t) "000000000002-base"))
+(define at-once (subr qe (db (listof db-file acyclic)) string)
+  (lambda (base dir)
+    (let* ((fs0 (onto (db-saved base "test" (lambda ((k sexp)) #t) "000000000002-base") dir))
            (before (db-reader base))
            (a (opened-from fs0 before))
            (b (opened-from fs0 before))
@@ -117,13 +119,17 @@
 "What a save may remove (C563): four saves one after another, x0 to x3,
  each opening the files before it, as if each run were stopped before it
  removed its parents, so that every head is still there; and a head of
- another `whose`. x3's save removes the head it was made of, x2, and x2's
- parent and its parent, x1 and x0, which none would name once x2 was gone,
- and the other's head, given as not written lately: one head left, its."
-(define collect (subr qe (db) string)
-  (lambda (base)
+ another `whose`, and a shard's file of another kc's. x3's save removes
+ the head it was made of, x2, and x2's parent and its, x1, x0, and the
+ heads before x0 there (`dir`'s), which none would name once x2 was gone,
+ and the other's head, given as not written lately: one head left, its.
+ And, if not written lately (kayak-db 6), the files of group `a` x3's
+ replaces, x2's and those x2's replaced, which x3's skipped; and the
+ other kc's file: none of group `a`'s left but x3's."
+(define collect (subr qe (db (listof db-file acyclic)) string)
+  (lambda (base dir)
     (let* ((keep (lambda ((k sexp)) #t))
-           (f0 (db-saved base "test" keep "000000000005-x0"))
+           (f0 (onto (db-saved base "test" keep "000000000005-x0") dir))
            (before (db-reader base))
            (x1 (opened-from f0 before))
            (f1 (begin (db-set! x1 (k-of "file a") "q" 0) (db-saved x1 "test" keep "000000000006-x1")))
@@ -132,13 +138,23 @@
            (fs (onto f2 (onto f1 f0)))
            (x3 (opened-from fs before))
            (f3 (begin (db-set! x3 (k-of "file a") "qqq" 0) (db-saved x3 "test" keep "000000000008-x3")))
-           (all (cons (db-file "h.0000000001.000000000001-f" "(kayak-db 5 \"another\" 1 0 (0 0 0 0) () ())\n") (onto f3 fs)))
+           (all (cons (db-file "h.0000000001.000000000001-f" "(kayak-db 6 \"another\" 1 0 (0 0 0 0) ())\n")
+                      (cons (db-file (string-append "g" (string-append (db-mark "another") "1.000000000001-f")) "")
+                            (onto f3 fs))))
            (rd (lambda ((name string)) (file-in all name before)))
            (names (files-named all))
            (gone (db-collectable x3 names rd "test" (db-foreign-heads names rd "test") #t))
-           (head? (lambda ((x string)) (and (i64> (string-length-i64 x) 2) (string=? (substring x 0 2) "h.")))))
-      (string-append "collect-gone=" (string-append (i64->string (size (filter head? gone)))
-        (string-append " left=" (i64->string (size (filter (lambda ((x string)) (and (head? x) (not (string-member? x gone)))) names)))))))))
+           (now (extract gone 1))
+           (later (extract gone 2))
+           (head? (lambda ((x string)) (and (i64> (string-length-i64 x) 2) (string=? (substring x 0 2) "h."))))
+           (ga (string-append "g" (string-append (db-mark "test") (group-hash "a"))))
+           (of-a? (lambda ((x string)) (db-prefix? x ga))))
+      (string-list-append
+        (list "collect-gone=" (i64->string (size (filter head? now)))
+              " left=" (i64->string (size (filter (lambda ((x string)) (and (head? x) (not (string-member? x now)))) names)))
+              " a-old=" (i64->string (size (filter of-a? later)))
+              " a-left=" (i64->string (size (filter (lambda ((x string)) (and (of-a? x) (not (string-member? x later)))) names)))
+              " foreign=" (i64->string (size (filter (lambda ((x string)) (db-prefix? x (string-append "g" (db-mark "another")))) later))))))))
 
 (define main (subr qe () string)
   (lambda ()
@@ -155,14 +171,12 @@
                ;; graph's, or it is not believed): a short one, in its
                ;; shard; a long one, a file of its own.
                (sides (begin (db-side-put! d "short" "kept λ") (db-side-put! d "long" (long-text 5000 "")) #u))
-               (d2 (reread d "test"))
+               (r2 (reread d "test"))
+               (d2 (extract r2 1))
                (side (string-append "side=" (string-append (db-side d2 "short") (string-append "," (i64->string (string-length-i64 (db-side d2 "long")))))))
                (read-back (asked d2 "read-back"))
                (edited (begin (db-set! d2 (k-of "file a") "abcd" 0) (asked d2 "edited")))
-               (other (string-append "another's-keys=" (i64->string (size (db-keys (reread d "another"))))))
-               (merged (at-once d2))
-               (collected (collect d2))
-               ;; A group's files put together (C563): the newest and those
-               ;; written within a minute before it.
-               (recent (string-append "recent=" (where-joined (where-recent (where-groups "g1.000000000100-a v1 ; g1.000000000050-b ; g1.000000000030-c"))))))
-          (string-list-append (list first " " again " " same " " longer " " side " " read-back " " edited " " other " " merged " " collected " " recent)))))))
+               (other (string-append "another's-keys=" (i64->string (size (db-keys (extract (reread d "another") 1))))))
+               (merged (at-once d2 (extract r2 2)))
+               (collected (collect d2 (extract r2 2))))
+          (string-list-append (list first " " again " " same " " longer " " side " " read-back " " edited " " other " " merged " " collected)))))))
